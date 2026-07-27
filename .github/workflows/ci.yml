@@ -1,0 +1,63 @@
+name: Milestone 0 CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: milestone-0-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  architecture:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install project and development tools
+        run: python -m pip install -e ".[dev]"
+
+      - name: Collect tests
+        run: python -m pytest --collect-only -q
+
+      - name: Run Ruff
+        run: python -m ruff check .
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Verify clean working tree
+        run: >-
+          python -c "import subprocess, sys;
+          state = subprocess.check_output(
+          ['git', 'status', '--porcelain'],
+          text=True);
+          print(state, end='');
+          sys.exit(1 if state.strip() else 0)"
