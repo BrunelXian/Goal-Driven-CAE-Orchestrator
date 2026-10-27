@@ -1,4 +1,4 @@
-"""Reject deferred product surfaces from the Milestone 0 source tree."""
+"""Reject deferred product surfaces except the exact M01-A lazy public AF seam."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import ast
 from pathlib import Path
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
+from test_forbidden_legacy_dependencies import permitted_discovery_import
 
 FORBIDDEN_SURFACE_NAMES = {
     "mcp",
@@ -67,6 +68,8 @@ def surface_import_violations(tree: ast.AST, display_path: str) -> tuple[str, ..
                         f"{display_path}:{node.lineno}: forbidden surface import {alias.name}"
                     )
         elif isinstance(node, ast.ImportFrom):
+            if permitted_discovery_import(tree, node, display_path):
+                continue
             if node.module == "importlib":
                 for alias in node.names:
                     if alias.name == "import_module":
