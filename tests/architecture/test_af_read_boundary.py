@@ -8,6 +8,7 @@ import pytest
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_forbidden_legacy_dependencies import ADAPTER_PATH
+from test_research_boundary import permitted_store_sql
 
 PUBLIC_READS = {
     "capabilities", "list_runs", "get_run", "get_receipt", "list_events",
@@ -45,7 +46,9 @@ def boundary_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
         elif isinstance(node, ast.Attribute):
             if node.attr == "call":
                 reject(node, "raw .call forwarding")
-            if node.attr in WRITE_OR_LIFECYCLE or node.attr.startswith("apply_"):
+            if (node.attr in WRITE_OR_LIFECYCLE or node.attr.startswith("apply_")) and not (
+                node.attr == "execute" and permitted_store_sql(tree, parents.get(node), display_path)
+            ):
                 reject(node, "write or lifecycle surface")
             if node.attr in IMPLICIT_ROOTS:
                 reject(node, "implicit Project selection")

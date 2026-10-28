@@ -7,6 +7,7 @@ import ast
 import pytest
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
+from test_research_boundary import permitted_mutation_write, permitted_store_creation
 
 PATH_WRITE_METHODS = {
     "write_text",
@@ -83,6 +84,10 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
         target = resolve_alias(unresolved, aliases)
         method_name = node.func.attr if isinstance(node.func, ast.Attribute) else None
 
+        if (permitted_store_creation(tree, node, display_path)
+                or permitted_mutation_write(tree, node, display_path)):
+            continue
+
         if target in {"open", "builtins.open"}:
             mode = open_mode(node)
             if mode is not None:
@@ -94,6 +99,12 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
                     violations.append(
                         f"{display_path}:{node.lineno}: write-capable open mode {mode.value!r}"
                     )
+        elif method_name == "open":
+            mode = node.args[0] if node.args else next(
+                (keyword.value for keyword in node.keywords if keyword.arg == "mode"), None)
+            if mode is not None and (not isinstance(mode, ast.Constant)
+                    or not isinstance(mode.value, str) or any(flag in mode.value for flag in "wax+")):
+                violations.append(f"{display_path}:{node.lineno}: unapproved path open mode")
         if method_name in PATH_WRITE_METHODS:
             violations.append(
                 f"{display_path}:{node.lineno}: forbidden path write method {method_name}"

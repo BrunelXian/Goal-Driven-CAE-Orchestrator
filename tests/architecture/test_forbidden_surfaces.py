@@ -1,9 +1,11 @@
-"""Reject deferred product surfaces except the exact M01-A lazy public AF seam."""
+"""Reject deferred surfaces except the exact public AF seam and M01-C SDK imports."""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
+
+import pytest
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_forbidden_legacy_dependencies import permitted_discovery_import
@@ -29,6 +31,25 @@ FORBIDDEN_SURFACE_NAMES = {
     "abqpilot",
     "abqjobpilot",
 }
+
+MCP_INTERFACE_PATH = "src/aegiscae/interfaces/mcp_read.py"
+MCP_SDK_IMPORTS = {
+    "mcp.server.lowlevel": {"Server"},
+    "mcp.server.stdio": {"stdio_server"},
+    "mcp.types": {"Tool", "ToolAnnotations", "ListToolsResult", "CallToolResult", "TextContent"},
+}
+
+
+def permitted_mcp_sdk_import(node: ast.AST, display_path: str) -> bool:
+    """SDK use is a named import allowlist, never a generic client permission."""
+    return (
+        display_path == MCP_INTERFACE_PATH
+        and isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module in MCP_SDK_IMPORTS
+        and bool(node.names)
+        and all(alias.name in MCP_SDK_IMPORTS[node.module] for alias in node.names)
+    )
 
 
 def module_has_forbidden_surface(module_name: str) -> bool:
@@ -68,7 +89,10 @@ def surface_import_violations(tree: ast.AST, display_path: str) -> tuple[str, ..
                         f"{display_path}:{node.lineno}: forbidden surface import {alias.name}"
                     )
         elif isinstance(node, ast.ImportFrom):
-            if permitted_discovery_import(tree, node, display_path):
+            if (
+                permitted_discovery_import(tree, node, display_path)
+                or permitted_mcp_sdk_import(node, display_path)
+            ):
                 continue
             if node.module == "importlib":
                 for alias in node.names:
@@ -130,3 +154,31 @@ def test_surface_import_checker_rejects_dynamic_import() -> None:
     tree = ast.parse('import importlib\nimportlib.import_module("aegiscae.llm.planner")\n')
     violations = surface_import_violations(tree, "controlled-negative/dynamic_import.py")
     assert violations, "surface checker accepted dynamic import of aegiscae.llm.planner"
+
+
+@pytest.mark.parametrize("snippet", [
+    "from mcp.server.lowlevel import Server",
+    "from mcp.server.stdio import stdio_server",
+    "from mcp.types import ToolAnnotations",
+    "from mcp.types import Tool, ListToolsResult, CallToolResult, TextContent",
+])
+def test_exact_mcp_sdk_imports_are_allowed_only_at_the_read_interface(snippet: str) -> None:
+    tree = ast.parse(snippet)
+    assert not surface_import_violations(tree, MCP_INTERFACE_PATH)
+    assert surface_import_violations(tree, "src/aegiscae/runtime/mcp_read.py")
+
+
+@pytest.mark.parametrize("snippet", [
+    "import mcp",
+    "from mcp import ClientSession",
+    "from mcp.client.stdio import stdio_client",
+    "from mcp.server.lowlevel import *",
+    "from mcp.server.lowlevel import Server, unexpected",
+    "from mcp.server.mcpserver import MCPServer",
+    "from mcp.server.fastmcp import FastMCP",
+    "import importlib\nimportlib.import_module('mcp.server.lowlevel')",
+    "from agents import Agent",
+    "from aegiscae.agent import Planner",
+])
+def test_mcp_sdk_exception_rejects_unapproved_imports(snippet: str) -> None:
+    assert surface_import_violations(ast.parse(snippet), MCP_INTERFACE_PATH)

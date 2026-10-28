@@ -31,3 +31,4 @@ build/
 # Local research references and private CAE model storage
 /Kickoff_Docs/
 /CAE models/
+/.codex/config.toml

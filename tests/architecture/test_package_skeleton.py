@@ -1,4 +1,4 @@
-"""Allow only historical markers and the two authorized M01-A bridge modules."""
+"""Allow historical markers, the M01-A bridge, and the exact M01-C MCP module."""
 
 from __future__ import annotations
 
@@ -14,10 +14,18 @@ PACKAGE_MARKERS = {
     Path("aegiscae/interfaces/__init__.py"),
     Path("aegiscae/adapters/__init__.py"),
     Path("aegiscae/adapters/abaqus/__init__.py"),
+    Path("aegiscae/research/__init__.py"),
 }
 M01_MODULES = {
     Path("aegiscae/contracts/af_evidence.py"),
     Path("aegiscae/adapters/abaqus/af_evidence.py"),
+    Path("aegiscae/interfaces/mcp_read.py"),
+    Path("aegiscae/contracts/research_contracts.py"),
+    Path("aegiscae/research/project.py"),
+    Path("aegiscae/research/mutation_rules.py"),
+    Path("aegiscae/research/mutation.py"),
+    Path("aegiscae/research/budget.py"),
+    Path("aegiscae/research/budget_rules.py"),
 }
 EXPECTED_PYTHON_FILES = PACKAGE_MARKERS | M01_MODULES
 
@@ -95,7 +103,7 @@ def create_allowed_skeleton(src_root: Path) -> None:
 def test_real_repository_has_only_authorized_m01_source_files() -> None:
     violations = skeleton_violations(SRC_ROOT)
     assert not violations, (
-        "M01-A source surface violations:\n"
+        "M01 source surface violations:\n"
         + "\n".join(f"- {item}" for item in violations)
     )
 
@@ -120,3 +128,10 @@ def test_skeleton_checker_accepts_only_exact_bridge_locations(tmp_path: Path) ->
     misplaced = tmp_path / "aegiscae" / "runtime" / "af_evidence.py"
     misplaced.write_text('"""Misplaced adapter."""\n', encoding="utf-8")
     assert any("runtime/af_evidence.py" in item for item in skeleton_violations(tmp_path))
+
+
+def test_skeleton_checker_rejects_second_mcp_server(tmp_path: Path) -> None:
+    create_allowed_skeleton(tmp_path)
+    extra = tmp_path / "aegiscae" / "interfaces" / "mcp_write.py"
+    extra.write_text('"""Unauthorized second interface."""\n', encoding="utf-8")
+    assert any("interfaces/mcp_write.py" in item for item in skeleton_violations(tmp_path))

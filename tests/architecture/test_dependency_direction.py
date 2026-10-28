@@ -1,10 +1,12 @@
-"""Enforce the frozen AegisCAE package import DAG."""
+"""Enforce the package DAG with the exact M01-C public read-bridge exception."""
 
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+import pytest
 
 from conftest import SRC_ROOT, iter_python_files, parse_python_file
 
@@ -15,7 +17,20 @@ ALLOWED_AEGISCAE_TARGETS = {
     "runtime": {"contracts", "validation"},
     "adapters": {"contracts", "validation"},
     "interfaces": {"contracts", "runtime"},
+    "research": {"contracts"},
 }
+
+
+def permitted_mcp_bridge_import(node: ast.AST, display_path: str) -> bool:
+    """Only the approved STDIO module can import the public EvidenceBridge class."""
+    return (
+        display_path == "aegiscae/interfaces/mcp_read.py"
+        and isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module == "aegiscae.adapters.abaqus.af_evidence"
+        and len(node.names) == 1
+        and node.names[0].name == "EvidenceBridge"
+    )
 
 
 def source_layer(path: Path, src_root: Path) -> str:
@@ -93,7 +108,10 @@ def import_direction_violations(
             target_layer = parts[1] if len(parts) > 1 else "root"
             if target_layer == layer:
                 continue
-            if target_layer not in ALLOWED_AEGISCAE_TARGETS[layer]:
+            if (
+                target_layer not in ALLOWED_AEGISCAE_TARGETS[layer]
+                and not permitted_mcp_bridge_import(node, display_path)
+            ):
                 violations.append(
                     f"{display_path}:{node.lineno}: forbidden dependency "
                     f"{layer} -> {target_layer} ({target})"
@@ -186,3 +204,24 @@ def test_adapter_to_runtime_import_is_rejected(tmp_path: Path) -> None:
         "dependency checker accepted controlled-negative/adapters/abaqus/example.py "
         "importing aegiscae.runtime"
     )
+
+
+def test_exact_mcp_module_may_import_only_public_evidence_bridge(tmp_path: Path) -> None:
+    path = tmp_path / "aegiscae" / "interfaces" / "mcp_read.py"
+    tree = ast.parse("from aegiscae.adapters.abaqus.af_evidence import EvidenceBridge")
+    assert not import_direction_violations(path, tree, tmp_path)
+
+
+@pytest.mark.parametrize("module, snippet", [
+    ("other.py", "from aegiscae.adapters.abaqus.af_evidence import EvidenceBridge"),
+    ("mcp_read.py", "from aegiscae.adapters.abaqus.af_evidence import _discover"),
+    ("mcp_read.py", "from aegiscae.adapters.abaqus.af_evidence import *"),
+    ("mcp_read.py", "from aegiscae.adapters.abaqus.af_evidence import EvidenceBridge, _discover"),
+    ("mcp_read.py", "import aegiscae.adapters.abaqus.af_evidence"),
+    ("mcp_read.py", "from aegiscae.adapters.abaqus import commands"),
+])
+def test_mcp_bridge_exception_does_not_open_other_adapter_access(
+    tmp_path: Path, module: str, snippet: str,
+) -> None:
+    path = tmp_path / "aegiscae" / "interfaces" / module
+    assert import_direction_violations(path, ast.parse(snippet), tmp_path)
