@@ -7,6 +7,7 @@ import pytest
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_proposal_boundary import STORE as INGRESS_STORE, proposal_creation, proposal_sql
 from test_continuation_boundary import STORE as CONTINUATION_STORE, continuation_creation, continuation_sql
+from test_main_runtime_boundary import STORE as RUNTIME_STORE, runtime_creation, runtime_sql
 
 
 STORE = "src/aegiscae/research/project.py"
@@ -125,7 +126,7 @@ def research_violations(tree, display_path):
             modules = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module]
             if any(name and name.split(".")[0] in {"sqlite3", "sqlalchemy", "peewee"}
                    for name in modules):
-                if not (display_path in {STORE, INGRESS_STORE, CONTINUATION_STORE} and isinstance(node, ast.Import)
+                if not (display_path in {STORE, INGRESS_STORE, CONTINUATION_STORE, RUNTIME_STORE} and isinstance(node, ast.Import)
                         and len(node.names) == 1 and node.names[0].name == "sqlite3"
                         and node.names[0].asname is None):
                     violations.append("database import outside exact store")
@@ -135,7 +136,8 @@ def research_violations(tree, display_path):
             method = node.func.attr
             if method == "execute" and not (permitted_store_sql(tree, node, display_path)
                                            or proposal_sql(tree, node, display_path)
-                                           or continuation_sql(tree, node, display_path)):
+                                           or continuation_sql(tree, node, display_path)
+                                           or runtime_sql(tree, node, display_path)):
                 violations.append("SQL execution outside literal allowlist")
             if method in {"executemany", "executescript"}:
                 violations.append("unapproved bulk SQL")
@@ -143,11 +145,13 @@ def research_violations(tree, display_path):
                 (display_path == STORE and enclosing_function(tree, node) == "_connection")
                 or (display_path == INGRESS_STORE and enclosing_function(tree, node) == "connection_for")
                 or (display_path == CONTINUATION_STORE and enclosing_function(tree, node) == "connection_for")
+                or (display_path == RUNTIME_STORE and enclosing_function(tree, node) == "connection_for")
             ):
                 violations.append("database connection outside store connection")
             if same(node.func, "os.open") and not (permitted_store_creation(tree, node, display_path)
                                                  or proposal_creation(tree, node, display_path)
-                                                 or continuation_creation(tree, node, display_path)):
+                                                 or continuation_creation(tree, node, display_path)
+                                                 or runtime_creation(tree, node, display_path)):
                 violations.append("raw file open outside exclusive creation")
     return violations
 

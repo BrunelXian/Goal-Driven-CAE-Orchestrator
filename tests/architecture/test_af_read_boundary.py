@@ -11,6 +11,7 @@ from test_forbidden_legacy_dependencies import ADAPTER_PATH
 from test_research_boundary import permitted_store_sql
 from test_proposal_boundary import proposal_sql
 from test_continuation_boundary import continuation_sql
+from test_main_runtime_boundary import runtime_sql
 
 PUBLIC_READS = {
     "capabilities", "list_runs", "get_run", "get_receipt", "list_events",
@@ -51,7 +52,8 @@ def boundary_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
             if (node.attr in WRITE_OR_LIFECYCLE or node.attr.startswith("apply_")) and not (
                 node.attr == "execute" and (permitted_store_sql(tree, parents.get(node), display_path)
                                           or proposal_sql(tree, parents.get(node), display_path)
-                                          or continuation_sql(tree, parents.get(node), display_path))
+                                          or continuation_sql(tree, parents.get(node), display_path)
+                                          or runtime_sql(tree, parents.get(node), display_path))
             ):
                 reject(node, "write or lifecycle surface")
             if node.attr in IMPLICIT_ROOTS:

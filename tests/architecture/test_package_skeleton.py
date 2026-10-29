@@ -37,6 +37,9 @@ M01_MODULES = {
     Path("aegiscae/research/continuation.py"),
     Path("aegiscae/research/continuation_rules.py"),
     Path("aegiscae/research/continuation_store.py"),
+    Path("aegiscae/research/main_runtime.py"),
+    Path("aegiscae/research/main_runtime_rules.py"),
+    Path("aegiscae/research/main_runtime_store.py"),
 }
 EXPECTED_PYTHON_FILES = PACKAGE_MARKERS | M01_MODULES
 

@@ -10,6 +10,7 @@ from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_research_boundary import permitted_mutation_write, permitted_store_creation
 from test_proposal_boundary import proposal_creation
 from test_continuation_boundary import continuation_creation
+from test_main_runtime_boundary import runtime_creation
 
 PATH_WRITE_METHODS = {
     "write_text",
@@ -89,7 +90,8 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
         if (permitted_store_creation(tree, node, display_path)
                 or permitted_mutation_write(tree, node, display_path)
                 or proposal_creation(tree, node, display_path)
-                or continuation_creation(tree, node, display_path)):
+                or continuation_creation(tree, node, display_path)
+                or runtime_creation(tree, node, display_path)):
             continue
 
         if target in {"open", "builtins.open"}:
