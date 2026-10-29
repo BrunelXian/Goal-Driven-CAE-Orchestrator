@@ -8,6 +8,8 @@ import pytest
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_research_boundary import permitted_mutation_write, permitted_store_creation
+from test_proposal_boundary import proposal_creation
+from test_continuation_boundary import continuation_creation
 
 PATH_WRITE_METHODS = {
     "write_text",
@@ -85,7 +87,9 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
         method_name = node.func.attr if isinstance(node.func, ast.Attribute) else None
 
         if (permitted_store_creation(tree, node, display_path)
-                or permitted_mutation_write(tree, node, display_path)):
+                or permitted_mutation_write(tree, node, display_path)
+                or proposal_creation(tree, node, display_path)
+                or continuation_creation(tree, node, display_path)):
             continue
 
         if target in {"open", "builtins.open"}:

@@ -5,6 +5,8 @@ import ast
 import pytest
 
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
+from test_proposal_boundary import STORE as INGRESS_STORE, proposal_creation, proposal_sql
+from test_continuation_boundary import STORE as CONTINUATION_STORE, continuation_creation, continuation_sql
 
 
 STORE = "src/aegiscae/research/project.py"
@@ -28,6 +30,7 @@ SQL = {
     },
     "create_research_project": {"INSERT INTO project VALUES (1,?,?)"},
     "_commit_budget_event": {"UPDATE project SET body=?,digest=? WHERE singleton=1"},
+    "_commit_workflow_event": {"UPDATE project SET body=?,digest=? WHERE singleton=1"},
     "freeze_contract_bundle": {
         "INSERT INTO bundles VALUES (?,?,?,?,?,?,?,?,?)",
         "SELECT version,digest FROM parts WHERE kind=? AND contract_id=? ORDER BY version DESC",
@@ -122,7 +125,7 @@ def research_violations(tree, display_path):
             modules = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module]
             if any(name and name.split(".")[0] in {"sqlite3", "sqlalchemy", "peewee"}
                    for name in modules):
-                if not (display_path == STORE and isinstance(node, ast.Import)
+                if not (display_path in {STORE, INGRESS_STORE, CONTINUATION_STORE} and isinstance(node, ast.Import)
                         and len(node.names) == 1 and node.names[0].name == "sqlite3"
                         and node.names[0].asname is None):
                     violations.append("database import outside exact store")
@@ -130,15 +133,21 @@ def research_violations(tree, display_path):
             continue
         if isinstance(node.func, ast.Attribute):
             method = node.func.attr
-            if method == "execute" and not permitted_store_sql(tree, node, display_path):
+            if method == "execute" and not (permitted_store_sql(tree, node, display_path)
+                                           or proposal_sql(tree, node, display_path)
+                                           or continuation_sql(tree, node, display_path)):
                 violations.append("SQL execution outside literal allowlist")
             if method in {"executemany", "executescript"}:
                 violations.append("unapproved bulk SQL")
             if same(node.func, "sqlite3.connect") and not (
-                display_path == STORE and enclosing_function(tree, node) == "_connection"
+                (display_path == STORE and enclosing_function(tree, node) == "_connection")
+                or (display_path == INGRESS_STORE and enclosing_function(tree, node) == "connection_for")
+                or (display_path == CONTINUATION_STORE and enclosing_function(tree, node) == "connection_for")
             ):
                 violations.append("database connection outside store connection")
-            if same(node.func, "os.open") and not permitted_store_creation(tree, node, display_path):
+            if same(node.func, "os.open") and not (permitted_store_creation(tree, node, display_path)
+                                                 or proposal_creation(tree, node, display_path)
+                                                 or continuation_creation(tree, node, display_path)):
                 violations.append("raw file open outside exclusive creation")
     return violations
 
@@ -179,6 +188,36 @@ def test_same_approved_sql_is_rejected_in_sibling_module():
 def test_budget_revision_write_exception_cannot_expand(function, path, sql):
     tree = ast.parse(f"def {function}():\n    connection.execute({sql!r}, values)")
     assert research_violations(tree, path)
+
+
+@pytest.mark.parametrize("function,path,sql", [
+    ("inspect", STORE, "UPDATE project SET body=?,digest=? WHERE singleton=1"),
+    ("_commit_workflow_event", "src/aegiscae/research/workflow.py",
+     "UPDATE project SET body=?,digest=? WHERE singleton=1"),
+    ("_commit_workflow_event", STORE, "DELETE FROM audit"),
+])
+def test_workflow_revision_exception_is_not_a_generic_writer(function, path, sql):
+    tree = ast.parse(f"def {function}():\n    connection.execute({sql!r}, values)")
+    assert research_violations(tree, path)
+
+
+@pytest.mark.parametrize("snippet", [
+    "from abqjobpilot.execution.store import Store",
+    "from abqjobpilot.standard_operator import StandardOperator",
+    "import subprocess\nsubprocess.Popen(command)",
+    "from aegiscae.adapters.abaqus.af_evidence import EvidenceBridge",
+    "import sqlite3",
+])
+def test_workflow_cannot_acquire_execution_or_af_authority(snippet):
+    from test_dependency_direction import import_direction_violations
+    from test_forbidden_execution_calls import execution_violations
+    from test_forbidden_legacy_dependencies import legacy_import_violations
+
+    path = "src/aegiscae/research/workflow.py"
+    tree = ast.parse(snippet)
+    assert (research_violations(tree, path) or legacy_import_violations(tree, path)
+            or execution_violations(tree, path)
+            or import_direction_violations(SRC_ROOT / "aegiscae/research/workflow.py", tree, SRC_ROOT))
 
 
 @pytest.mark.parametrize("function,statement", [

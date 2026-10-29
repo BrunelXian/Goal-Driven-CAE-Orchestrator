@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from conftest import SRC_ROOT, iter_python_files, parse_python_file
+from test_proposal_boundary import proposal_import
 
 ALLOWED_AEGISCAE_TARGETS = {
     "root": set(),
@@ -111,6 +112,7 @@ def import_direction_violations(
             if (
                 target_layer not in ALLOWED_AEGISCAE_TARGETS[layer]
                 and not permitted_mcp_bridge_import(node, display_path)
+                and not proposal_import(node, display_path)
             ):
                 violations.append(
                     f"{display_path}:{node.lineno}: forbidden dependency "

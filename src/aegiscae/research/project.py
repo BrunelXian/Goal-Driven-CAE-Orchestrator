@@ -19,6 +19,7 @@ from aegiscae.contracts.research_contracts import (
 )
 from aegiscae.research.mutation_rules import validate_record
 from aegiscae.research.budget_rules import apply_event, empty_ledger
+from aegiscae.research.workflow_rules import apply_workflow
 
 
 class ProjectError(ValueError):
@@ -242,6 +243,7 @@ def _read_state(connection, root):
     current_revision = 1
     latest_frozen_digest = None
     candidate_records, ledger = {}, empty_ledger()
+    workflow_state = None
     candidate_ids, candidate_keys, candidate_outputs = set(), set(), set()
     revision_stamp = (meta["created_at_utc"], meta["created_transaction_id"])
     for sequence, body, digest in audit:
@@ -249,10 +251,12 @@ def _read_state(connection, root):
         _require(type(event) is dict, "INTEGRITY_ERROR")
         candidate_event = event.get("kind") == "CANDIDATE_PUBLICATION_OBSERVED"
         budget_event = event.get("kind") == "BUDGET_RECORDED"
+        workflow_event = event.get("kind") == "WORKFLOW_RECORDED"
         _require(sequence == len(events) + 1 and set(event) == {
             "kind", "project_revision", "bundle_digest", "code", "provenance", "at_utc",
             "previous_digest", "transaction_id", "metadata_digest"}.union(
-                {"candidate"} if candidate_event else {"budget"} if budget_event else set())
+                {"candidate"} if candidate_event else {"budget"} if budget_event
+                else {"workflow"} if workflow_event else set())
             and event["previous_digest"] == previous, "INTEGRITY_ERROR")
         _validate_time(event["at_utc"])
         try:
@@ -264,7 +268,8 @@ def _read_state(connection, root):
         transactions.add(event["transaction_id"])
         kind = event["kind"]
         _require(type(kind) is str and kind in {"CREATED", "BUNDLE_FROZEN", "REOPEN_FAILURE_OBSERVED",
-                                               "CANDIDATE_PUBLICATION_OBSERVED", "BUDGET_RECORDED"}
+                                               "CANDIDATE_PUBLICATION_OBSERVED", "BUDGET_RECORDED",
+                                               "WORKFLOW_RECORDED"}
                  and (sequence != 1 or kind == "CREATED"), "INTEGRITY_ERROR")
         if kind == "BUNDLE_FROZEN":
             current_revision += 1
@@ -304,6 +309,19 @@ def _read_state(connection, root):
                 raise ProjectError("INTEGRITY_ERROR") from None
             current_revision += 1
             revision_stamp = (event["at_utc"], event["transaction_id"])
+        elif workflow_event:
+            parent = next((b for b in decoded if b[1] == event["bundle_digest"]
+                           and b[2] <= current_revision), None)
+            _require(parent is not None, "INTEGRITY_ERROR")
+            try:
+                workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
+                    candidate_records, ledger, current_revision, latest_frozen_digest)
+                _require(event["metadata_digest"] == digest_bytes(canonical_json(event["workflow"])),
+                         "INTEGRITY_ERROR")
+            except (ContractError, TypeError, KeyError):
+                raise ProjectError("INTEGRITY_ERROR") from None
+            current_revision += 1
+            revision_stamp = (event["at_utc"], event["transaction_id"])
         elif kind == "CREATED":
             _require(sequence == 1 and (event["at_utc"], event["transaction_id"])
                      == revision_stamp, "INTEGRITY_ERROR")
@@ -312,7 +330,7 @@ def _read_state(connection, root):
                      and event["provenance"] == "CALLER_REPORTED",
                      "INTEGRITY_ERROR")
         _require(event["project_revision"] == current_revision, "INTEGRITY_ERROR")
-        if kind != "BUNDLE_FROZEN" and not candidate_event and not budget_event:
+        if kind != "BUNDLE_FROZEN" and not candidate_event and not budget_event and not workflow_event:
             _require(event["bundle_digest"] is None and event["metadata_digest"] is None,
                      "INTEGRITY_ERROR")
         if kind != "REOPEN_FAILURE_OBSERVED":
@@ -357,7 +375,8 @@ def _binding(value):
 
 
 def _append_audit(connection, kind, revision, bundle_digest=None, code=None, *,
-                  at_utc=None, transaction_id=None, metadata_digest=None, candidate=None, budget=None):
+                  at_utc=None, transaction_id=None, metadata_digest=None, candidate=None, budget=None,
+                  workflow=None):
     last = connection.execute("SELECT sequence,digest FROM audit ORDER BY sequence DESC LIMIT 1").fetchone()
     sequence, previous = (last[0] + 1, last[1]) if last else (1, None)
     _require(sequence <= 1024, "INPUT_LIMIT")
@@ -373,6 +392,9 @@ def _append_audit(connection, kind, revision, bundle_digest=None, code=None, *,
     if budget is not None:
         _require(kind == "BUDGET_RECORDED", "INTEGRITY_ERROR")
         event["budget"] = budget
+    if workflow is not None:
+        _require(kind == "WORKFLOW_RECORDED", "INTEGRITY_ERROR")
+        event["workflow"] = workflow
     body = canonical_json(event)
     connection.execute("INSERT INTO audit VALUES (?,?,?)", (sequence, body, digest_bytes(body)))
     return {"sequence": sequence, **event, "event_digest": digest_bytes(body)}
@@ -389,6 +411,18 @@ def _commit_budget_event(connection, meta, payload):
         payload["request"]["scope"]["refs"]["bundle"], at_utc=meta["revision_at_utc"],
         transaction_id=meta["revision_transaction_id"],
         metadata_digest=digest_bytes(canonical_json(payload)), budget=payload)
+
+
+def _commit_workflow_event(connection, meta, bundle_digest, payload):
+    """Versioned workflow observation and revision; no new table or schema migration."""
+    meta["project_revision"] += 1
+    meta["revision_at_utc"] = _utc()
+    meta["revision_transaction_id"] = "tx_" + uuid.uuid4().hex
+    body = canonical_json(meta)
+    connection.execute("UPDATE project SET body=?,digest=? WHERE singleton=1", (body, digest_bytes(body)))
+    return _append_audit(connection, "WORKFLOW_RECORDED", meta["project_revision"], bundle_digest,
+        at_utc=meta["revision_at_utc"], transaction_id=meta["revision_transaction_id"],
+        metadata_digest=digest_bytes(canonical_json(payload)), workflow=payload)
 
 
 def create_research_project(explicit_new_root, descriptive_name, *, declared_af_binding=None):

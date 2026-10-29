@@ -38,9 +38,10 @@ def fixture_policy_violations(fixtures_root: Path) -> tuple[str, ...]:
     """Return fixture directory and policy violations."""
     violations: list[str] = []
     files = sorted(path for path in fixtures_root.iterdir() if path.is_file())
-    unexpected = [path for path in files if path.name != "README.md"]
+    allowed = {"README.md", "synthetic_workflow_port.py"}
+    unexpected = [path for path in files if path.name not in allowed]
     violations.extend(
-        f"tests/fixtures/{path.name}: fixture file is premature in Milestone 0"
+        f"tests/fixtures/{path.name}: fixture is outside the exact synthetic helper allowlist"
         for path in unexpected
     )
 
@@ -82,6 +83,14 @@ def fixture_policy_violations(fixtures_root: Path) -> tuple[str, ...]:
             "tests/fixtures/README.md: policy contains truthy physical-evidence metadata"
         )
     return tuple(violations)
+
+
+def test_workflow_fixture_exception_does_not_allow_other_files(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text(POLICY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "synthetic_workflow_port.py").write_text('"""TEST_ONLY helper."""', encoding="utf-8")
+    assert not fixture_policy_violations(tmp_path)
+    (tmp_path / "real_receipt.json").write_text("{}", encoding="utf-8")
+    assert fixture_policy_violations(tmp_path)
 
 
 def test_real_repository_fixture_policy_denies_evidence_authority() -> None:

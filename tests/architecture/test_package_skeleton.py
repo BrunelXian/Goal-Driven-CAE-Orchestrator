@@ -26,6 +26,17 @@ M01_MODULES = {
     Path("aegiscae/research/mutation.py"),
     Path("aegiscae/research/budget.py"),
     Path("aegiscae/research/budget_rules.py"),
+    Path("aegiscae/research/workflow.py"),
+    Path("aegiscae/research/workflow_rules.py"),
+    Path("aegiscae/research/proposal_rules.py"),
+    Path("aegiscae/research/candidate_proposal.py"),
+    Path("aegiscae/research/ingress_store.py"),
+    Path("aegiscae/research/proposal_ingress.py"),
+    Path("aegiscae/research/proposal_review.py"),
+    Path("aegiscae/interfaces/mcp_proposal.py"),
+    Path("aegiscae/research/continuation.py"),
+    Path("aegiscae/research/continuation_rules.py"),
+    Path("aegiscae/research/continuation_store.py"),
 }
 EXPECTED_PYTHON_FILES = PACKAGE_MARKERS | M01_MODULES
 
@@ -88,6 +99,7 @@ def skeleton_violations(src_root: Path) -> tuple[str, ...]:
         f"forbidden implementation module: {path.relative_to(src_root).as_posix()}"
         for path in sorted(src_root.rglob("*.py"), key=str)
         if path.name in FORBIDDEN_MODULE_NAMES
+        and path.relative_to(src_root) != Path("aegiscae/research/workflow.py")
     )
     return tuple(violations)
 
@@ -135,3 +147,10 @@ def test_skeleton_checker_rejects_second_mcp_server(tmp_path: Path) -> None:
     extra = tmp_path / "aegiscae" / "interfaces" / "mcp_write.py"
     extra.write_text('"""Unauthorized second interface."""\n', encoding="utf-8")
     assert any("interfaces/mcp_write.py" in item for item in skeleton_violations(tmp_path))
+
+
+def test_workflow_exception_is_not_an_executor_or_second_coordinator(tmp_path: Path) -> None:
+    create_allowed_skeleton(tmp_path)
+    extra = tmp_path / "aegiscae" / "runtime" / "workflow.py"
+    extra.write_text('"""Unauthorized coordinator."""\n', encoding="utf-8")
+    assert any("runtime/workflow.py" in item for item in skeleton_violations(tmp_path))
