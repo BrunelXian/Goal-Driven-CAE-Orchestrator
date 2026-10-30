@@ -40,6 +40,11 @@ M01_MODULES = {
     Path("aegiscae/research/main_runtime.py"),
     Path("aegiscae/research/main_runtime_rules.py"),
     Path("aegiscae/research/main_runtime_store.py"),
+    Path("aegiscae/research/rod_preview.py"),
+    Path("aegiscae/research/rod_preview_rules.py"),
+    Path("aegiscae/research/rod_preview_dat.py"),
+    Path("aegiscae/research/rod_bridge.py"),
+    Path("aegiscae/research/rod_evidence.py"),
 }
 EXPECTED_PYTHON_FILES = PACKAGE_MARKERS | M01_MODULES
 

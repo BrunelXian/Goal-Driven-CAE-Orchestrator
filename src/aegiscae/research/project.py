@@ -20,6 +20,7 @@ from aegiscae.contracts.research_contracts import (
 from aegiscae.research.mutation_rules import validate_record
 from aegiscae.research.budget_rules import apply_event, empty_ledger
 from aegiscae.research.workflow_rules import apply_workflow
+from aegiscae.research.rod_preview_rules import apply_preview
 
 
 class ProjectError(ValueError):
@@ -184,7 +185,7 @@ def _read_state(connection, root):
                      "canonical_root_digest", "root_file_identity", "database_file_identity",
                      "created_transaction_id", "revision_transaction_id", "revision_at_utc"}
     _require(type(meta) is dict and set(meta) == expected_keys
-             and type(meta["schema_version"]) is int and meta["schema_version"] == 1,
+             and type(meta["schema_version"]) is int and meta["schema_version"] in (1, 2),
              "UNSUPPORTED_SCHEMA")
     _require(type(meta["project_revision"]) is int, "INTEGRITY_ERROR")
     _require(all(meta[key] == value for key, value in _identity(root).items()),
@@ -208,6 +209,7 @@ def _read_state(connection, root):
     _require(len(bundles) <= 128, "INPUT_LIMIT")
     parts = connection.execute("SELECT kind,contract_id,version,digest,body FROM parts LIMIT 385").fetchall()
     _require(len(parts) <= 384, "INPUT_LIMIT")
+    _require(meta["schema_version"] != 2 or (not bundles and not parts), "INTEGRITY_ERROR")
     expected_parts, decoded = {}, []
     for row in bundles:
         bundle_id, version, digest, body, revision, key, created, transaction_id, metadata_digest = row
@@ -235,8 +237,10 @@ def _read_state(connection, root):
             expected_parts[identity] = part
         decoded.append((bundle, digest, revision, key, created, transaction_id, metadata_digest))
     _require({tuple(p[:3]): tuple(p[3:]) for p in parts} == expected_parts, "INTEGRITY_ERROR")
-    _require(meta["phase"] == (
-        "CONTRACT_FROZEN_PENDING_APPROVAL" if bundles else "CREATED"), "INTEGRITY_ERROR")
+    expected_phase = "CONTRACT_FROZEN_PENDING_APPROVAL" if bundles else "CREATED"
+    if meta["schema_version"] == 2 and meta["project_revision"] > 1:
+        expected_phase = "REAL_PREVIEW_FROZEN_PENDING_APPROVAL"
+    _require(meta["phase"] == expected_phase, "INTEGRITY_ERROR")
     audit = connection.execute("SELECT sequence,body,digest FROM audit ORDER BY sequence LIMIT 1025").fetchall()
     _require(1 <= len(audit) <= 1024, "INPUT_LIMIT")
     previous, freeze_records, events, transactions = None, [], [], set()
@@ -256,8 +260,12 @@ def _read_state(connection, root):
             "kind", "project_revision", "bundle_digest", "code", "provenance", "at_utc",
             "previous_digest", "transaction_id", "metadata_digest"}.union(
                 {"candidate"} if candidate_event else {"budget"} if budget_event
-                else {"workflow"} if workflow_event else set())
+                else {"workflow"} if workflow_event else set()).union(
+                {"creation_schema"} if sequence == 1 and meta["schema_version"] == 2 else set())
             and event["previous_digest"] == previous, "INTEGRITY_ERROR")
+        if sequence == 1 and meta["schema_version"] == 2:
+            _require(type(event.get("creation_schema")) is int
+                     and event["creation_schema"] == 2, "INTEGRITY_ERROR")
         _validate_time(event["at_utc"])
         try:
             identifier(event["transaction_id"], "tx")
@@ -267,6 +275,8 @@ def _read_state(connection, root):
                  and type(event["project_revision"]) is int, "INTEGRITY_ERROR")
         transactions.add(event["transaction_id"])
         kind = event["kind"]
+        _require(meta["schema_version"] != 2 or kind in {
+            "CREATED", "WORKFLOW_RECORDED", "REOPEN_FAILURE_OBSERVED"}, "INTEGRITY_ERROR")
         _require(type(kind) is str and kind in {"CREATED", "BUNDLE_FROZEN", "REOPEN_FAILURE_OBSERVED",
                                                "CANDIDATE_PUBLICATION_OBSERVED", "BUDGET_RECORDED",
                                                "WORKFLOW_RECORDED"}
@@ -310,12 +320,18 @@ def _read_state(connection, root):
             current_revision += 1
             revision_stamp = (event["at_utc"], event["transaction_id"])
         elif workflow_event:
-            parent = next((b for b in decoded if b[1] == event["bundle_digest"]
-                           and b[2] <= current_revision), None)
-            _require(parent is not None, "INTEGRITY_ERROR")
             try:
-                workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
-                    candidate_records, ledger, current_revision, latest_frozen_digest)
+                if meta["schema_version"] == 2:
+                    workflow_state = apply_preview(workflow_state, event["workflow"],
+                        meta["research_project_id"], current_revision, event["at_utc"])
+                    _require(event["bundle_digest"] == workflow_state["contract_digest"],
+                             "INTEGRITY_ERROR")
+                else:
+                    parent = next((b for b in decoded if b[1] == event["bundle_digest"]
+                                   and b[2] <= current_revision), None)
+                    _require(parent is not None, "INTEGRITY_ERROR")
+                    workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
+                        candidate_records, ledger, current_revision, latest_frozen_digest)
                 _require(event["metadata_digest"] == digest_bytes(canonical_json(event["workflow"])),
                          "INTEGRITY_ERROR")
             except (ContractError, TypeError, KeyError):
@@ -376,7 +392,7 @@ def _binding(value):
 
 def _append_audit(connection, kind, revision, bundle_digest=None, code=None, *,
                   at_utc=None, transaction_id=None, metadata_digest=None, candidate=None, budget=None,
-                  workflow=None):
+                  workflow=None, creation_schema=None):
     last = connection.execute("SELECT sequence,digest FROM audit ORDER BY sequence DESC LIMIT 1").fetchone()
     sequence, previous = (last[0] + 1, last[1]) if last else (1, None)
     _require(sequence <= 1024, "INPUT_LIMIT")
@@ -386,6 +402,10 @@ def _append_audit(connection, kind, revision, bundle_digest=None, code=None, *,
              "transaction_id": transaction_id or "tx_" + uuid.uuid4().hex,
              "metadata_digest": metadata_digest}
     _validate_time(event["at_utc"])
+    if creation_schema is not None:
+        _require(kind == "CREATED" and sequence == 1
+                 and type(creation_schema) is int and creation_schema == 2, "INTEGRITY_ERROR")
+        event["creation_schema"] = creation_schema
     if candidate is not None:
         _require(kind == "CANDIDATE_PUBLICATION_OBSERVED", "INTEGRITY_ERROR")
         event["candidate"] = candidate
@@ -413,10 +433,12 @@ def _commit_budget_event(connection, meta, payload):
         metadata_digest=digest_bytes(canonical_json(payload)), budget=payload)
 
 
-def _commit_workflow_event(connection, meta, bundle_digest, payload):
+def _commit_workflow_event(connection, meta, bundle_digest, payload, *, at_utc=None):
     """Versioned workflow observation and revision; no new table or schema migration."""
     meta["project_revision"] += 1
-    meta["revision_at_utc"] = _utc()
+    if meta["schema_version"] == 2:
+        meta["phase"] = "REAL_PREVIEW_FROZEN_PENDING_APPROVAL"
+    meta["revision_at_utc"] = at_utc or _utc()
     meta["revision_transaction_id"] = "tx_" + uuid.uuid4().hex
     body = canonical_json(meta)
     connection.execute("UPDATE project SET body=?,digest=? WHERE singleton=1", (body, digest_bytes(body)))
@@ -425,7 +447,10 @@ def _commit_workflow_event(connection, meta, bundle_digest, payload):
         metadata_digest=digest_bytes(canonical_json(payload)), workflow=payload)
 
 
-def create_research_project(explicit_new_root, descriptive_name, *, declared_af_binding=None):
+def create_research_project(explicit_new_root, descriptive_name, *, declared_af_binding=None,
+                            rod_preview=False):
+    _require(type(rod_preview) is bool, "INVALID_SCHEMA_SELECTION")
+    _require(not rod_preview or declared_af_binding is None, "INVALID_BINDING")
     _validate_name(descriptive_name)
     declared = _binding(declared_af_binding)
     root = _path(explicit_new_root, exists=False)
@@ -436,7 +461,8 @@ def create_research_project(explicit_new_root, descriptive_name, *, declared_af_
         os.close(descriptor)
         created, transaction_id = _utc(), "tx_" + uuid.uuid4().hex
         _validate_time(created)
-        meta = {"schema_version": 1, "research_project_id": "rp_" + uuid.uuid4().hex,
+        meta = {"schema_version": 2 if rod_preview else 1,
+                "research_project_id": "rp_" + uuid.uuid4().hex,
                 "project_revision": 1, "created_at_utc": created,
                 "created_transaction_id": transaction_id,
                 "revision_transaction_id": transaction_id, "revision_at_utc": created,
@@ -448,7 +474,8 @@ def create_research_project(explicit_new_root, descriptive_name, *, declared_af_
                 connection.execute(statement)
             body = canonical_json(meta)
             connection.execute("INSERT INTO project VALUES (1,?,?)", (body, digest_bytes(body)))
-            _append_audit(connection, "CREATED", 1, at_utc=created, transaction_id=transaction_id)
+            _append_audit(connection, "CREATED", 1, at_utc=created, transaction_id=transaction_id,
+                          creation_schema=2 if rod_preview else None)
             _fault("create_before_commit")
             connection.commit()
         return open_existing_readonly(root)
@@ -517,6 +544,7 @@ class ResearchProject:
         _require(bundle.research_project_id == self.research_project_id, "PROJECT_IDENTITY_MISMATCH")
         _fault("before_begin")
         with self._snapshot(write=True) as (connection, meta, bundles, _events):
+            _require(meta["schema_version"] == 1, "CONTRACT_SCHEMA_MISMATCH")
             for previous, previous_digest, revision, key, _created, _transaction, _metadata in bundles:
                 if key == idempotency_key:
                     _require(previous_digest == digest, "IDEMPOTENCY_CONFLICT")

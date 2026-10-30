@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import textwrap
 
 import pytest
 
@@ -35,6 +36,35 @@ QUALIFIED_WRITE_CALLS = {
     "os.mkdir",
     "os.makedirs",
 }
+
+# Exact validated string block, not a general .replace or path exemption.
+ROD_ORIGIN_BLOCK = r'''
+for key in ("package_path", "service_path", "supervisor_path"):
+    require(type(origin[key]) is str and 0 < len(origin[key]) <= 1024
+            and not any(c in origin[key] for c in "\x00\n\r"), "FAKE_ORIGIN_MISMATCH")
+package = origin["package_path"].replace("\\", "/").rstrip("/")
+require(origin["service_path"].replace("\\", "/") == package + "/execution/service.py"
+        and origin["supervisor_path"].replace("\\", "/") == package + "/execution/supervisor.py",
+        "FAKE_ORIGIN_MISMATCH")
+'''
+
+
+def permitted_rod_string_normalization(tree, node, display_path):
+    if display_path != "src/aegiscae/research/rod_evidence.py":
+        return False
+    functions = [item for item in tree.body if isinstance(item, ast.FunctionDef)
+                 and item.name == "check_fake_evidence"]
+    if len(functions) != 1:
+        return False
+    expected = ast.dump(ast.parse(ROD_ORIGIN_BLOCK), include_attributes=False)
+    body = functions[0].body
+    for index in range(len(body) - 2):
+        block = ast.Module(body=body[index:index + 3], type_ignores=[])
+        if ast.dump(block, include_attributes=False) == expected:
+            calls = [item for item in ast.walk(block) if isinstance(item, ast.Call)
+                     and isinstance(item.func, ast.Attribute) and item.func.attr == "replace"]
+            return len(calls) == 3 and any(item is node for item in calls)
+    return False
 
 
 def dotted_name(node: ast.AST) -> str | None:
@@ -91,7 +121,8 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
                 or permitted_mutation_write(tree, node, display_path)
                 or proposal_creation(tree, node, display_path)
                 or continuation_creation(tree, node, display_path)
-                or runtime_creation(tree, node, display_path)):
+                or runtime_creation(tree, node, display_path)
+                or permitted_rod_string_normalization(tree, node, display_path)):
             continue
 
         if target in {"open", "builtins.open"}:
@@ -157,3 +188,37 @@ def test_write_checker_rejects_controlled_negative_snippets(snippet: str) -> Non
 def test_write_checker_allows_explicit_read_only_open() -> None:
     tree = ast.parse('with open("input.txt", "r") as stream:\n    stream.read()\n')
     assert not write_violations(tree, "controlled-negative/read_only.py")
+
+
+def rod_tree(block=ROD_ORIGIN_BLOCK, name="check_fake_evidence"):
+    return ast.parse(f"def {name}():\n" + textwrap.indent(block.strip(), "    "))
+
+
+def test_rod_string_normalization_exact_block_is_not_a_file_write():
+    assert not write_violations(rod_tree(), "src/aegiscae/research/rod_evidence.py")
+
+
+@pytest.mark.parametrize("block", [
+    ROD_ORIGIN_BLOCK.replace("type(origin[key]) is str", "True"),
+    ROD_ORIGIN_BLOCK.replace("type(origin[key]) is str", "isinstance(origin[key], str)"),
+    ROD_ORIGIN_BLOCK.replace('"supervisor_path"):', '"other_path"):'),
+    ROD_ORIGIN_BLOCK.replace('package =', 'origin["package_path"] = Path("x")\npackage ='),
+    ROD_ORIGIN_BLOCK + '\nPath("x").replace("y")\n',
+    ROD_ORIGIN_BLOCK + '\norigin["package_path"].replace("y")\n',
+])
+def test_rod_string_exception_rejects_changed_guard_or_extra_write(block):
+    assert write_violations(rod_tree(block), "src/aegiscae/research/rod_evidence.py")
+
+
+@pytest.mark.parametrize("path,name", [
+    ("src/aegiscae/research/other.py", "check_fake_evidence"),
+    ("src/aegiscae/research/rod_evidence.py", "other_function"),
+])
+def test_rod_string_exception_is_module_and_function_specific(path, name):
+    assert write_violations(rod_tree(name=name), path)
+
+
+def test_rod_string_exception_does_not_accept_nested_function():
+    tree = ast.parse("def outer():\n" + textwrap.indent(
+        ast.unparse(rod_tree()), "    "))
+    assert write_violations(tree, "src/aegiscae/research/rod_evidence.py")

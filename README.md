@@ -14,11 +14,22 @@ problem, record each experiment, and make conclusions traceable to evidence.
 
 **中文简介：** Goal-Driven CAE Orchestrator 面向拥有可信 Abaqus 模型的科研人员，以 Codex 为唯一 Agent Harness。研究者通过一个 Main 主对话提出科研目标、确认模型基线和授权边界；Codex 按需协调专业子 Agent，GD-CAE 管理持久科研状态、模型契约、预算和独立验真，AbqJobPilot 负责获批的 Abaqus 执行与作业证据。这是正在设计的产品方向，尚非已交付的自主科研工作流。
 
-> **Current status: M00-P architecture and product design; implementation remains
-> a Milestone 0 skeleton.** The Python distribution and namespace are still
-> `aegiscae`, version `0.0.0`. There is no supported end-user GD-CAE installation,
-> `gdcae` CLI, MCP workflow, or autonomous CAE loop yet. The workflow, roles,
-> architecture, and verification mechanisms below are proposed capabilities.
+> **Current status: 7D-E2E-G2-LONG offline integration; real full-chain release is
+> NO-GO.** The Python distribution remains `aegiscae`, version `0.0.0`.
+> Earlier milestones provide persisted contracts, synthetic workflows and bounded
+> evidence interfaces. G1 adds offline real-preview prerequisites and a source-only
+> Plugin package. G2 adds reviewed local snapshot packaging and installed-Core
+> initialization; it does not establish GitHub publication. Real dynamic dispatch,
+> independent Operator isolation, installed
+> `@GDCAE` activation and live A/B acceptance are not qualified. The broader
+> researcher experience below remains a product target, not a demonstrated result.
+
+See [the internal snapshot procedure](docs/architecture/7D_G2_PRODUCT_SNAPSHOT.md)
+for exact-file export, local wheel installation, doctor and new research-project
+initialization. The source distribution remains `0.0.0`; internal snapshot wheels
+are marked `0.0.0+g2long` and `INTERNAL_CANDIDATE_NOT_FOR_RELEASE`.
+The [G1 installation record](docs/architecture/7D_G1_PLUGIN_INSTALLATION.md) remains
+historical context. These helpers neither install globally nor authorize Abaqus.
 
 ## A persistent environment for computational research
 

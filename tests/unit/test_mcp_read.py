@@ -433,9 +433,15 @@ def test_project_skill_and_custom_agent_files_parse():
     assert metadata["name"] == "gdcae-evidence-review"
     assert isinstance(metadata["description"], str) and metadata["description"]
     paths = sorted((REPO / ".codex/agents").glob("*.toml"))
-    assert {p.stem for p in paths} == {"gdcae_evidence_analyst", "gdcae_independent_reviewer"}
+    legacy = {"gdcae_evidence_analyst", "gdcae_independent_reviewer"}
+    preview = {"gdcae-cae", "gdcae-results", "gdcae-inverse", "gdcae-reviewer"}
+    assert {p.stem for p in paths} == legacy | preview
     for path in paths:
         agent = tomllib.loads(path.read_text(encoding="utf-8"))
-        assert set(agent) == {"name", "description", "developer_instructions"}
+        fields = {"name", "description", "developer_instructions"}
+        assert set(agent) == fields if path.stem in legacy else set(agent) == fields | {"features"}
         assert agent["name"] == path.stem
-        assert all(isinstance(value, str) and value for value in agent.values())
+        assert all(isinstance(agent[key], str) and agent[key] for key in fields)
+        if path.stem in preview:
+            assert agent["features"] == {"shell_tool": False, "apps": False, "plugins": False,
+                                         "memories": False, "request_permissions_tool": False}

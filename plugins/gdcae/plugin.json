@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gdcae",
+  "version": "0.1.0-alpha.2",
+  "description": "Bounded CAE research preparation and independent evidence review; offline preview, execution requires separate qualification and approval.",
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup/SKILL.md",
+      "interface": {
+        "displayName": "GDCAE",
+        "shortDescription": "Prepare bounded, auditable CAE research with Codex native agents."
+      }
+    }
+  }
+}
