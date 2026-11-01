@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "gdcae",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.5",
   "description": "Bounded CAE research preparation and independent evidence review; offline preview, execution requires separate qualification and approval.",
   "extensions": {
     "com.openai": {

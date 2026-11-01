@@ -1,0 +1,18 @@
+{
+  "schema": "gdcae-product-runtime-v1",
+  "plugin_version": "0.1.0-alpha.5",
+  "snapshot_version": "0.0.0+g3d6",
+  "python": "3.12.10",
+  "core_freeze": {"module": "aegiscae.research.rod_real_project", "factory": "create_real_research", "execution_authorized": false},
+  "qualified_optional_versions": {"mcp": "2.3.0", "pywin32": "312"},
+  "read_only_mcp": {
+    "module": "aegiscae.interfaces.mcp_read",
+    "binding": "UNBOUND_REQUIRES_EXPLICIT_TEST_PROJECT",
+    "auto_start": false,
+    "tools": ["gdcae_capabilities", "gdcae_list_runs", "gdcae_get_run", "gdcae_get_receipt", "gdcae_list_events", "gdcae_get_validations", "gdcae_get_diagnostic"]
+  },
+  "desktop_activation": "NOT_TESTED",
+  "github_installation": "PENDING_REVIEWED_PUSHED_REF",
+  "operator_enforcement": "BLOCKED",
+  "solver_authorized": false
+}

@@ -1,0 +1,68 @@
+# DRAFT: no push/dispatch authorized in G3-D3. Requires sanitized private ref review.
+name: GDCAE external Windows qualification (manual internal draft)
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_sha256:
+        description: Independently reviewed BUNDLE.json SHA-256
+        required: true
+        type: string
+      approved_independent_vm:
+        description: Separate operator approval for this private hosted VM run
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  qualify:
+    if: github.event.repository.private == true && inputs.approved_independent_vm == true
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - name: Read exact approved dispatch ref
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Provision exact external interpreter
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.10'
+          architecture: x64
+          check-latest: false
+      - name: Qualified bundle only, no Solver
+        shell: pwsh
+        env:
+          GDCAE_BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
+        run: |
+          # This reviewed workflow is the trust root, not candidate Python code.
+          # Independently owned disposable VM and no concurrent bundle writer are required.
+          function Assert-PlainPath([string] $Path) {
+            if (-not [IO.Path]::IsPathRooted($Path)) { throw 'ABSOLUTE_PATH_REQUIRED' }
+            $cursor = [IO.Path]::GetFullPath($Path)
+            while ($cursor) {
+              $item = Get-Item -LiteralPath $cursor -Force -ErrorAction Stop
+              if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'REPARSE_POINT_REJECTED' }
+              $cursor = Split-Path -LiteralPath $cursor
+            }
+          }
+          if ($env:GDCAE_BUNDLE_SHA256 -notmatch '^[a-f0-9]{64}$') { throw 'INVALID_BUNDLE_DIGEST' }
+          $bundle = Join-Path $env:GITHUB_WORKSPACE 'external_runner/candidate'
+          $manifest = Join-Path $bundle 'BUNDLE.json'
+          Assert-PlainPath $manifest
+          if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { throw 'CANDIDATE_NOT_SUPPLIED' }
+          if ((Get-Item -LiteralPath $manifest).Length -gt 262144) { throw 'MANIFEST_TOO_LARGE' }
+          $actual = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -cne $env:GDCAE_BUNDLE_SHA256) { throw 'BUNDLE_DIGEST_MISMATCH' }
+          $record = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+          $entryDigest = $record.files.'qualify.py'
+          if ($record.schema -cne 'gdcae-external-bundle-v1' -or $entryDigest -cnotmatch '^[a-f0-9]{64}$') { throw 'INVALID_ENTRY_RECORD' }
+          $entry = Join-Path $bundle 'qualify.py'
+          Assert-PlainPath $entry
+          if (-not (Test-Path -LiteralPath $entry -PathType Leaf)) { throw 'ENTRY_NOT_FILE' }
+          $entryActual = (Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($entryActual -cne $entryDigest) { throw 'ENTRY_DIGEST_MISMATCH' }
+          $destination = Join-Path $env:RUNNER_TEMP 'gdcae-external-qualification'
+          & python -I $entry --bundle-sha256 $env:GDCAE_BUNDLE_SHA256 --destination $destination --approved-independent-vm
+          if ($LASTEXITCODE -ne 0) { throw 'EXTERNAL_QUALIFICATION_NOT_PASS' }

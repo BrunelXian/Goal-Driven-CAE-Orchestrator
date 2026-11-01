@@ -330,8 +330,13 @@ def _read_state(connection, root):
                     parent = next((b for b in decoded if b[1] == event["bundle_digest"]
                                    and b[2] <= current_revision), None)
                     _require(parent is not None, "INTEGRITY_ERROR")
-                    workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
-                        candidate_records, ledger, current_revision, latest_frozen_digest)
+                    if event["workflow"].get("schema_version") == "rod-real-workflow-v1":
+                        from aegiscae.research.rod_real_project import apply_real_workflow
+                        workflow_state = apply_real_workflow(workflow_state, event["workflow"],
+                            parent[0], current_revision, latest_frozen_digest)
+                    else:
+                        workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
+                            candidate_records, ledger, current_revision, latest_frozen_digest)
                 _require(event["metadata_digest"] == digest_bytes(canonical_json(event["workflow"])),
                          "INTEGRITY_ERROR")
             except (ContractError, TypeError, KeyError):

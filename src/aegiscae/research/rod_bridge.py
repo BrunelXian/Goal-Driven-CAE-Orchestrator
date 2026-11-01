@@ -215,6 +215,22 @@ class RodBridge:
         return self._record("G2_OBSERVE", {"step": step, "fake_evidence": fake_evidence,
                                           "envelope": seal_envelope(envelope)}, revision, key)
 
+    def observe_public(self, bundle, fake_evidence, revision, key):
+        """Verify public test evidence, then reuse the unchanged G2 transaction.
+
+        The returned public acquisition check is transient. Original raw Fake
+        records and numerical envelope retain their existing persisted format.
+        """
+        from aegiscae.research.rod_public_evidence import PublicRodEvidence
+
+        bundle, raw = copy.deepcopy(bundle), copy.deepcopy(fake_evidence)
+        state = self.inspect()
+        check_revision = state["project_revision"] if key in state["keys"] else revision
+        verification = PublicRodEvidence(self.preview).verify(bundle,
+            expected_revision=check_revision, fake_evidence=raw)
+        workflow = self.observe("A", raw, bundle["synthetic_envelope"], revision, key)
+        return {"workflow": workflow, "verification": verification}
+
     def numeric_reference(self, step):
         return numeric_reference(self.inspect(), step)
 

@@ -7,8 +7,11 @@ Establish the selected Project, baseline, goal, units, load bounds, prohibited
 changes, required verification layers, tolerances and total two-attempt budget.
 Use the versioned GD-CAE API; preserve old synthetic records. Contract freeze,
 candidate admission, reviewer opinion and budget reservation never authorize a
-solver. The current preview remains offline: live dispatch and strong HIL isolation remain
-unqualified until their separate gates close.
+solver. Preserve the selected mode: `init-research` freezes an offline preview;
+`init-real-research` freezes a separate D4 real-contract Project with A unexecuted.
+Live dispatch and strong HIL isolation remain unqualified until their separate
+gates close. The real-contract mode fixes the qualified rod family and two-call
+budget; do not alter them through a prompt or migrate an existing preview.
 
 Use native delegation to `gdcae-cae`, `gdcae-results`, `gdcae-inverse` and
 `gdcae-reviewer`; collect each actual result. If custom role loading is unavailable,

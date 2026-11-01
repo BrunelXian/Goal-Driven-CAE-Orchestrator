@@ -14,7 +14,7 @@ problem, record each experiment, and make conclusions traceable to evidence.
 
 **中文简介：** Goal-Driven CAE Orchestrator 面向拥有可信 Abaqus 模型的科研人员，以 Codex 为唯一 Agent Harness。研究者通过一个 Main 主对话提出科研目标、确认模型基线和授权边界；Codex 按需协调专业子 Agent，GD-CAE 管理持久科研状态、模型契约、预算和独立验真，AbqJobPilot 负责获批的 Abaqus 执行与作业证据。这是正在设计的产品方向，尚非已交付的自主科研工作流。
 
-> **Current status: 7D-E2E-G2-LONG offline integration; real full-chain release is
+> **Current status: 7D-E2E-G3 execution-readiness work; real full-chain release is
 > NO-GO.** The Python distribution remains `aegiscae`, version `0.0.0`.
 > Earlier milestones provide persisted contracts, synthetic workflows and bounded
 > evidence interfaces. G1 adds offline real-preview prerequisites and a source-only
@@ -30,6 +30,9 @@ initialization. The source distribution remains `0.0.0`; internal snapshot wheel
 are marked `0.0.0+g2long` and `INTERNAL_CANDIDATE_NOT_FOR_RELEASE`.
 The [G1 installation record](docs/architecture/7D_G1_PLUGIN_INSTALLATION.md) remains
 historical context. These helpers neither install globally nor authorize Abaqus.
+See [G3 product activation boundaries](docs/architecture/7D_G3_PRODUCT_ACTIVATION.md)
+for installed distribution checks, initialization source receipts and the separate
+local Plugin installation, native role-loading and Desktop activation gates.
 
 ## A persistent environment for computational research
 
@@ -198,10 +201,11 @@ Milestones describe planned work, not shipped functionality or execution permiss
 
 ## Current implementation and historical records
 
-The repository was renamed from **AegisCAE Runtime**. It currently contains
-architecture documents, frozen historical snapshots, an empty Python namespace
-skeleton, and architecture tests. ResearchProject persistence, the evidence bridge,
-domain agents, and the verification engine have not been implemented here.
+The repository was renamed from **AegisCAE Runtime**. It contains ResearchProject
+persistence, frozen contracts, budgets, candidate guards, evidence bridges and
+offline workflow/verification implementations alongside historical architecture
+records. These local capabilities do not establish qualified real A/B execution
+or a released end-user installation workflow.
 
 The separate [AbqJobPilot](https://github.com/BrunelXian/AbqJobPilot) project has a
 limited, historically tested Agent-first execution MVP on its Develop line. At the
@@ -211,9 +215,9 @@ arbitrary model support or ODB content verification. Parameterized multi-candida
 execution and controlled ODB extraction require separately reviewed extensions.
 
 The documents below preserve the earlier architecture and its rationale. Existing
-ADR-001/002 still contain decisions that conflict with the proposed delegation to
-AbqJobPilot. This README describes the new direction; it does not accept proposed
-ADR-003/004 or silently supersede the old decisions.
+ADR-001/002 retain earlier decisions; current governance documents distinguish
+those historical records from the Codex-native and AF authority boundaries.
+This README does not rewrite or supersede any ADR.
 
 - [Historical architecture](ARCHITECTURE.md)
 - [Existing runtime invariants](RUNTIME_INVARIANTS.md)

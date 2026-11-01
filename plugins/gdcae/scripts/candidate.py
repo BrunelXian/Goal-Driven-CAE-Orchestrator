@@ -17,7 +17,7 @@ import re
 import zipfile
 
 STATUS = "INTERNAL_CANDIDATE_NOT_FOR_RELEASE"
-VERSION = "0.0.0+g2long"
+VERSION = "0.0.0+g3d6"
 PRODUCTS = {
     "gdcae": ("aegiscae", "src/aegiscae/", "aegiscae"),
     "af_develop": ("abqjobpilot_gdcae_internal", "abqjobpilot/", "abqjobpilot"),
@@ -73,7 +73,9 @@ def allowed_path(product, value):
     ) and p.suffix in {".py", ".json", ".toml", ".md"}
     documentation = value.startswith("docs/architecture/7D_G2_") and p.suffix == ".md"
     fixture = value.startswith("tests/") and p.suffix == ".py"
-    need(value in TOP_FILES or runtime or plugin or documentation or fixture,
+    operator = product == "gdcae" and value in {
+        "operator_deployment/preview.py", "operator_deployment/audit.py"}
+    need(value in TOP_FILES or runtime or plugin or documentation or fixture or operator,
          "SELECTION_OUT_OF_SCOPE")
     # This reviewed runtime module implements credential handling; it is not a
     # credential record. Its exact bytes still pass every read_stable check.
@@ -138,6 +140,16 @@ def wheel_bytes(product, files):
     distribution, prefix, package = PRODUCTS[product]
     payload = {package + "/" + name[len(prefix):]: body
                for name, body in files.items() if name.startswith(prefix)}
+    if product == "gdcae":
+        # Keep the exact reviewed plugin/roles inside the installed distribution,
+        # covered by RECORD. Presence is not native role or Desktop activation.
+        payload.update({"aegiscae/_gdcae_plugin/" + name[len("plugins/gdcae/"):]: body
+                        for name, body in files.items()
+                        if name.startswith("plugins/gdcae/")})
+        # Reviewed deployment preview/audit resources, never auto-imported.
+        payload.update({"aegiscae/_gdcae_operator/" + name.split("/")[-1]: body
+                        for name, body in files.items() if name in {
+                            "operator_deployment/preview.py", "operator_deployment/audit.py"}})
     need(package + "/__init__.py" in payload, "PACKAGE_MARKER_MISSING")
     dist_info = f"{distribution}-{VERSION}.dist-info"
     payload[dist_info + "/METADATA"] = (

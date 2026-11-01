@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-31",
+  "status": "BLOCKED_ADMIN_STAGING_SECURITY_UNQUALIFIED",
+  "runtime_status": "BLOCKED_ADMIN_CONSOLE_RUNTIME_UNQUALIFIED",
+  "installation_attempted": false,
+  "operator_deployment_attempted": false,
+  "download": {
+    "attempt_count": 1,
+    "source": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-x64.msi",
+    "path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-PowerShell-769-Qualification-20261031-A01\\PowerShell-7.6.9-win-x64.msi",
+    "bytes": 117493760,
+    "sha256": "50d33c7494aaf82b987cfd4de3f232d04f91fdd4c0deeca8a669cced3e7cf8f9",
+    "approved_hash_matches": true,
+    "administrator_protected_staging": false
+  },
+  "signature": {
+    "authenticode_status": "Valid",
+    "signer_subject": "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    "signer_thumbprint": "AB172913A2960A224809EE8A0C371CD47A079B72",
+    "timestamp_certificate_present": true,
+    "timestamp_publisher": "Microsoft Time-Stamp Service / Microsoft Corporation",
+    "signer_chain_build": true,
+    "revocation_mode": "Online",
+    "chain_status_errors": [],
+    "chain": [
+      "Microsoft Corporation",
+      "Microsoft Code Signing PCA 2024",
+      "Microsoft Root Certificate Authority 2011"
+    ],
+    "boundary": "Point-in-time Windows trust result; mandatory revalidation by the independent administrator before installation."
+  },
+  "conflict_precheck": {
+    "target": "C:\\Program Files\\PowerShell\\7",
+    "target_exists": false,
+    "matching_hklm_hkcu_uninstall_entries": 0,
+    "matching_current_user_appx_entries": 0,
+    "powershellcore_installedversions_keys_found": false,
+    "user_local_powershell_directory": "Only ModuleAnalysisCache and StartupProfileData files were observed; no runtime was found there.",
+    "boundary": "Read-only current-token inspection, not an elevated all-user installation inventory."
+  },
+  "msi_readonly_inspection": {
+    "open_mode": 0,
+    "summary_template": "x64;1033",
+    "semantic_properties_and_action_validation": "NOT_VERIFIED",
+    "reason": "COM table iteration returned empty field arrays. Product properties, action conditions and optional-feature suppression were not established. No corrective rerun was performed."
+  },
+  "staging_security": {
+    "candidate_examined": "C:\\Windows\\Temp",
+    "operation": "Get-Acl read only",
+    "result": "ACCESS_DENIED",
+    "reason": "Attempted to perform an unauthorized operation.",
+    "interpretation": "The current token cannot qualify this candidate staging boundary; this does not prove the directory is unsafe.",
+    "protected_copy_performed": false
+  },
+  "stop": {
+    "trigger": "Pre-install qualification incomplete and staging ACL read denied.",
+    "retries": 0,
+    "alternate_package_used": false,
+    "elevation_attempted": false,
+    "acl_changes": false,
+    "account_changes": false,
+    "installation_commands_issued": false,
+    "cleanup_performed": false,
+    "git_commit_or_push": false
+  },
+  "remaining_gates": [
+    "Obtain explicit permission to resume qualification after this stop.",
+    "Complete MSI product, installation-action and disabled-option verification using the same approved bytes.",
+    "Qualify an existing administrator-protected staging location through an independent administrator. This authorization does not permit ACL changes.",
+    "Copy and revalidate the same MSI inside that protected boundary without an ordinary-user replacement window.",
+    "Recheck conflicts and obtain the user's independent administrator-console confirmation before one installation.",
+    "Perform version, path, signature, directory-permission and actual elevated runtime identity/no-Job verification after installation."
+  ]
+}
