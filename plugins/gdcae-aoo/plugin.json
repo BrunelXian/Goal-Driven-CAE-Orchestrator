@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gdcae-aoo",
+  "version": "0.1.0-alpha.1-aoo-v1",
+  "description": "AOO scoped-session policy candidate; Desktop role/tool binding remains blocked; no solver authority.",
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/project-main/SKILL.md",
+      "interface": {
+        "displayName": "GDCAE AOO Candidate",
+        "shortDescription": "Project Main and bounded native session policy."
+      }
+    }
+  }
+}

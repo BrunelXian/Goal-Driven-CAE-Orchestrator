@@ -139,6 +139,9 @@ def causal_reference(state):
 
 
 def apply_local(state, payload, bundle, revision, latest):
+    if payload.get('action') == 'REBIND_EXPIRED_A':
+        from aegiscae.research.rod_expired_recovery import reduce_event
+        return reduce_event(state, payload, bundle, revision, latest)
     exact(payload, ('schema_version', 'action', 'key', 'before_project_revision', 'data'))
     require(payload['schema_version'] == VERSION and payload['before_project_revision'] == revision,
             'REVISION_CONFLICT')
@@ -168,7 +171,8 @@ def apply_local(state, payload, bundle, revision, latest):
             state['candidates']['B'] = item
         else:
             require(phase in state['candidates'], 'CANDIDATE_MISSING')
-            item = state['candidates'][phase]
+            from aegiscae.research.rod_expired_recovery import execution_candidate
+            item = execution_candidate(state, phase)
             if action == 'HOLD':
                 exact(data, ('phase', 'binding', 'preflight'))
                 require(phase not in state['attempts'] and budget(state)['available'] >= 1, 'ATTEMPT_EXISTS')
@@ -290,7 +294,10 @@ class LocalRodProject:
                 require(state['keys'][key] == request, 'IDEMPOTENCY_CONFLICT')
                 return {**self._view(state, meta), 'replayed': True}
             require(type(revision) is int and revision == meta['project_revision'], 'REVISION_CONFLICT')
-            runtime = data['runtime'] if action == 'INITIALIZE' else state['policy']['runtime']
+            from aegiscae.research.rod_expired_recovery import active_runtime
+            runtime = (data['runtime'] if action == 'INITIALIZE' else
+                       data['compatibility']['new_runtime'] if action == 'REBIND_EXPIRED_A' else
+                       active_runtime(state))
             require(runtime['gd'] == code_digest(), 'WORKFLOW_CODE_CHANGED')
             payload = {'schema_version': VERSION, 'action': action, 'data': copy.deepcopy(data),
                        'key': key, 'before_project_revision': revision}
@@ -307,10 +314,12 @@ class LocalRodProject:
     def hold(self, phase, port, binding, revision, key):
         state = self.inspect()
         if key in state['keys']:
-            a = state['attempts'][phase]
+            a = next((a for a in state.get('retired_attempts', [])
+                      if a['binding'] == binding), state['attempts'][phase])
             return self._record('HOLD', {'phase': phase, 'binding': binding, 'preflight': a['preflight']}, revision, key)
         require(type(port) is LocalReadPort, 'READ_PORT_UNQUALIFIED')
-        port.validate(state['policy']['runtime'])
+        from aegiscae.research.rod_expired_recovery import active_runtime
+        port.validate(active_runtime(state))
         c = state['candidates'][phase]
         expected = {'research_project_id': c['research_project_id'], 'contract_digest': c['contract_digest'],
             'research_revision': c['admitted_revision'], 'candidate_id': c['candidate_id'],
@@ -334,7 +343,8 @@ class LocalRodProject:
             field = {'ACCEPTED': 'accepted', 'OBSERVE': 'evidence', 'OWNER_STOP': 'owner_stop', 'STARTED': 'start_evidence', 'DENIED': 'denial'}[action]
             return self._record(action, {'phase': phase, 'evidence': a[field]}, revision, key)
         require(type(port) is LocalReadPort, 'READ_PORT_UNQUALIFIED')
-        port.validate(state['policy']['runtime'])
+        from aegiscae.research.rod_expired_recovery import active_runtime
+        port.validate(active_runtime(state))
         b = a['binding']
         refs = dict(plan_id=b['plan_id'], expected_plan_digest=b['plan_digest'], request_key=b['request_key'])
         if action == 'ACCEPTED':
