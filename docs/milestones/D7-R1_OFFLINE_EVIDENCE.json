@@ -1,0 +1,244 @@
+{
+  "schema": "d7r1-offline-delivery-evidence-v1",
+  "status": "D7_R1_OFFLINE_READY_LIMITED",
+  "real_execution": "REAL_NOT_RUN",
+  "host": "HOST_NOT_QUALIFIED",
+  "output_format": "REAL_OUTPUT_FORMAT_NOT_YET_OBSERVED",
+  "test_receipts": [
+    {
+      "path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\d7r1-source-final-03.safe.json",
+      "sha256": "0d5376fe46df1f21248645e1d3e42cc724d3be41b4d7db621f2910210c7e3f3d",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "d7r1-source-final-03",
+        "exit_code": 0,
+        "status": "PASS",
+        "elapsed_seconds": 112.14,
+        "denied_native_or_network_attempts": 0,
+        "counts": {
+          "passed": 250,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 0
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\d7r1-core-final-02.safe.json",
+      "sha256": "b7cbf0bc7c5b2495a7b63946177eb6c71fd00fb43cf37f27bc68d68fe9605302",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "d7r1-core-final-02",
+        "exit_code": 0,
+        "status": "PASS",
+        "elapsed_seconds": 70.62,
+        "denied_native_or_network_attempts": 0,
+        "counts": {
+          "passed": 383,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 23
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\af-d7r1-source-final-03.safe.json",
+      "sha256": "7534c75071fa95573c97f5ed0831f21059a7b1e0dae861525034382936886257",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "af-d7r1-source-final-03",
+        "exit_code": 0,
+        "status": "PASS",
+        "elapsed_seconds": 150.81,
+        "denied_native_or_network_attempts": 0,
+        "counts": {
+          "passed": 316,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 0
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\d7r1-core-01.safe.json",
+      "sha256": "29076319570aded69e5edce3364dbebc67d012e5f94b2bee4ff30d13dccdf29a",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "d7r1-core-01",
+        "exit_code": 1,
+        "status": "FAIL",
+        "elapsed_seconds": 88.23,
+        "denied_native_or_network_attempts": 56,
+        "counts": {
+          "passed": 383,
+          "failed": 61,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 24
+        }
+      }
+    }
+  ],
+  "files_touched_this_turn": [
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/project.py",
+      "size": 37519,
+      "sha256": "af8d7d42892ffca37a230bced9a9f1d9e972886a58ae7d46f7d3e1b548acd311"
+    },
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/rod_output_v2.py",
+      "size": 1807,
+      "sha256": "ad1753a8c3ed05ce1246b1b9d8916a5d0f67859553b7305dd3a8d85e1297f30f"
+    },
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/rod_output_dat_v2.py",
+      "size": 6390,
+      "sha256": "c8aae5428fd7f4fbca6e97435ec555c0592a3ef07f645cb177f0bd83d24d1d77"
+    },
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/rod_local_verify.py",
+      "size": 19338,
+      "sha256": "227b04759b47af5d82b450332e52e2c6d530d06973371f376c3133bb2cbc5b34"
+    },
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/rod_local_port.py",
+      "size": 1439,
+      "sha256": "8038be9e5b09eef7b5246e1e3bb129819e12445245e3b7a1574141523b98c8aa"
+    },
+    {
+      "repository": "gd",
+      "path": "src/aegiscae/research/rod_local_project.py",
+      "size": 21118,
+      "sha256": "98b338372a538429c40a2569772fe547f19c5b488b06a5d5962865b18e5db692"
+    },
+    {
+      "repository": "gd",
+      "path": "tests/architecture/test_package_skeleton.py",
+      "size": 6811,
+      "sha256": "e3de6ac48d4bdc57bbcafbe5881aa27760f6c135d894f04239f7cf49ac33e0f8"
+    },
+    {
+      "repository": "gd",
+      "path": "tests/architecture/test_forbidden_legacy_dependencies.py",
+      "size": 8302,
+      "sha256": "d06a3069d8a61834857d4ba360abbcaa1635c92e33fc165f7a341150a383f95a"
+    },
+    {
+      "repository": "gd",
+      "path": "tests/integration/test_d7r1_local_preview.py",
+      "size": 29423,
+      "sha256": "a065705b7a19f623950f301f4553f6d6a482101d1ee687eeaef4092532335c69"
+    },
+    {
+      "repository": "gd",
+      "path": "docs/architecture/D7_LOCAL_HIL_V2_CONTRACT.md",
+      "size": 6912,
+      "sha256": "8139de1864af5abeb6004b6046697a0fe8d29d3fe3a90da8058a8ea4e1160c48"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/product_rod.py",
+      "size": 23274,
+      "sha256": "48f353d3b904a0a205264aba27f730d06827b3e42e8e31bf841f956740c9b316"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/product_standard.py",
+      "size": 12988,
+      "sha256": "6d71544429736cf6463258a8414730ce6f5855f483f4119e7f0e6a735d5d21ce"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/rod_local_console.py",
+      "size": 8508,
+      "sha256": "4f545da434cee2b5c1f501df584835fc95b5705a9d5dab4eef3da8676d14baf6"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_profile.py",
+      "size": 11200,
+      "sha256": "e7ec9f5b41ee19c58433df9aee0b8222ec375bed9c4d15d467176a66997ee7b8"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_trusted.py",
+      "size": 31995,
+      "sha256": "5dcc7d7fd0939466aec3a9653309d6b6bd01fb0020788998ad18f7ad6122f81c"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/product_standard.py",
+      "size": 15556,
+      "sha256": "4e902e3236d1b998edfd4ebeee89da0dcf6e280f5e9d061dbaa654e134d4082f"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/standard_backend.py",
+      "size": 15875,
+      "sha256": "b45d427ff3fd681371612767c56b03252d73f2fe2bf6bef46b143985c44fd0bb"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_output_v2.py",
+      "size": 2796,
+      "sha256": "3e1173e52e618e62648641c0572c45ee9e376a8394104c214c889fc61a458a51"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_output_dat_v2.py",
+      "size": 8750,
+      "sha256": "bfd3067bb4084a460496b83faedb0385ff99e40996c7acc962fe0639d8e792ce"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_local_hil.py",
+      "size": 7239,
+      "sha256": "57f34a2e65b93af88fbca83b01adacb79ef38524ff2ea179aeaf26a1c0eacabd"
+    },
+    {
+      "repository": "af",
+      "path": "abqjobpilot/execution/rod_local_read.py",
+      "size": 6229,
+      "sha256": "c3ceb57c4899e80a87e9886eab6db0cad96f434002864a77f90bf831e60654bd"
+    }
+  ],
+  "source_candidate": {
+    "manifest": "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\dist\\D7-R1_OFFLINE_SOURCE_CANDIDATE_20261101\\D7-R1_RUNTIME_CANDIDATE_MANIFEST.json",
+    "manifest_sha256": "9895ece9b7266f166669c3a3e8cd8ef3130356de56d400d875eb5ee0cd36be6d",
+    "zip": "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\dist\\D7-R1_OFFLINE_SOURCE_CANDIDATE_20261101\\D7-R1_SOURCE.zip",
+    "sha256": "c9bb85faad74dd4fc20f1c66723c5b2bce8a56798605808c367e72c3fea8408b",
+    "size": 528665,
+    "payload_files": 176,
+    "zip_entries": 178,
+    "gd_head": "a75a614f9738af8f257fd490ceec2df4c012ea19",
+    "af_head": "7f4b8d8f3a2c862ed8b244d495295f5d51ea0d88",
+    "runtime": {
+      "gd": "sha256:ad78f75f363d192e264d82247af465ebdd21104119f5a78904bde18a0208d85d",
+      "af": "sha256:d66f76cdb54efd4cc567c6e169cfedce3963171dffd36cf7036972f83a2b99f6",
+      "plugin": "sha256:a546000142266f2bb376d3461932f9c3accc728b374b61901b2a4081963947c2",
+      "python": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+      "versions": {
+        "python": "3.12.10",
+        "mcp": "2.3.0",
+        "pydantic": "2.13.4",
+        "pywin32": "312"
+      }
+    },
+    "installation": "NOT_PERFORMED"
+  },
+  "limitations": [
+    "MCP_ASYNC_SUBSET_BLOCKED_OFFLINE_NETWORK_BOUNDARY",
+    "STANDARD_BACKEND_DEFAULT_RUFF_33_LEGACY_STYLE_FINDINGS",
+    "CORE_INSTALLED_0.0.0+g3d6_NOT_D7",
+    "PLUGIN_DEFAULT_LEGACY_V1_NOT_D7_ACTIVATED",
+    "NOT_FULL_ENVIRONMENT_BYTE_ATTESTATION"
+  ]
+}

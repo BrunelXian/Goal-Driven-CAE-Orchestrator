@@ -36,6 +36,16 @@ def flatten_strings(value: Any) -> Iterable[str]:
 
 def permitted_discovery_import(tree: ast.AST, node: ast.AST, display_path: str) -> bool:
     """Recognize only the reviewed lazy import, never an entire package exception."""
+    if display_path == "src/aegiscae/research/rod_local_port.py":
+        if not (isinstance(node, ast.ImportFrom) and node.level == 0
+                and node.module == "abqjobpilot.product_rod" and len(node.names) == 1
+                and node.names[0].name in {"RodProduct", "validate_local_reader"}
+                and node.names[0].asname is None):
+            return False
+        expected = "__init__" if node.names[0].name == "RodProduct" else "validate"
+        classes = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "LocalReadPort"]
+        return len(classes) == 1 and any(isinstance(n, ast.FunctionDef) and n.name == expected
+            and node in n.body for n in classes[0].body)
     if display_path != ADAPTER_PATH or not isinstance(tree, ast.Module):
         return False
     if not (
@@ -164,3 +174,14 @@ def test_legacy_checker_rejects_private_eager_and_implicit_seams(snippet: str) -
 @pytest.mark.parametrize("dependency", ["abqjobpilot>=1", "abqpilot", "git+https://host/abq-pilot"])
 def test_legacy_dependency_guard_traverses_dependency_section_tuple(dependency: str) -> None:
     assert pyproject_legacy_violations({"project": {"dependencies": [dependency]}})
+
+
+@pytest.mark.parametrize("name,module,function,path", [
+    ("StandardOperator", "abqjobpilot.product_standard", "validate", "src/aegiscae/research/rod_local_port.py"),
+    ("ExperimentStore", "abqjobpilot.execution.store", "validate", "src/aegiscae/research/rod_local_port.py"),
+    ("RodProduct", "abqjobpilot.product_rod", "execute", "src/aegiscae/research/rod_local_port.py"),
+    ("RodProduct", "abqjobpilot.product_rod", "__init__", "src/aegiscae/research/rod_local_project.py"),
+])
+def test_d7_local_import_exception_does_not_grant_authority(name, module, function, path):
+    tree = ast.parse(f"class LocalReadPort:\n    def {function}(self):\n        from {module} import {name}\n")
+    assert legacy_import_violations(tree, path)

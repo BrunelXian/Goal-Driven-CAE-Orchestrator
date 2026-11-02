@@ -50,6 +50,11 @@ M01_MODULES = {
     Path("aegiscae/research/rod_real_evidence.py"),
     Path("aegiscae/research/rod_real_project.py"),
     Path("aegiscae/research/rod_real_verify.py"),
+    Path("aegiscae/research/rod_local_project.py"),
+    Path("aegiscae/research/rod_local_port.py"),
+    Path("aegiscae/research/rod_local_verify.py"),
+    Path("aegiscae/research/rod_output_v2.py"),
+    Path("aegiscae/research/rod_output_dat_v2.py"),
 }
 EXPECTED_PYTHON_FILES = PACKAGE_MARKERS | M01_MODULES
 

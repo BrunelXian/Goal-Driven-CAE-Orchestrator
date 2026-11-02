@@ -225,10 +225,12 @@ def doctor(workspace: Path | None = None) -> dict:
             "real_execution_authorized": False}
 
 
-def installed_package(package: str, distribution: str) -> dict:
+def installed_package(package: str, distribution: str, *,
+                      expected_version: str = "0.0.0+g3d6") -> dict:
     """Check interpreter installation/RECORD consistency, not publisher authenticity."""
     need((package, distribution) in {("aegiscae", "aegiscae"),
          ("abqjobpilot", "abqjobpilot_gdcae_internal")}, "UNKNOWN_DISTRIBUTION")
+    need(expected_version in {"0.0.0+g3d6", "0.0.0+d7r2f"}, "INSTALLED_VERSION_MISMATCH")
     code = "INSTALLED_CORE_REQUIRED"
     core = find_spec(package)
     need(core is not None and core.origin is not None, code)
@@ -239,7 +241,7 @@ def installed_package(package: str, distribution: str) -> dict:
     try:
         dist = metadata.distribution(distribution)
         need(Path(dist.locate_file("")).resolve() == root, code)
-        need(dist.version == "0.0.0+g3d6", "INSTALLED_VERSION_MISMATCH")
+        need(dist.version == expected_version, "INSTALLED_VERSION_MISMATCH")
         direct = dist.read_text("direct_url.json")
         if direct is not None:
             direct = json.loads(direct)

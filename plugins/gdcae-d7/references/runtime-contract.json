@@ -1,0 +1,25 @@
+{
+  "schema": "gdcae-d7-runtime-v1",
+  "plugin_version": "0.1.0-alpha.6-d7r2f",
+  "snapshot_version": "0.0.0+d7r2f",
+  "workflow": "rod-local-workflow-v2",
+  "trust": "TRUSTED_LOCAL_HIL",
+  "owner_policy": "route-c-fixed-owner-interpreter-v1",
+  "python": "3.12.10",
+  "qualified_optional_versions": {
+    "mcp": "2.3.0",
+    "pydantic": "2.13.4",
+    "pywin32": "312"
+  },
+  "commands": [
+    "doctor",
+    "package-digest",
+    "init-v2",
+    "status-v2",
+    "prepare-a",
+    "preflight-a",
+    "approval-preview",
+    "decline-preview"
+  ],
+  "solver_authorized": false
+}

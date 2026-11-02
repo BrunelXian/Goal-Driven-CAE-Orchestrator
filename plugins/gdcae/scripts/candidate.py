@@ -68,7 +68,7 @@ def allowed_path(product, value):
     package = PRODUCTS[product][1]
     runtime = value.startswith(package) and p.suffix in {".py", ".json", ".toml", ".txt"}
     plugin = product == "gdcae" and (
-        value.startswith("plugins/gdcae/") or value.startswith(".codex/agents/")
+        value.startswith(("plugins/gdcae/", "plugins/gdcae-d7/")) or value.startswith(".codex/agents/")
         or value == ".agents/plugins/marketplace.json"
     ) and p.suffix in {".py", ".json", ".toml", ".md"}
     documentation = value.startswith("docs/architecture/7D_G2_") and p.suffix == ".md"
@@ -136,7 +136,8 @@ def zip_bytes(files):
     return stream.getvalue()
 
 
-def wheel_bytes(product, files):
+def wheel_bytes(product, files, *, version=VERSION):
+    need(version in {VERSION, "0.0.0+d7r2f"}, "UNREVIEWED_VERSION")
     distribution, prefix, package = PRODUCTS[product]
     payload = {package + "/" + name[len(prefix):]: body
                for name, body in files.items() if name.startswith(prefix)}
@@ -146,15 +147,25 @@ def wheel_bytes(product, files):
         payload.update({"aegiscae/_gdcae_plugin/" + name[len("plugins/gdcae/"):]: body
                         for name, body in files.items()
                         if name.startswith("plugins/gdcae/")})
+        payload.update({"aegiscae/_gdcae_d7_plugin/" + name[len("plugins/gdcae-d7/"):]: body
+                        for name, body in files.items()
+                        if name.startswith("plugins/gdcae-d7/")})
+        if version == "0.0.0+d7r2f":
+            # Derived inert markers keep installed origin checks strict. These
+            # are wheel packaging inputs, not extra Desktop Plugin resources.
+            for subtree in ("_gdcae_plugin", "_gdcae_d7_plugin"):
+                if f"aegiscae/{subtree}/scripts/gdcae.py" in payload:
+                    for suffix in ("__init__.py", "scripts/__init__.py"):
+                        payload[f"aegiscae/{subtree}/{suffix}"] = b""
         # Reviewed deployment preview/audit resources, never auto-imported.
         payload.update({"aegiscae/_gdcae_operator/" + name.split("/")[-1]: body
                         for name, body in files.items() if name in {
                             "operator_deployment/preview.py", "operator_deployment/audit.py"}})
     need(package + "/__init__.py" in payload, "PACKAGE_MARKER_MISSING")
-    dist_info = f"{distribution}-{VERSION}.dist-info"
+    dist_info = f"{distribution}-{version}.dist-info"
     payload[dist_info + "/METADATA"] = (
         "Metadata-Version: 2.1\n"
-        f"Name: {distribution}\nVersion: {VERSION}\nRequires-Python: >=3.12,<4\n"
+        f"Name: {distribution}\nVersion: {version}\nRequires-Python: >=3.12,<4\n"
         "Summary: Internal reviewed source snapshot; not a public release\n\n"
         "No third-party dependencies are bundled. Qualification covers only the\n"
         "reviewed offline runtime paths; optional product dependencies remain unqualified.\n"
@@ -171,7 +182,7 @@ def wheel_bytes(product, files):
     csv_stream = io.StringIO(newline="")
     csv.writer(csv_stream, lineterminator="\n").writerows(rows)
     payload[dist_info + "/RECORD"] = csv_stream.getvalue().encode()
-    return f"{distribution}-{VERSION}-py3-none-any.whl", zip_bytes(payload)
+    return f"{distribution}-{version}-py3-none-any.whl", zip_bytes(payload)
 
 
 def export_snapshot(source_root, selection, destination):

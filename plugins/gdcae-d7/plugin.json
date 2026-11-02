@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gdcae-d7",
+  "version": "0.1.0-alpha.6-d7r2f",
+  "description": "D7 TRUSTED_LOCAL_HIL v2 preparation only; no Grant, Owner or Solver authority.",
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup/SKILL.md",
+      "interface": {
+        "displayName": "GDCAE D7 Test",
+        "shortDescription": "Prepare bounded, auditable CAE research with Codex native agents."
+      }
+    }
+  }
+}
