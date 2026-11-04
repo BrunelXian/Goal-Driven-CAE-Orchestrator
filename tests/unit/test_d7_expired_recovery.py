@@ -59,7 +59,8 @@ def case(tmp_path, monkeypatch):
     preflight['research_contract']['request_nonce'] = new_binding['request_nonce']
     preflight['expires_at'] = 9999999999
     preflight['local_contract'] = recovery.execution_candidate({**state, 'compatibility': compatibility}, 'A')['local_contract']
-    evidence = {'schema': 'd7-original-af-expired-empty-v1', 'binding': binding, 'plan': plan,
+    evidence = {'schema': recovery.PROOF_SCHEMA, 'binding': binding, 'plan': plan,
+                'supervisor_started': '0', 'owner_start_markers': [],
                 'counts': dict.fromkeys(recovery.ZERO_TABLES, 0), 'observed_at': 2, 'gate': 'PAUSED', 'slot': None}
     data = dict(phase='A', compatibility=compatibility, nonexecution=evidence,
                 binding=new_binding, preflight=preflight)
@@ -172,7 +173,8 @@ def test_second_recovery_and_stale_revision_rejected(case):
         research._record('REBIND_EXPIRED_A', data, 5, 'recover-again')
 
 
-def test_preparation_entry_crash_retry_uses_one_inert_plan(case, monkeypatch):
+@pytest.mark.parametrize('failure', ['before_commit', 'after_commit', 'after_prepare'])
+def test_preparation_entry_crash_retry_uses_one_inert_plan(case, monkeypatch, failure):
     import json
     import sys
     from types import SimpleNamespace
@@ -186,19 +188,29 @@ def test_preparation_entry_crash_retry_uses_one_inert_plan(case, monkeypatch):
     (root / 'd7-v2.json').write_bytes(frozen)
     runtime = data['compatibility']['new_runtime']
     calls = []
+    prepared = []
+    failed = []
     class Product:
         def __init__(self, path): self.path = path
         @classmethod
         def create(cls, path, name):
             path.mkdir()
+            (path / 'private').mkdir()
             calls.append('create')
             return cls(path)
         def prepare_real(self, **args):
             calls.append('prepare')
+            if prepared:
+                assert prepared[0] == args
+            else:
+                prepared.append(copy.deepcopy(args))
             assert args['candidate_id'] == before['candidates']['A']['candidate_id']
             assert args['local_contract']['runtime'] == runtime
             data['preflight']['research_contract']['request_nonce'] = args['request_nonce']
             data['preflight']['expires_at'] = args['expires_at']
+            if failure == 'after_prepare' and not failed:
+                failed.append(True)
+                raise RuntimeError('injected')
             return {**{k: data['binding'][k] for k in
                     ('project_id', 'project_instance_id', 'plan_id', 'plan_digest', 'backend_id')},
                     'resources': data['preflight']['resources'],
@@ -215,26 +227,50 @@ def test_preparation_entry_crash_retry_uses_one_inert_plan(case, monkeypatch):
     monkeypatch.setattr(recovery, 'read_expired_evidence', lambda *args: data['nonexecution'])
     config = SimpleNamespace(value=lambda: {'research_runtime': runtime})
     expires = int(recovery.time.time()) + 300
+    assessed = recovery.assess_expired_a(root, old_source, runtime)
+    assert assessed['budget'] == before['budget'] and calls == []
+    assert assessed['compatibility'] == data['compatibility']
+    assert not (root / 'expired-a-recovery-v2').exists()
+    legacy = root / 'expired-a-recovery-v1'
+    legacy.mkdir()
+    with pytest.raises(ContractError, match='LEGACY_RECOVERY_RECONCILIATION_REQUIRED'):
+        recovery.prepare_expired_a(root, old_source, runtime, config, expires)
+    legacy.rmdir()
+    incomplete = root / 'expired-a-recovery-v2'
+    incomplete.mkdir()
+    with pytest.raises(ContractError, match='IDEMPOTENCY_CONFLICT'):
+        recovery.prepare_expired_a(root, old_source, runtime, config, expires)
+    incomplete.rmdir()
+    assert calls == []
     def fault(stage):
-        if stage == 'after_commit': raise RuntimeError('injected')
+        if stage == failure: raise RuntimeError('injected')
     monkeypatch.setattr(local, '_fault', fault)
     with pytest.raises(RuntimeError):
         recovery.prepare_expired_a(root, old_source, runtime, config, expires)
     monkeypatch.setattr(local, '_fault', lambda stage: None)
     result = recovery.prepare_expired_a(root, old_source, runtime, config, expires)
-    assert result['replayed'] and result['budget']['held'] == 1
-    assert calls == ['create', 'prepare']
+    assert result['replayed'] is (failure == 'after_commit') and result['budget']['held'] == 1
+    assert calls == ['create', 'prepare'] + ([] if failure == 'after_commit' else ['prepare'])
+    assert len(prepared) == 1
     assert (root / 'd7-v2.json').read_bytes() == frozen
+    assert recovery.prepare_expired_a(root, old_source, runtime, config, expires)['replayed']
+    with pytest.raises(ContractError, match='IDEMPOTENCY_CONFLICT'):
+        recovery.prepare_expired_a(root, old_source, runtime, config, expires + 1)
 
 
 @pytest.mark.parametrize('nonzero', [None, *recovery.ZERO_TABLES])
-def test_original_reader_uses_one_transaction_and_rejects_side_effects(case, monkeypatch, nonzero):
+def test_original_reader_uses_one_transaction_and_rejects_side_effects(case, monkeypatch, nonzero, tmp_path):
     import sqlite3
     import sys
     from contextlib import contextmanager
     from types import SimpleNamespace
     _, data, before, _ = case
     conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute('CREATE TABLE meta(key TEXT, value TEXT)')
+    conn.execute("INSERT INTO meta VALUES('supervisor_started', '0')")
+    af = tmp_path / 'synthetic-af'
+    (af / 'private').mkdir(parents=True)
     for table in (*recovery.ZERO_TABLES, 'plans'):
         conn.execute('CREATE TABLE ' + table + '(id INTEGER)')
     conn.execute('INSERT INTO plans VALUES(1)')
@@ -261,9 +297,83 @@ def test_original_reader_uses_one_transaction_and_rejects_side_effects(case, mon
     try:
         if nonzero:
             with pytest.raises(ContractError, match='NONEXECUTION_UNPROVEN'):
-                recovery.read_expired_evidence('SYNTHETIC', binding)
+                recovery.read_expired_evidence(af, binding)
         else:
-            result = recovery.read_expired_evidence('SYNTHETIC', binding)
+            result = recovery.read_expired_evidence(af, binding)
             assert result['counts'] == dict.fromkeys(recovery.ZERO_TABLES, 0)
+            conn.execute("UPDATE meta SET value='1'")
+            conn.commit()
+            with pytest.raises(ContractError, match='NONEXECUTION_UNPROVEN'):
+                recovery.read_expired_evidence(af, binding)
+            conn.execute('DELETE FROM meta')
+            conn.commit()
+            with pytest.raises(ContractError, match='NONEXECUTION_UNPROVEN'):
+                recovery.read_expired_evidence(af, binding)
     finally:
         conn.close()
+
+
+@pytest.mark.parametrize('marker', ['owner.json', 'private/connection.json',
+                                   'private/lifecycle-current.json', 'private/start_incomplete'])
+def test_owner_and_start_intent_markers_block(tmp_path, marker):
+    (tmp_path / 'private').mkdir()
+    recovery.require_unstarted_files(tmp_path)
+    (tmp_path / marker).write_bytes(b'no sensitive content needed')
+    with pytest.raises(ContractError, match='NONEXECUTION_UNPROVEN'):
+        recovery.require_unstarted_files(tmp_path)
+
+
+@pytest.mark.parametrize('damage', ['started', 'candidate_b', 'accepted', 'unknown'])
+def test_early_eligibility_refuses_unsafe_state(case, damage):
+    _, _, state, _ = case
+    if damage == 'started': state['attempts']['A']['started'] = True
+    if damage == 'candidate_b': state['candidates']['B'] = {}
+    if damage == 'accepted': state['attempts']['A']['accepted'] = {}
+    if damage == 'unknown': state['attempts']['A']['status'] = 'UNKNOWN'
+    with pytest.raises(ContractError, match='RECOVERY_NOT_AVAILABLE'):
+        recovery.require_eligible(state)
+
+
+@pytest.mark.parametrize('damage', ['supervisor', 'markers', 'missing'])
+def test_incomplete_startup_proof_refused(case, damage):
+    research, data, before, _ = case
+    if damage == 'supervisor': data['nonexecution']['supervisor_started'] = '1'
+    if damage == 'markers': data['nonexecution']['owner_start_markers'] = ['start_intent']
+    if damage == 'missing': del data['nonexecution']['supervisor_started']
+    with pytest.raises(ContractError):
+        research._record('REBIND_EXPIRED_A', data, 4, 'recover')
+    assert research.inspect() == before
+
+
+def test_legacy_recovery_replay_without_legacy_new_write(case, monkeypatch):
+    research, data, _, _ = case
+    data['compatibility']['version'] = recovery.LEGACY_VERSION
+    data['compatibility']['new_validator']['version'] = recovery.LEGACY_VERSION
+    proof = data['nonexecution']
+    proof['schema'] = 'd7-original-af-expired-empty-v1'
+    proof['counts'] = dict.fromkeys(recovery.LEGACY_ZERO_TABLES, 0)
+    del proof['supervisor_started'], proof['owner_start_markers']
+    with pytest.raises(ContractError, match='LEGACY_RECOVERY_REPLAY_ONLY'):
+        research._record('REBIND_EXPIRED_A', data, 4, 'legacy')
+    # Synthesize an already-recorded historical v1 event, then restore v2 writer.
+    with monkeypatch.context() as legacy:
+        legacy.setattr(recovery, 'VERSION', recovery.LEGACY_VERSION)
+        legacy.setattr(recovery, 'PROOF_SCHEMA', proof['schema'])
+        research._record('REBIND_EXPIRED_A', data, 4, 'legacy')
+    assert research.inspect()['budget']['held'] == 1
+    assert research._record('REBIND_EXPIRED_A', data, 4, 'legacy')['replayed']
+
+
+@pytest.mark.parametrize('damage', ['runtime', 'research_project_id', 'contract_digest'])
+def test_assessment_refuses_wrong_workspace_without_preparation(case, damage):
+    import json
+    research, data, before, old = case
+    root = research.project._root.parent
+    frozen = {'schema': 'gdcae-d7-workspace-v1', 'runtime': before['policy']['runtime'],
+              'research_project_id': before['research_project_id'], 'contract_digest': before['contract_digest']}
+    frozen[damage] = 'wrong'
+    (root / 'd7-v2.json').write_text(json.dumps(frozen))
+    with pytest.raises(ContractError, match='WORKSPACE_RUNTIME_MISMATCH'):
+        recovery.assess_expired_a(root, old, data['compatibility']['new_runtime'])
+    assert research.inspect() == before
+    assert not (root / 'expired-a-recovery-v2').exists()

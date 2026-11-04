@@ -294,6 +294,10 @@ class LocalRodProject:
                 require(state['keys'][key] == request, 'IDEMPOTENCY_CONFLICT')
                 return {**self._view(state, meta), 'replayed': True}
             require(type(revision) is int and revision == meta['project_revision'], 'REVISION_CONFLICT')
+            if action == 'REBIND_EXPIRED_A':
+                from aegiscae.research.rod_expired_recovery import VERSION as RECOVERY, PROOF_SCHEMA
+                require(data['compatibility']['version'] == RECOVERY
+                        and data['nonexecution']['schema'] == PROOF_SCHEMA, 'LEGACY_RECOVERY_REPLAY_ONLY')
             from aegiscae.research.rod_expired_recovery import active_runtime
             runtime = (data['runtime'] if action == 'INITIALIZE' else
                        data['compatibility']['new_runtime'] if action == 'REBIND_EXPIRED_A' else

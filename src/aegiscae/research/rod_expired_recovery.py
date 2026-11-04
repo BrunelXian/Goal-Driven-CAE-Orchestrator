@@ -13,11 +13,15 @@ from aegiscae.contracts.research_contracts import digest_bytes, require
 from aegiscae.research.rod_preview_rules import exact, token
 
 SCHEMA = 'd7-expired-a-compatibility-v1'
-VERSION = 'd7-expired-a-recovery-v1'
+LEGACY_VERSION = 'd7-expired-a-recovery-v1'
+VERSION = 'd7-expired-a-recovery-v2'
+PROOF_SCHEMA = 'd7-original-af-expired-empty-v2'
 PROJECT = 'research/rod_local_project.py'
 ADDITION = 'research/rod_expired_recovery.py'
-ZERO_TABLES = ('grants', 'runs', 'receipts', 'consumption', 'events',
-               'management_receipts', 'reconciliations')
+LEGACY_ZERO_TABLES = ('grants', 'runs', 'receipts', 'consumption', 'events',
+                      'management_receipts', 'reconciliations')
+ZERO_TABLES = (*LEGACY_ZERO_TABLES, 'observations', 'validations',
+               'management_grants', 'management_consumption', 'control_events')
 
 
 def active_runtime(state):
@@ -111,7 +115,7 @@ def validate_compatibility(record, state):
                   'candidate_digest', 'old_runtime', 'new_runtime', 'old_validator',
                   'new_validator', 'old_sources', 'new_sources', 'changed_files',
                   'equivalence', 'execution_authorized'))
-    require(record['schema'] == SCHEMA and record['version'] == VERSION
+    require(record['schema'] == SCHEMA and record['version'] in (LEGACY_VERSION, VERSION)
             and record['execution_authorized'] is False, 'COMPATIBILITY_INVALID')
     require(record['research_project_id'] == state['research_project_id']
             and record['contract_digest'] == state['contract_digest']
@@ -123,7 +127,7 @@ def validate_compatibility(record, state):
         require(inventory_digest(record[label + '_sources']) == runtime['gd'],
                 'COMPATIBILITY_SOURCE_DIGEST')
         require(record[label + '_validator'] == {
-            'version': 'd7_local_v2' if label == 'old' else VERSION,
+            'version': 'd7_local_v2' if label == 'old' else record['version'],
             'sha256': runtime['gd']}, 'COMPATIBILITY_VALIDATOR')
     require(all(record['old_runtime'][k] == record['new_runtime'][k]
                 for k in ('af', 'plugin', 'python', 'versions')), 'UNSUPPORTED_RUNTIME_CHANGE')
@@ -137,6 +141,28 @@ def validate_compatibility(record, state):
             and e['old_acceptance'] == e['new_acceptance'], 'SCIENTIFIC_RULES_CHANGED')
 
 
+def require_unstarted_files(af_project):
+    """Pinned AF lifecycle markers, without connecting to or starting an Owner."""
+    root = Path(af_project)
+    require(root.is_absolute() and root.is_dir()
+            and not any(p.is_symlink() or p.is_junction() for p in (root, *root.parents)),
+            'UNSAFE_PATH')
+    private = root / 'private'
+    require(private.is_dir() and not private.is_symlink() and not private.is_junction(),
+            'NONEXECUTION_UNPROVEN')
+    require(not any(p.exists() or p.is_symlink() or p.is_junction() for p in (
+        root / 'owner.json', private / 'connection.json', private / 'lifecycle-current.json'))
+        and not any(private.glob('start_*')), 'NONEXECUTION_UNPROVEN')
+
+
+def require_eligible(state):
+    require('compatibility' not in state and set(state['attempts']) == {'A'}
+            and set(state['candidates']) == {'A'}, 'RECOVERY_NOT_AVAILABLE')
+    old = state['attempts']['A']
+    require(old['status'] == 'HELD' and old['accepted'] is None and old['started'] is False,
+            'RECOVERY_NOT_AVAILABLE')
+
+
 def read_expired_evidence(af_project, binding):
     """Read original AF format-3 tables in one read-only snapshot.
 
@@ -146,6 +172,7 @@ def read_expired_evidence(af_project, binding):
     from abqjobpilot.product_rod import RodProduct
     from abqjobpilot.execution.store import document
     from abqjobpilot.execution.models import digest
+    require_unstarted_files(af_project)
     reader = RodProduct(af_project)._reader()
     with reader.store.read() as conn:
         conn.execute('BEGIN')
@@ -157,6 +184,8 @@ def read_expired_evidence(af_project, binding):
                 == plan['project_instance_id'], 'PLAN_IDENTITY')
         counts = {t: conn.execute('SELECT COUNT(*) FROM ' + t).fetchone()[0] for t in ZERO_TABLES}
         require(all(v == 0 for v in counts.values()), 'NONEXECUTION_UNPROVEN')
+        require([tuple(row) for row in conn.execute("SELECT value FROM meta WHERE key='supervisor_started'")]
+                == [('0',)], 'NONEXECUTION_UNPROVEN')
         require(conn.execute('SELECT COUNT(*) FROM plans').fetchone()[0] == 1,
                 'OLD_PLAN_AMBIGUOUS')
         require(conn.execute('SELECT state FROM dispatch_gate WHERE id=1').fetchone()[0] == 'PAUSED'
@@ -164,9 +193,11 @@ def read_expired_evidence(af_project, binding):
                 'NONEXECUTION_UNPROVEN')
         observed = int(time.time())
         require(plan['expires_at'] < observed, 'OLD_PLAN_NOT_EXPIRED')
-    return {'schema': 'd7-original-af-expired-empty-v1', 'binding': copy.deepcopy(binding),
+    require_unstarted_files(af_project)
+    return {'schema': PROOF_SCHEMA, 'binding': copy.deepcopy(binding),
             'plan': plan, 'counts': counts, 'observed_at': observed,
-            'gate': 'PAUSED', 'slot': None}
+            'gate': 'PAUSED', 'slot': None, 'supervisor_started': '0',
+            'owner_start_markers': []}
 
 
 def reduce_event(state, payload, bundle, revision, latest):
@@ -190,10 +221,16 @@ def reduce_event(state, payload, bundle, revision, latest):
             'RECOVERY_NOT_AVAILABLE')
     validate_compatibility(data['compatibility'], state)
     e = data['nonexecution']
-    exact(e, ('schema', 'binding', 'plan', 'counts', 'observed_at', 'gate', 'slot'))
-    require(e['schema'] == 'd7-original-af-expired-empty-v1' and e['binding'] == old['binding']
+    legacy = data['compatibility']['version'] == LEGACY_VERSION
+    fields = ('schema', 'binding', 'plan', 'counts', 'observed_at', 'gate', 'slot')
+    exact(e, fields if legacy else (*fields, 'supervisor_started', 'owner_start_markers'))
+    if not legacy:
+        require(e['supervisor_started'] == '0' and e['owner_start_markers'] == [],
+                'NONEXECUTION_UNPROVEN')
+    require(e['schema'] == ('d7-original-af-expired-empty-v1' if legacy else PROOF_SCHEMA)
+            and e['binding'] == old['binding']
             and type(e['observed_at']) is int and e['observed_at'] > 0
-            and e['counts'] == dict.fromkeys(ZERO_TABLES, 0)
+            and e['counts'] == dict.fromkeys(LEGACY_ZERO_TABLES if legacy else ZERO_TABLES, 0)
             and all(type(v) is int for v in e['counts'].values())
             and e['gate'] == 'PAUSED' and e['slot'] is None, 'NONEXECUTION_UNPROVEN')
     from .rod_evidence import af_digest
@@ -234,7 +271,8 @@ def rebind_expired_a(research, old_af_project, old_source_root, port, binding,
     require(type(research) is LocalRodProject and type(port) is LocalReadPort,
             'READ_PORT_UNQUALIFIED')
     state = research.inspect()
-    require('compatibility' not in state, 'RECOVERY_NOT_AVAILABLE')
+    require_eligible(state)
+    require(state['project_revision'] == revision, 'REVISION_CONFLICT')
     compatibility = build_compatibility(state, old_source_root, new_runtime)
     port.validate(new_runtime)
     c = state['candidates']['A']
@@ -248,10 +286,34 @@ def rebind_expired_a(research, old_af_project, old_source_root, port, binding,
                            'nonexecution': e, 'binding': binding, 'preflight': preflight}, revision, key)
 
 
+def assess_expired_a(workspace, old_source_root, new_runtime):
+    """Read-only readiness evidence. No Plan, intent, reservation or expiry creation.
+
+    This snapshot is informational: preparation always reads the original AF again.
+    AF/runtime qualification remains mandatory at the explicit preparation entry.
+    """
+    from . import project
+    from .rod_local_project import LocalRodProject
+    root = Path(workspace)
+    require(root.is_absolute() and not any(p.is_symlink() or p.is_junction()
+            for p in (root, *root.parents)), 'UNSAFE_PATH')
+    frozen = json.loads((root / 'd7-v2.json').read_text())
+    state = LocalRodProject(project.open_existing_readonly(root / 'research')).inspect()
+    require(frozen['schema'] == 'gdcae-d7-workspace-v1'
+            and frozen['runtime'] == state['policy']['runtime']
+            and frozen['research_project_id'] == state['research_project_id']
+            and frozen['contract_digest'] == state['contract_digest'], 'WORKSPACE_RUNTIME_MISMATCH')
+    require_eligible(state)
+    return {'schema': VERSION, 'project_revision': state['project_revision'], 'budget': state['budget'],
+            'compatibility': build_compatibility(state, old_source_root, new_runtime),
+            'nonexecution': read_expired_evidence(root / 'af-A', state['attempts']['A']['binding']),
+            'execution_authorized': False}
+
+
 def prepare_expired_a(workspace, old_source_root, new_runtime, config, expires_at):
     """Explicit recovery entry; old installed plugin guard remains fail-closed.
 
-    Resumable fixed v1 output directory with write-once intent. Only inert AF
+    Resumable fixed v2 output directory with write-once intent. Only inert AF
     preparation and the atomic GD event are permitted here.
     """
     from . import project
@@ -275,20 +337,22 @@ def prepare_expired_a(workspace, old_source_root, new_runtime, config, expires_a
             and frozen['contract_digest'] == state['contract_digest'], 'WORKSPACE_RUNTIME_MISMATCH')
     check_runtime(config, new_runtime)
     compatibility = build_compatibility(state, old_source_root, new_runtime)
-    destination = root / 'expired-a-recovery-v1'
+    # A partial legacy preparation cannot be silently replaced by a v2 request.
+    require(not (root / 'expired-a-recovery-v1').exists(), 'LEGACY_RECOVERY_RECONCILIATION_REQUIRED')
+    destination = root / 'expired-a-recovery-v2'
     intent = {'schema': VERSION, 'compatibility_digest': fingerprint(compatibility),
               'expires_at': expires_at, 'config_digest': digest(config.value())}
     body = json.dumps(intent, sort_keys=True).encode()
-    key = 'rebind-expired-A-v1'
+    key = 'rebind-expired-A-v2'
     if destination.exists():
         require(not destination.is_symlink() and not destination.is_junction()
+                and (destination / 'intent.json').is_file()
+                and not (destination / 'intent.json').is_symlink()
                 and (destination / 'intent.json').read_bytes() == body, 'IDEMPOTENCY_CONFLICT')
         if key in state['keys']:
             require(state.get('compatibility') == compatibility, 'IDEMPOTENCY_CONFLICT')
             return {**state, 'replayed': True}
-    require('compatibility' not in state and set(state['attempts']) == {'A'}
-            and state['attempts']['A']['status'] == 'HELD'
-            and state['attempts']['A']['accepted'] is None, 'RECOVERY_NOT_AVAILABLE')
+    require_eligible(state)
     read_expired_evidence(root / 'af-A', state['attempts']['A']['binding'])
     require(type(expires_at) is int and int(time.time()) < expires_at <= int(time.time()) + 600,
             'APPROVAL_WINDOW_INVALID')
@@ -301,6 +365,7 @@ def prepare_expired_a(workspace, old_source_root, new_runtime, config, expires_a
             os.fsync(stream.fileno())
     path = destination / 'af-A'
     product = RodProduct(path) if path.exists() else RodProduct.create(path, 'D7 expired A recovery')
+    require_unstarted_files(path)
     projected = {**state, 'compatibility': compatibility}
     c = execution_candidate(projected, 'A')
     nonce = 'recovery_' + fingerprint(intent)[7:39]
@@ -310,6 +375,7 @@ def prepare_expired_a(workspace, old_source_root, new_runtime, config, expires_a
     plan = product.prepare_real(frozen_template=TEMPLATE, candidate_bytes=research.candidate_input('A'),
         load_n=c['load_n'], config=config, **args, expires_at=expires_at,
         phase='A', local_contract=c['local_contract'])
+    require_unstarted_files(path)
     binding = {k: plan[k] for k in ('project_id', 'project_instance_id', 'plan_id', 'plan_digest', 'backend_id')}
     binding.update(input_digest=c['input_digest'], resources_digest=digest(plan['resources']),
         output_identity=plan['output_key'], candidate_output_identity=c['output_identity'],
