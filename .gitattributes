@@ -1,2 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve release identities when the repository is checked out on Windows.
+plugins/gdcae-research/** text eol=lf
+# The imported Windows driver is pinned as exact release bytes, including its line endings.
+plugins/gdcae-research/scripts/main.py -text !eol
+product/research-preview/** text eol=lf
+product/research-preview/release/case/** -text
+docs/user/SANITY_MODEL_USER_GUIDE.md text eol=lf

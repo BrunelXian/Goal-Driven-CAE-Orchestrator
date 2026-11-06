@@ -17,10 +17,6 @@ from pathlib import Path
 from aegiscae.contracts.research_contracts import (
     ContractBundle, ContractError, canonical_json, digest_bytes, identifier, strict_json,
 )
-from aegiscae.research.mutation_rules import validate_record
-from aegiscae.research.budget_rules import apply_event, empty_ledger
-from aegiscae.research.workflow_rules import apply_workflow
-from aegiscae.research.rod_preview_rules import apply_preview
 
 
 class ProjectError(ValueError):
@@ -173,7 +169,7 @@ def _decode(body, expected_digest):
         raise ProjectError("INTEGRITY_ERROR") from None
 
 
-def _read_state(connection, root):
+def _read_state(connection, root, agreement_state=None):
     schema = dict(connection.execute("SELECT name,sql FROM sqlite_master "
                                      "WHERE type IN ('table','view','trigger')"))
     _require(schema == _SCHEMA, "UNSUPPORTED_SCHEMA")
@@ -185,8 +181,14 @@ def _read_state(connection, root):
                      "canonical_root_digest", "root_file_identity", "database_file_identity",
                      "created_transaction_id", "revision_transaction_id", "revision_at_utc"}
     _require(type(meta) is dict and set(meta) == expected_keys
-             and type(meta["schema_version"]) is int and meta["schema_version"] in (1, 2),
+             and type(meta["schema_version"]) is int and meta["schema_version"] in (1, 2, 3),
              "UNSUPPORTED_SCHEMA")
+    _require(agreement_state is None or meta["schema_version"] == 3, "RESEARCH_AGREEMENT_OPT_IN_REQUIRED")
+    if meta["schema_version"] == 3:
+        _require(meta["binding"] is None, "INTEGRITY_ERROR")
+        from aegiscae.research.research_agreement import apply_agreement, empty_state
+        agreement_state = {} if agreement_state is None else agreement_state
+        agreement_state.update(empty_state())
     _require(type(meta["project_revision"]) is int, "INTEGRITY_ERROR")
     _require(all(meta[key] == value for key, value in _identity(root).items()),
              "PROJECT_IDENTITY_MISMATCH")
@@ -246,7 +248,10 @@ def _read_state(connection, root):
     previous, freeze_records, events, transactions = None, [], [], set()
     current_revision = 1
     latest_frozen_digest = None
-    candidate_records, ledger = {}, empty_ledger()
+    candidate_records = {}
+    if meta["schema_version"] != 3:
+        from aegiscae.research.budget_rules import empty_ledger
+        ledger = empty_ledger()
     workflow_state = None
     candidate_ids, candidate_keys, candidate_outputs = set(), set(), set()
     revision_stamp = (meta["created_at_utc"], meta["created_transaction_id"])
@@ -261,11 +266,11 @@ def _read_state(connection, root):
             "previous_digest", "transaction_id", "metadata_digest"}.union(
                 {"candidate"} if candidate_event else {"budget"} if budget_event
                 else {"workflow"} if workflow_event else set()).union(
-                {"creation_schema"} if sequence == 1 and meta["schema_version"] == 2 else set())
+                {"creation_schema"} if sequence == 1 and meta["schema_version"] in (2, 3) else set())
             and event["previous_digest"] == previous, "INTEGRITY_ERROR")
-        if sequence == 1 and meta["schema_version"] == 2:
+        if sequence == 1 and meta["schema_version"] in (2, 3):
             _require(type(event.get("creation_schema")) is int
-                     and event["creation_schema"] == 2, "INTEGRITY_ERROR")
+                     and event["creation_schema"] == meta["schema_version"], "INTEGRITY_ERROR")
         _validate_time(event["at_utc"])
         try:
             identifier(event["transaction_id"], "tx")
@@ -275,6 +280,8 @@ def _read_state(connection, root):
                  and type(event["project_revision"]) is int, "INTEGRITY_ERROR")
         transactions.add(event["transaction_id"])
         kind = event["kind"]
+        _require(meta["schema_version"] != 3 or kind in {
+            "CREATED", "BUNDLE_FROZEN", "WORKFLOW_RECORDED", "REOPEN_FAILURE_OBSERVED"}, "INTEGRITY_ERROR")
         _require(meta["schema_version"] != 2 or kind in {
             "CREATED", "WORKFLOW_RECORDED", "REOPEN_FAILURE_OBSERVED"}, "INTEGRITY_ERROR")
         _require(type(kind) is str and kind in {"CREATED", "BUNDLE_FROZEN", "REOPEN_FAILURE_OBSERVED",
@@ -292,6 +299,7 @@ def _read_state(connection, root):
                            and b[1] == latest_frozen_digest and b[2] <= current_revision), None)
             _require(parent is not None, "INTEGRITY_ERROR")
             try:
+                from aegiscae.research.mutation_rules import validate_record
                 request = validate_record(event["candidate"], parent[0])
                 output = (request.workspace_id, request.output_identity)
                 _require(request.project_revision == current_revision
@@ -310,6 +318,7 @@ def _read_state(connection, root):
                            and b[2] <= current_revision), None)
             _require(parent is not None, "INTEGRITY_ERROR")
             try:
+                from aegiscae.research.budget_rules import apply_event
                 apply_event(ledger, event["budget"], parent[0], candidate_records,
                             current_revision, latest_frozen_digest)
                 _require(event["budget"]["request"]["scope"]["research_project_id"]
@@ -321,7 +330,13 @@ def _read_state(connection, root):
             revision_stamp = (event["at_utc"], event["transaction_id"])
         elif workflow_event:
             try:
-                if meta["schema_version"] == 2:
+                if meta["schema_version"] == 3:
+                    parent = next((b for b in decoded if b[1] == latest_frozen_digest
+                                   and b[2] <= current_revision), None)
+                    _require(parent is not None and event["bundle_digest"] == parent[1], "INTEGRITY_ERROR")
+                    apply_agreement(agreement_state, event["workflow"], parent[0], current_revision)
+                elif meta["schema_version"] == 2:
+                    from aegiscae.research.rod_preview_rules import apply_preview
                     workflow_state = apply_preview(workflow_state, event["workflow"],
                         meta["research_project_id"], current_revision, event["at_utc"])
                     _require(event["bundle_digest"] == workflow_state["contract_digest"],
@@ -339,6 +354,7 @@ def _read_state(connection, root):
                         workflow_state = apply_real_workflow(workflow_state, event["workflow"],
                             parent[0], current_revision, latest_frozen_digest)
                     else:
+                        from aegiscae.research.workflow_rules import apply_workflow
                         workflow_state = apply_workflow(workflow_state, event["workflow"], parent[0],
                             candidate_records, ledger, current_revision, latest_frozen_digest)
                 _require(event["metadata_digest"] == digest_bytes(canonical_json(event["workflow"])),
@@ -413,7 +429,7 @@ def _append_audit(connection, kind, revision, bundle_digest=None, code=None, *,
     _validate_time(event["at_utc"])
     if creation_schema is not None:
         _require(kind == "CREATED" and sequence == 1
-                 and type(creation_schema) is int and creation_schema == 2, "INTEGRITY_ERROR")
+                 and type(creation_schema) is int and creation_schema in (2, 3), "INTEGRITY_ERROR")
         event["creation_schema"] = creation_schema
     if candidate is not None:
         _require(kind == "CANDIDATE_PUBLICATION_OBSERVED", "INTEGRITY_ERROR")
@@ -457,8 +473,11 @@ def _commit_workflow_event(connection, meta, bundle_digest, payload, *, at_utc=N
 
 
 def create_research_project(explicit_new_root, descriptive_name, *, declared_af_binding=None,
-                            rod_preview=False):
+                            rod_preview=False, research_agreements=False):
     _require(type(rod_preview) is bool, "INVALID_SCHEMA_SELECTION")
+    _require(type(research_agreements) is bool and not (research_agreements and rod_preview),
+             "INVALID_SCHEMA_SELECTION")
+    _require(not research_agreements or declared_af_binding is None, "INVALID_BINDING")
     _require(not rod_preview or declared_af_binding is None, "INVALID_BINDING")
     _validate_name(descriptive_name)
     declared = _binding(declared_af_binding)
@@ -470,7 +489,7 @@ def create_research_project(explicit_new_root, descriptive_name, *, declared_af_
         os.close(descriptor)
         created, transaction_id = _utc(), "tx_" + uuid.uuid4().hex
         _validate_time(created)
-        meta = {"schema_version": 2 if rod_preview else 1,
+        meta = {"schema_version": 3 if research_agreements else 2 if rod_preview else 1,
                 "research_project_id": "rp_" + uuid.uuid4().hex,
                 "project_revision": 1, "created_at_utc": created,
                 "created_transaction_id": transaction_id,
@@ -484,7 +503,7 @@ def create_research_project(explicit_new_root, descriptive_name, *, declared_af_
             body = canonical_json(meta)
             connection.execute("INSERT INTO project VALUES (1,?,?)", (body, digest_bytes(body)))
             _append_audit(connection, "CREATED", 1, at_utc=created, transaction_id=transaction_id,
-                          creation_schema=2 if rod_preview else None)
+                          creation_schema=meta["schema_version"] if rod_preview or research_agreements else None)
             _fault("create_before_commit")
             connection.commit()
         return open_existing_readonly(root)
@@ -501,10 +520,12 @@ class ResearchProject:
     _write_enabled: bool = field(default=False, repr=False)
 
     @contextmanager
-    def _snapshot(self, *, write=False):
+    def _snapshot(self, *, write=False, agreement_state=None, freezing_bundle=False):
         _require(not write or self._write_enabled, "READ_ONLY")
         with _connection(self._root, write=write) as connection:
-            meta, bundles, events = _read_state(connection, self._root)
+            meta, bundles, events = _read_state(connection, self._root, agreement_state)
+            _require(not write or meta["schema_version"] != 3 or agreement_state is not None
+                     or freezing_bundle, "AGREEMENT_PROJECT_WRITE_SCOPE")
             _require(meta["research_project_id"] == self.research_project_id
                      and meta["storage_generation"] == self.storage_generation,
                      "PROJECT_IDENTITY_MISMATCH")
@@ -552,8 +573,8 @@ class ResearchProject:
         digest = digest_bytes(body)
         _require(bundle.research_project_id == self.research_project_id, "PROJECT_IDENTITY_MISMATCH")
         _fault("before_begin")
-        with self._snapshot(write=True) as (connection, meta, bundles, _events):
-            _require(meta["schema_version"] == 1, "CONTRACT_SCHEMA_MISMATCH")
+        with self._snapshot(write=True, freezing_bundle=True) as (connection, meta, bundles, _events):
+            _require(meta["schema_version"] in (1, 3), "CONTRACT_SCHEMA_MISMATCH")
             for previous, previous_digest, revision, key, _created, _transaction, _metadata in bundles:
                 if key == idempotency_key:
                     _require(previous_digest == digest, "IDEMPOTENCY_CONFLICT")
@@ -612,15 +633,22 @@ class ResearchProject:
             connection.commit()
 
 
-def _open(explicit_root, write):
+def _open(explicit_root, write, agreement_state=None):
     root = _path(explicit_root)
     with _connection(root, write=write) as connection:
-        meta, _, _ = _read_state(connection, root)
+        meta, _, _ = _read_state(connection, root, agreement_state)
+        _require(not write or meta["schema_version"] != 3 or agreement_state is not None,
+                 "AGREEMENT_PROJECT_WRITE_SCOPE")
     return ResearchProject(root, meta["research_project_id"], meta["storage_generation"], write)
 
 
 def open_existing_readonly(explicit_root):
     return _open(explicit_root, False)
+
+
+def open_agreement_project(explicit_root, *, write=False):
+    """Only admit a project originally created with the research-agreements option."""
+    return _open(explicit_root, write, {})
 
 
 def open_existing_for_explicit_write(explicit_root):

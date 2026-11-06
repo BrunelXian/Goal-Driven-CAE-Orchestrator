@@ -1,0 +1,20 @@
+{
+  "name": "gdcae-research-agreements",
+  "interface": {
+    "displayName": "GD-CAE Research Preview"
+  },
+  "plugins": [
+    {
+      "name": "gdcae-research",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gdcae-research"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

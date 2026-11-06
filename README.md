@@ -1,5 +1,22 @@
 # Goal-Driven CAE Orchestrator
 
+<!-- research-qa:start -->
+## 研究者常问的 10 个问题
+
+1. **GD-CAE 帮我做什么？** 从研究问题出发，把模型、候选变化、观测和接受依据联系起来，使研究者能追查每个结论的来源。
+2. **什么是 Sanity Model？** 对指定研究用途已有验证依据的工程基准。应能指出用的是哪个模型、在哪些条件下可信、还有哪些未知。
+3. **一定要我先做好模型吗？** 可以提供已有模型，也可以约定由 Agent 建立候选。两种来源都要通过适用性验证，当前只读预览接收已有历史项目。
+4. **Research Contract 是什么？** 它是 ResearchProject 内带版本的科研约定，关联研究目标、基准、变量范围、比较条件、观测、误差限、证据和预算约束。Main 用它说明当前结论能支持什么主张。
+5. **Agent 能自主改变什么？** 在确认的范围内可以改变材料、几何、分析步（Step）、载荷（Load）、相互作用（Interaction）或扫描顺序。不变量由比较问题决定，例如反演材料时可固定夹持条件，观测冲头力–位移曲线。
+6. **求解收敛就算科研验真吗？** 收敛只说明这次数值计算完成。还需检验网格与步长敏感性，并用解析解、实验或独立参考检验所关心的观测。
+7. **如何确认或修订科研约定？** 在启用科研约定的新项目中，向 Main 查看当前卡片或修订差异。核对新旧值、理由和影响后，明确确认具体提案摘要。旧版可按摘要重读，待确认提案保留原有效版本。
+8. **确认合同就可以启动求解吗？** 真实求解另需对具体候选、资源、次数和有效期的执行授权。安装插件、阅读模型或同意研究方向均不授予此权限。
+9. **与普通 Automation 有何区别？** 普通自动化可重复运行既定步骤。科研循环还要判断证据是否充分、候选是否可比、目标是否达到，并记录继续或停止的理由。
+10. **现在可用哪些能力？** 安装态 Main 支持小冲杆历史比较，以及新项目科研约定的概览、详情、修订差异与版本提示。通用自建基准、原生富组件与真实求解闭环仍待开发或验收。
+<!-- research-qa:end -->
+
+详见[用户指南](docs/user/SANITY_MODEL_USER_GUIDE.md)、[Agent 模型理解协议](docs/architecture/AGENT_MODEL_UNDERSTANDING_AND_SANITY_PROTOCOL.md)和[发行构建说明](product/research-preview/README.md)。
+
 ## From verified models to verifiable discoveries
 
 **An Agentic CAE Research Environment built around Codex as its sole Agent Harness.**

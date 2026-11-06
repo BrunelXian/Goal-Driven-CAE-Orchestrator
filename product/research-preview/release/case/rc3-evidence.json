@@ -1,0 +1,27 @@
+{
+  "qualified_release": "0.1.0-alpha.7-sp1105rc3",
+  "core_version": "0.0.0+sp1105rc3",
+  "interpreter": "CPython 3.12.10",
+  "external_python_dependencies": [],
+  "package_manifest_sha256": "c9e2862ecde9c64e0927875edfba579dbba762f4e6e9132efa20d141584e1f92",
+  "core_record_sha256": "f6958a5e491442d46925be3946522ac781516b7964b7bc080fa03180c851e46b",
+  "source_distributions": {
+    "aegiscae-0.0.0+sp1105rc3-py3-none-any.whl": "fca881a26c523b3848e100b93cb715ba54276e96a1208d3af34f885e9b39764e",
+    "gdcae-sp-preview-0.1.0-alpha.7-sp1105rc3.zip": "1a6f292ab2780b6c9e9a2aa8018a3daeab46f56fb94cb0805f48c609148308f4"
+  },
+  "scientific_source_sha256": "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535",
+  "development_freeze_sha256": "cec44332844a8bab32266eeb3e714c680071f9fe762c97ab273b76bf69a7dabf",
+  "independent_verdict_sha256": "dbe00b5358235d25bfa1f74c50ffa56991fbbcea5775c852de45f65aa3478e12",
+  "scientific_input_identity": {
+    "run/run_005/artifacts/punch_force_displacement.csv": "42acf8ccf72a86a178a55ea3b27917367385cd4a730c20741d19bc87528f6670",
+    "run/run_014/artifacts/odb/punch_force_displacement.csv": "6af133606aab305f2d6b9cdb3c49efb4fd33c01cb45d7444dbd384f640a323f0"
+  },
+  "model_input_identity": {
+    "CAE/Models/Sanity/Job-1.inp": "b2aac48af9529db28873c19f047f479c63ed247884f9bdc5fd7bccd5763305cc",
+    "run/run_008/artifacts/candidate_inp/SPIO_R008_Q200_N010_Candidate/SPIO_R008_Q200_N010_Candidate.inp": "fa2de5d73a28536c1c07cd22072d2a24c1ae988c569127d728931c583457f05a"
+  },
+  "independent_test": "PASS_LIMITED_SINGLE_MAIN_SP_RESEARCH_PREVIEW",
+  "negative_case": "CSV_SCHEMA_MISMATCH / exit 2",
+  "results_dispatch": "BLOCKED",
+  "further_expert_interactions": "NOT_TESTED"
+}

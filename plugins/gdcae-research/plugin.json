@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gdcae-research",
+  "version": "0.2.0-preview.4",
+  "description": "Compare historical small-punch evidence and manage versioned research agreements in opted-in projects.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "GD-CAE Research Preview",
+        "shortDescription": "Review SP curves and versioned research agreements in Main."
+      }
+    }
+  }
+}
