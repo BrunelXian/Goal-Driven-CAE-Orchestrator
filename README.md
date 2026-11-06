@@ -1,249 +1,159 @@
 # Goal-Driven CAE Orchestrator
 
-<!-- research-qa:start -->
-## 研究者常问的 10 个问题
+**From simulation automation to autonomous scientific investigation.**
 
-1. **GD-CAE 帮我做什么？** 从研究问题出发，把模型、候选变化、观测和接受依据联系起来，使研究者能追查每个结论的来源。
-2. **什么是 Sanity Model？** 对指定研究用途已有验证依据的工程基准。应能指出用的是哪个模型、在哪些条件下可信、还有哪些未知。
-3. **一定要我先做好模型吗？** 可以提供已有模型，也可以约定由 Agent 建立候选。两种来源都要通过适用性验证，当前只读预览接收已有历史项目。
-4. **Research Contract 是什么？** 它是 ResearchProject 内带版本的科研约定，关联研究目标、基准、变量范围、比较条件、观测、误差限、证据和预算约束。Main 用它说明当前结论能支持什么主张。
-5. **Agent 能自主改变什么？** 在确认的范围内可以改变材料、几何、分析步（Step）、载荷（Load）、相互作用（Interaction）或扫描顺序。不变量由比较问题决定，例如反演材料时可固定夹持条件，观测冲头力–位移曲线。
-6. **求解收敛就算科研验真吗？** 收敛只说明这次数值计算完成。还需检验网格与步长敏感性，并用解析解、实验或独立参考检验所关心的观测。
-7. **如何确认或修订科研约定？** 在启用科研约定的新项目中，向 Main 查看当前卡片或修订差异。核对新旧值、理由和影响后，明确确认具体提案摘要。旧版可按摘要重读，待确认提案保留原有效版本。
-8. **确认合同就可以启动求解吗？** 真实求解另需对具体候选、资源、次数和有效期的执行授权。安装插件、阅读模型或同意研究方向均不授予此权限。
-9. **与普通 Automation 有何区别？** 普通自动化可重复运行既定步骤。科研循环还要判断证据是否充分、候选是否可比、目标是否达到，并记录继续或停止的理由。
-10. **现在可用哪些能力？** 安装态 Main 支持小冲杆历史比较，以及新项目科研约定的概览、详情、修订差异与版本提示。通用自建基准、原生富组件与真实求解闭环仍待开发或验收。
-<!-- research-qa:end -->
+GD-CAE is an autonomous, goal-driven and verifiable CAE research orchestration system. It connects a scientific question to a qualified model, controlled numerical experiments, independent verification, and a reasoned decision about the next experiment.
 
-详见[用户指南](docs/user/SANITY_MODEL_USER_GUIDE.md)、[Agent 模型理解协议](docs/architecture/AGENT_MODEL_UNDERSTANDING_AND_SANITY_PROTOCOL.md)和[发行构建说明](product/research-preview/README.md)。
+It is built for researchers and engineers in computational mechanics, materials science, manufacturing, finite element analysis, CAE automation, and scientific agents.
 
-## From verified models to verifiable discoveries
+[Real Abaqus case](#real-abaqus-study) · [Quick start](#quick-start) · [Architecture](#architecture-and-workflow) · [Documentation](#documentation) · [Contributing](#contributing)
 
-**An Agentic CAE Research Environment built around Codex as its sole Agent Harness.**
+## What GD-CAE delivers
 
-One researcher. One main conversation. Specialized engineering agents, called on
-when the research needs them.
+A conventional automation pipeline executes a prescribed sequence. GD-CAE organizes the **investigation** around a research goal. It records what may change, which observations count, how the evidence will be judged, and why the study should continue, pause, or stop.
 
-Goal-Driven CAE Orchestrator aims to help researchers carry a scientific question
-from a trusted Abaqus model through controlled experiments to independently
-checked conclusions. Its foundation is bounded autonomy: preserve the physical
-problem, record each experiment, and make conclusions traceable to evidence.
+| Capability | Role in a study |
+| --- | --- |
+| **Verified-model-first methodology** | Establish a baseline for a defined research purpose, with explicit invariants, validation evidence, and limits of use. |
+| **Research contracts and controlled autonomy** | Persist objectives, candidate identities, allowed changes, evidence requirements, acceptance criteria, and budgets in a ResearchProject. |
+| **Native execution and evidence** | Delegate authorized Abaqus work to AbqJobPilot and retain the Plan, Grant, Run, Receipt, and output provenance. |
+| **Independent verification and feedback** | Evaluate outputs against frozen criteria and independent references, then use the measured residuals to justify the next candidate. |
+| **Modular agent coordination** | Keep scientific reasoning in Codex Main and bind scoped specialist tasks and evidence handoffs through AgentHub when the host supports the required controls. |
 
-**中文简介：** Goal-Driven CAE Orchestrator 面向拥有可信 Abaqus 模型的科研人员，以 Codex 为唯一 Agent Harness。研究者通过一个 Main 主对话提出科研目标、确认模型基线和授权边界；Codex 按需协调专业子 Agent，GD-CAE 管理持久科研状态、模型契约、预算和独立验真，AbqJobPilot 负责获批的 Abaqus 执行与作业证据。这是正在设计的产品方向，尚非已交付的自主科研工作流。
+## Real Abaqus study
 
-> **Current status: 7D-E2E-G3 execution-readiness work; real full-chain release is
-> NO-GO.** The Python distribution remains `aegiscae`, version `0.0.0`.
-> Earlier milestones provide persisted contracts, synthetic workflows and bounded
-> evidence interfaces. G1 adds offline real-preview prerequisites and a source-only
-> Plugin package. G2 adds reviewed local snapshot packaging and installed-Core
-> initialization; it does not establish GitHub publication. Real dynamic dispatch,
-> independent Operator isolation, installed
-> `@GDCAE` activation and live A/B acceptance are not qualified. The broader
-> researcher experience below remains a product target, not a demonstrated result.
+**Abaqus Full Analysis → native execution evidence → independent ODB verification → scientific feedback → next parameter decision**
 
-See [the internal snapshot procedure](docs/architecture/7D_G2_PRODUCT_SNAPSHOT.md)
-for exact-file export, local wheel installation, doctor and new research-project
-initialization. The source distribution remains `0.0.0`; internal snapshot wheels
-are marked `0.0.0+g2long` and `INTERNAL_CANDIDATE_NOT_FOR_RELEASE`.
-The [G1 installation record](docs/architecture/7D_G1_PLUGIN_INSTALLATION.md) remains
-historical context. These helpers neither install globally nor authorize Abaqus.
-See [G3 product activation boundaries](docs/architecture/7D_G3_PRODUCT_ACTIVATION.md)
-for installed distribution checks, initialization source receipts and the separate
-local Plugin installation, native role-loading and Desktop activation gates.
+A controlled Abaqus/Standard 2024 study used a three-dimensional tensile bar with bilinear plastic hardening to test a two-parameter calibration workflow against a **synthetic** force–displacement target. Candidate A used a yield stress of **250 MPa** and a hardening modulus of **2,000 MPa**.
 
-## A persistent environment for computational research
+| Evidence layer | Observed result |
+| --- | --- |
+| **Real solver execution** | One authorized Full Analysis completed. |
+| **Native execution evidence** | The original Plan, Grant, Run, and Receipt matched the recorded artifacts. The independent review rehashed the INP, ODB, STA, MSG, and DAT. |
+| **Independent numerical verification** | A separate read-only extraction examined 101 ODB frames. All 11 predeclared numerical checks passed, including end-force balance, elastic and plastic stiffness, and plastic-strain checks against analytic references. |
+| **Research target satisfaction** | **Target miss.** The endpoint was 267.453 N against 313.546 N. The full-curve NRMSE was 12.45%, above the frozen 1% limit. |
 
-Simulation supports hypothesis testing, parameter identification, model comparison,
-diagnosis, and design-space exploration. Those activities often span model files,
-solver logs, scripts, notebooks, experimental data, and many conversations.
+<details>
+<summary>Frozen target criteria and Candidate A scores</summary>
 
-GD-CAE is intended to connect them through a durable **ResearchProject** record:
-the approved goal and model baseline, permissible changes, candidate identities,
-execution references, budgets, verification results, and decisions. That record
-must survive the end of an agent turn or the closure of a client.
+| Metric | A error | Allowed maximum |
+| --- | ---: | ---: |
+| Full-curve NRMSE | 12.45% | 1% |
+| Endpoint relative error | 14.70% | 1% |
+| Yield relative error | 13.19% | 2% |
+| Plastic slope relative error | 33.08% | 5% |
 
-The conversation is the primary interface. The persistent research record holds
-research decisions; AbqJobPilot remains the authority for its execution facts.
+</details>
 
-### The intended researcher experience
+The validated response was too low at yield and too shallow after yield. Main used the measured A curve and the target residuals to propose **Candidate B**, with **288 MPa** yield stress and **3,003 MPa** hardening modulus. Raising yield stress addresses the force deficit near yield. Increasing the hardening modulus addresses the post-yield slope. The A feedback was committed and its attempt settled once after a controlled recovery of the terminal evidence record.
 
-1. **Bring a verified model.** Register an approved Abaqus baseline, its input
-   dependencies, provenance, validation evidence, and known limitations.
-2. **Define a research goal.** Specify observables, experimental data, constraints,
-   units, tolerances, allowed changes, and a bounded execution budget.
-3. **Work with Project Main.** Codex plans the investigation and delegates narrow
-   tasks to specialized subagents when useful.
-4. **Review controlled candidates.** Model changes receive explicit identities
-   and pass contract checks before execution authorization is considered.
-5. **Run approved experiments.** AbqJobPilot executes within its supported,
-   precisely authorized scope and records job-level evidence.
-6. **Examine the evidence.** Check provenance, numerical results, frozen goal
-   criteria, and applicable independent references before accepting a conclusion.
-7. **Continue, pause, or stop.** A supported but unmet goal may justify a new
-   candidate. Unknown execution, missing evidence, changed physics, or exhausted
-   authority must block further automatic action.
-8. **Keep a reproducible record.** Preserve candidate inputs, execution bindings,
-   result provenance, verification records, decisions, and scientific caveats.
+**Candidate B is the next research decision.** Its proposal and preparation passed the applicable scientific and offline checks. The latest live handoff stopped at the terminal focus check before readiness. B has no solver result or ODB, so the second experiment and the full A-to-B verification remain open. The tensile findings concern this synthetic target and benchmark model. The repository publishes this evidence summary. The raw tensile artifacts and independent review records are outside the source distribution.
 
-Automatic continuation after an external job completes is a separate feasibility
-milestone. Starting a programmatic Codex turn must not be assumed to resume the
-researcher's original visible Main conversation.
-
-## Verified-Model-First
-
-The initial scope starts with trusted engineering assets and constrained changes.
-Generating arbitrary complex CAE models from natural language (Text-to-CAE) is
-outside the first implementation scope.
-
-A valid input file alone does not establish a valid physical model. Contact,
-material laws, sets and surfaces, boundary conditions, load histories, and thermal
-interfaces carry engineering meaning that must be preserved or revalidated.
-
-The planned **Model Contract** makes those assumptions and allowed mutations
-explicit. Broader geometry, mesh, or physics changes would require new contract
-versions and appropriate review. Baselines remain immutable; candidates are
-derived in controlled workspaces.
-
-## One Main, specialized expertise
-
-Codex provides the agent harness and native subagent coordination. GD-CAE will
-define domain roles and handoff contracts without implementing another multi-agent
-framework. Specialists are used on demand rather than kept permanently active.
-
-| Role | Intended responsibility | Structured handoff |
-| --- | --- | --- |
-| **Project Main** | Clarify the research question, coordinate work, and explain decisions and approval requests. | Research plan and agent tasks |
-| **CAE Model** | Inspect baseline semantics and propose scoped model variants. | Candidate proposal and mutation manifest |
-| **Results / ODB** | Specify admissible extraction and interpret traceable numerical data. | Extraction request and evidence references |
-| **Inverse / Optimization** | Propose experiments and parameter candidates using appropriate numerical methods. | Parameter proposal, method, and uncertainty |
-| **Independent Reviewer** | Challenge assumptions and identify missing evidence or validation. | Findings and unresolved concerns |
-
-Reviewer opinions are distinct from machine verification records. Frozen,
-deterministic checks should decide whether machine-checkable criteria are met;
-an agent's self-report cannot substitute for those checks. Role instructions alone
-also do not provide operating-system permission isolation.
-
-## Proposed architecture
+## Architecture and workflow
 
 ```mermaid
-flowchart TB
-    R["Researcher: goal, constraints, approvals"] --> C["Codex Main"]
-    C --> S["On-demand Codex Subagents: CAE, Results, Inverse, Review"]
-    C --> G["GD-CAE: ResearchProject, Contracts, Budget, Verification"]
-    S --> G
-    G -->|"Precisely approved requests"| A["AbqJobPilot: Grant, Receipt, Supervisor, Run evidence"]
-    A --> B["Abaqus within the approved backend scope"]
-    B --> A
-    A -->|"Execution evidence"| G
-    G -->|"Research decisions and open questions"| C
+flowchart LR
+    R["Researcher<br/>goal, scope and approvals"]
+    M["Codex Main<br/>scientific reasoning and decisions"]
+    G["GD-CAE Core + AgentHub<br/>contracts, candidates, budget and tasks"]
+    F["AbqJobPilot<br/>native Plan, Grant, Run and Receipt"]
+    A["Abaqus<br/>authorized analysis"]
+    V["Independent verification<br/>provenance, numerics and target metrics"]
+    R -->|"Define research scope"| M
+    M -->|"Propose candidate"| G
+    G -->|"Contract-checked request"| F
+    R -->|"Exact execution approval"| F
+    F -->|"Dispatch within grant"| A
+    A -->|"Solver outputs"| F
+    F -->|"Recorded facts and artifacts"| V
+    G -->|"Frozen criteria"| V
+    V -->|"Record findings"| G
+    G -->|"Evidence and residuals"| M
 ```
 
-- **Codex proposes and reasons.** Main and subagents cannot issue their own real
-  solver grants, change frozen acceptance criteria, or create authoritative
-  verification records.
-- **GD-CAE governs research state and acceptance.** It will manage contracts,
-  candidates, budgets, evidence bindings, and research-level decisions. It must
-  not become a second Abaqus process supervisor or write the execution backend's
-  private database.
-- **AbqJobPilot owns controlled Abaqus execution.** Its Agent-first service manages
-  job-level authorization, receipts, process lifecycle, and observed execution
-  evidence. A completed job does not establish a research conclusion.
-- **The researcher approves the scientific scope.** Baselines, assumptions,
-  consequential changes, and execution authority remain subject to explicit review.
+- **Codex Main** interprets the scientific question, proposes experiments, and explains decisions. Specialist work can cover model inspection, results analysis, inverse methods, and independent review.
+- **GD-CAE Core and AgentHub** own the research records and coordination. Core manages ResearchProject state, contracts, budgets, candidate checks, and verification records. AgentHub binds tasks to project, role, and evidence. The session adapter requires the host to enforce the configured role and tool scope.
+- **[AbqJobPilot](https://github.com/BrunelXian/AbqJobPilot)** owns authorized Abaqus execution, including the native job lifecycle and its evidence. The researcher approves an exact execution scope separately from the scientific agreement.
 
-These are logical responsibility domains. They do not require three distributed
-microservices.
+### Start from a model qualified for the question
 
-## Evidence and verification
+A **Sanity Model** is GD-CAE's term for an engineering baseline qualified for a particular research purpose. Its identity includes the model and dependencies, the physics and assumptions that matter to the comparison, and the evidence that justifies using it. A model may come from a researcher or be developed as a candidate for qualification. A calibration study can vary material parameters while holding the mesh, loading, boundary conditions, and measurement definitions fixed. A different question may require different invariants. [Sanity Model guide](docs/user/SANITY_MODEL_USER_GUIDE.md)
 
-The proposed verification model keeps distinct questions separate:
+### Put the rules and evidence on record
 
-| Layer | Question |
+A **ResearchProject** is the durable record of the investigation. Its frozen engineering bundle binds the goal, model, and verification contracts. In projects with versioned research agreements enabled, the researcher can review the scope, scientific claims, known unknowns, and revision history. An agreement sets the scientific rules. An exact native Grant governs a particular execution.
+
+Verification distinguishes provenance, model integrity, numerical health, goal acceptance, and physical validation. An independent check needs the right input and output identities, region and step selectors, units, and acceptance rule. A converged analysis can miss the target, as A did. Physical claims require independent evidence appropriate to the intended use. [Verification architecture](docs/adr/ADR-004-execution-evidence-research-verification.md)
+
+## Quick start
+
+### Reproduce a published curve comparison
+
+From the repository root, run the bundled small-punch case with Python 3. It uses only the standard library and the checked-in CSV files.
+
+```sh
+python product/research-preview/release/case/recompute.py
+```
+
+The endpoint changes by about **−0.0103%**, while the full-curve RMS difference is **6.1338** in model force units. This is why endpoint agreement alone cannot establish equivalence. The figure compares historical ODB-derived curves and their pointwise difference. [Case notes and data provenance](product/research-preview/release/case/CASE.md)
+
+<p align="center">
+  <img src="product/research-preview/release/case/force-displacement.png" width="760" alt="Historical small-punch force–displacement curves and their pointwise difference">
+</p>
+
+### Build and install the Research Preview
+
+The source tree builds local installation media for **`gdcae-research:research`**. Use Windows PowerShell and a verified Windows CPython **3.12.10**. Installation uses a Codex Desktop client and CLI with local Marketplace support. The build itself needs neither a solver nor an external model. [Build and verification commands](product/research-preview/README.md)
+
+Extract the inner installation ZIP and follow its generated `INSTALL.md` to register the Marketplace, install the plugin, bind the interpreter, and run `doctor`. The installed `main` action analyzes an authorized external SMALL-PUNCH project with the required inputs and provenance files. The `agreement` action exposes versioned research agreements for explicitly enabled projects. The checked-in CSV example above runs independently of both. [Installation template](product/research-preview/INSTALL.template.md) · [Research agreement commands](plugins/gdcae-research/references/research-agreement.md)
+
+## Current scope and roadmap
+
+| Surface | Current scope |
 | --- | --- |
-| **V0 — Provenance** | Do the inputs, Run, attempt, outputs, versions, and hashes belong together? |
-| **V1 — Model integrity** | Were mutations permitted and declared physical invariants preserved? |
-| **V2 — Solver and numerical health** | Is there sufficient evidence of execution, convergence, and numerical reliability? |
-| **V3 — Goal acceptance** | Do the metric, entity, step, units, and tolerance satisfy the frozen goal? |
-| **V4 — Physical validation** | Is the model supported by applicable benchmarks, independent analysis, or experimental data? |
+| **Research Core** | Persistent ResearchProjects, frozen contract bundles, versioned agreements, candidate checks, budget records, and bounded evidence interfaces. |
+| **Codex Research Preview** | The installed beta.1 Desktop preview passed historical small-punch analysis and malformed CSV rejection. The current source adds versioned Markdown agreement views. Desktop activation is version-specific. The AOO Desktop adapter blocks specialist chat creation where it cannot bind role and tool restrictions. |
+| **Solver backend** | The demonstrated real path uses a separately qualified AbqJobPilot integration with Abaqus/Standard 2024 on Windows. The public Research Preview provides historical analysis and agreement tools. |
 
-`UNKNOWN`, `INCONCLUSIVE`, and `NOT_ASSESSED` are meaningful outcomes. Solver
-completion, artifact existence, and curve-fit quality must not silently become
-claims of physical validity. Each goal must declare which checks are required.
+The next milestone is to execute and independently evaluate B under the same frozen criteria. Subsequent research priorities are to package reproducible evidence for external review, qualify specialist handoffs on supported hosts, and test the methodology on small-punch material inversion and laser deposition scan-order studies. Those studies will help establish where goal-driven orchestration improves on a fixed script, design of experiments, or optimizer.
 
-## Research applications we are building toward
+## Documentation
 
-- **Small Punch material inversion.** Infer Hollomon parameters from measured
-  force-displacement data and an approved model, examining fit quality,
-  non-uniqueness, and contact and mesh assumptions.
-- **LDED scan-order optimization.** Explore admissible scan sequences in trusted
-  thermo-mechanical models while preserving element activation, evolving thermal
-  boundaries, and the interpretation of deformation and stress metrics.
-- **AFI-guided diagnostics.** Use Abaqus Failure Intelligence cases as sourced
-  hypotheses, propose bounded diagnostic actions, and check whether a suggested
-  numerical fix changes the physical problem.
-- **Reproducible simulation studies.** Support controlled parameter sweeps,
-  calibration, model comparison, and sensitivity analysis.
-
-These are target use cases, not implemented workflows. Where a fixed script, DOE,
-or numerical optimizer is sufficient, it should remain the baseline against which
-agent assistance is evaluated.
-
-## Engineering principles
-
-- **Verified-Model-First:** preserve approved baselines and their scope of validity.
-- **Persistent goals:** keep contracts, budgets, evidence, and decisions beyond a turn.
-- **Evidence-governed autonomy:** separate proposals, authorization, and verification.
-- **Single execution authority:** use the approved AbqJobPilot path for Abaqus work.
-- **Conservative recovery:** query the original execution identity after an uncertain
-  response; do not silently retry with a new request identity.
-- **Fail closed:** stop advancement when identity, evidence, or authorization is unclear.
-- **Reproducibility:** record rejected candidates and inconclusive results as well as
-  successful experiments.
-
-## Roadmap
-
-Milestones describe planned work, not shipped functionality or execution permission.
-
-| Milestone | Intended outcome |
+| Read this | For |
 | --- | --- |
-| **M00-P — Architecture and product reconciliation** | Review Codex-native UX, authority boundaries, legacy ADR conflicts, and research-state contracts. Audit completed; decisions await review. |
-| **M01 — Read-only evidence bridge** | Inspect bounded AF evidence through explicit Project bindings; verify synthetic contracts and isolated AF compatibility separately. |
-| **M02 — Research and model contracts** | Implement frozen goals, model constraints, candidate checks, budgets, and deterministic verification records. |
-| **M03 — Offline research loop** | Prove persistent, recoverable two-step workflows with Fake/Python fixtures and no Abaqus calls. |
-| **M03-E — Codex continuation** | Test event-driven continuation, duplicate-event handling, and original visible Main-thread recovery separately. |
-| **M04 — Real bounded Abaqus loop** | Following separate backend-extension and execution approvals, demonstrate legal parameter variants and independently checked outcomes. |
-| **M05 — Reliability benchmark** | Measure unsafe acceptance, recovery behavior, diagnostic quality, and cost against simpler baselines. |
-| **M06 — Domain research trial** | Conduct a nontrivial Small Punch inversion study with model, data, and uncertainty checks. |
-| **M07 — Researcher experience** | Package installation, diagnostics, project initialization, documentation, and reproducible use. |
+| [Sanity Model guide](docs/user/SANITY_MODEL_USER_GUIDE.md) and [model-understanding protocol](docs/architecture/AGENT_MODEL_UNDERSTANDING_AND_SANITY_PROTOCOL.md) | Qualifying a baseline, defining allowed changes, and interpreting model evidence. |
+| [ResearchProject and contract design](docs/architecture/M02_RESEARCH_PROJECT_AND_CONTRACTS.md) | Project identity, frozen engineering bundles, and persistence. |
+| [Execution and verification ADRs](docs/adr/ADR-003-codex-native-delegated-execution.md) · [Verification layers](docs/adr/ADR-004-execution-evidence-research-verification.md) | Authority boundaries and the distinction between solver facts and research claims. |
+| [Plugin skill](plugins/gdcae-research/skills/research/SKILL.md) · [Release maintenance](product/research-preview/README.md) | User-facing entry points, installation, and reproducibility. |
 
-## Current implementation and historical records
+### Repository structure
 
-The repository was renamed from **AegisCAE Runtime**. It contains ResearchProject
-persistence, frozen contracts, budgets, candidate guards, evidence bridges and
-offline workflow/verification implementations alongside historical architecture
-records. These local capabilities do not establish qualified real A/B execution
-or a released end-user installation workflow.
+| Directory | Contents |
+| --- | --- |
+| [`src/aegiscae/`](src/aegiscae/) | Research state, contracts, Main runtime, scoped session coordination, and Abaqus evidence adapters. The Python distribution retains the name `aegiscae`. |
+| [`plugins/`](plugins/) | Codex skills, specialist role definitions, and bounded launchers. |
+| [`product/research-preview/`](product/research-preview/) | Local installation media tooling, templates, and the reproducible historical case. |
+| [`docs/`](docs/) · [`tests/`](tests/) | Architecture decisions, user guides, and unit, integration, and architecture checks. |
 
-The separate [AbqJobPilot](https://github.com/BrunelXian/AbqJobPilot) project has a
-limited, historically tested Agent-first execution MVP on its Develop line. At the
-M00-P reviewed baseline, its normal product path is restricted to a fixed Standard
-input and a single provisioned Plan/Run. Historical fixed DAT checks do not prove
-arbitrary model support or ODB content verification. Parameterized multi-candidate
-execution and controlled ODB extraction require separately reviewed extensions.
+<!-- research-qa:start -->
+## Researcher FAQ
 
-The documents below preserve the earlier architecture and its rationale. Existing
-ADR-001/002 retain earlier decisions; current governance documents distinguish
-those historical records from the Codex-native and AF authority boundaries.
-This README does not rewrite or supersede any ADR.
+1. **What does GD-CAE help me do?** It links a research question to a model, controlled variants, observations, and evidence for the decision to continue or stop.
+2. **What is a Sanity Model?** A baseline qualified for a particular research purpose, with explicit assumptions, evidence, and limits of use.
+3. **Who can create the baseline?** A researcher can bring a model, and an agent can propose a candidate model for qualification. Both need evidence appropriate to the intended use. The historical comparison uses existing project data.
+4. **What is a Research Contract?** A versioned agreement within a ResearchProject that links the research question, model, permitted changes, observations, acceptance criteria, and scientific boundaries.
+5. **What may an agent change?** Only variables within the confirmed scope. The research question determines whether material, geometry, analysis steps, loads, interactions, or scan order are variables or invariants.
+6. **Does convergence establish validity?** Convergence answers a numerical question. Goal satisfaction and physical validity require their own checks and applicable reference evidence.
+7. **How are research terms revised?** In an enabled project, review the proposed differences, reasons, and impact, then explicitly confirm the exact proposal digest. The prior version stays effective until confirmation.
+8. **Does confirming a contract authorize a solve?** Execution requires a separate native Grant for the precise candidate and scope, with its own resources, limits, and expiry.
+9. **How does this differ from fixed automation?** Fixed automation repeats a prescribed procedure. A research workflow uses verified outcomes to decide which experiment is informative and when the evidence supports a conclusion.
+10. **What can I use today?** The Research Preview supports historical small-punch analysis and versioned research agreements. The controlled tensile study separately demonstrated a real A solve, independent ODB checks, and a B proposal driven by measured feedback.
+<!-- research-qa:end -->
 
-- [Historical architecture](ARCHITECTURE.md)
-- [Existing runtime invariants](RUNTIME_INVARIANTS.md)
-- [Historical threat model](THREAT_MODEL.md)
-- [Legacy migration decisions](MIGRATION_FROM_LEGACY.md)
-- [Frozen baseline register](docs/baseline/BASELINE_REGISTER.md)
-- [Milestone 0 implementation plan](docs/milestones/MILESTONE_00_IMPLEMENTATION_PLAN.md)
-- [ADR-001: Runtime-first](docs/adr/ADR-001-runtime-first.md)
-- [ADR-002: Selective legacy migration](docs/adr/ADR-002-legacy-selective-migration.md)
+## Contributing
 
-**The ambition:** a research environment in which every experiment has an identity,
-every conclusion has evidence, and every autonomous action has a defined boundary.
+Peer review is welcome, especially on model qualification, verification criteria, solver evidence, and agent handoffs. Use a GitHub issue or pull request if you have repository access. For a reproducibility report, include the revision, environment, a minimal shareable input, the expected result, and the observed evidence. Share only artifacts you have permission to publish.
+
+## License
+
+Goal-Driven CAE Orchestrator is licensed under the [Apache License 2.0](LICENSE). AbqJobPilot and Abaqus are separate products with their own terms.
