@@ -2,6 +2,10 @@
 
 Status: Milestone 0 — Architecture Freeze
 
+Scope note: this document retains the Milestone 0 solver-neutral design. The
+current local tensile/AbqJobPilot product profile is documented separately in
+[Local tensile execution trust](docs/architecture/LOCAL_TENSILE_EXECUTION_TRUST.md).
+
 ## 1. System purpose
 
 AegisCAE Runtime is a new, solver-neutral Controlled CAE Runtime. Its intended

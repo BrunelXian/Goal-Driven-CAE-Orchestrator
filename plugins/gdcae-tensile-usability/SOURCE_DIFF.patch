@@ -1,0 +1,2412 @@
+--- a/src/af/abqjobpilot/execution/tensile_profile.py
++++ b/src/af/abqjobpilot/execution/tensile_profile.py
+@@ -48,7 +48,7 @@
+     from .standard_contract import RESOURCES
+     ctx=service.context
+     loc=Path(ctx.test_root)
+-    require(re.fullmatch(JOB,job) and (loc.name=="af-"+job.split("_")[1] or (job.split("_")[1]=="A" and re.fullmatch(r"af-A-(?:cont|readmit)-[a-f0-9]{32}",loc.name)) or (job.split("_")[1]=="B" and re.fullmatch(r"af-B-readmit-[a-f0-9]{32}",loc.name))) and root==loc/"engineering"
++    require(re.fullmatch(JOB,job) and (loc.name=="af-"+job.split("_")[1] or (job.split("_")[1]=="A" and re.fullmatch(r"af-A-(?:cont|readmit)-[a-f0-9]{32}",loc.name)) or (job.split("_")[1]=="B" and re.fullmatch(r"af-B-(?:readmit|window)-[a-f0-9]{32}",loc.name))) and root==loc/"engineering"
+             and purpose in ("OFFLINE_TEST_ONLY","JIT_HUMAN_REVIEW") and now()<expires<=now()+TTL,
+             "TENSILE_SCOPE","Fixed campaign layout, job and bounded preparation window required")
+     import subprocess
+@@ -63,7 +63,7 @@
+             and not any(p.suffix.lower() in (".pyd",".pyc",".dll",".zip") for p in cache.rglob("*")),
+             "TENSILE_SOURCE_CHANGED","Unexpected executable file in registered GD cache")
+     work=loc.parent
+-    proc=subprocess.run([PYTHON,"-I","-B","-S",str(cache/"admission_snapshot.py"),str(work),*(['b-readmit:'+loc.name.removeprefix('af-B-readmit-')] if loc.name.startswith('af-B-readmit-') else ['phase:B'] if loc.name=='af-B' else (["readmit:"+loc.name.removeprefix("af-A-readmit-")] if loc.name.startswith("af-A-readmit-") else ([loc.name[10:]] if loc.name.startswith("af-A-cont-") else [])))],
++    proc=subprocess.run([PYTHON,"-I","-B","-S",str(cache/"admission_snapshot.py"),str(work),*(['b-window:'+loc.name.removeprefix('af-B-window-')] if loc.name.startswith('af-B-window-') else ['b-readmit:'+loc.name.removeprefix('af-B-readmit-')] if loc.name.startswith('af-B-readmit-') else ['phase:B'] if loc.name=='af-B' else (["readmit:"+loc.name.removeprefix("af-A-readmit-")] if loc.name.startswith("af-A-readmit-") else ([loc.name[10:]] if loc.name.startswith("af-A-cont-") else [])))],
+                         stdin=subprocess.DEVNULL,capture_output=True,timeout=60,check=True,cwd=cache)
+     snap=json.loads(proc.stdout)
+     handoff=snap["req"]
+@@ -92,6 +92,9 @@
+     if 'b_readmission' in snap:
+         require(handoff['phase']=='B' and expires==snap['b_readmission']['expires_at'],'B_READMISSION_EXPIRY_CHANGED','Exact B re-admission intent expiry required')
+         value['b_readmission']=snap['b_readmission']
++    if 'execution_window' in snap:
++        require(handoff['phase']=='B' and expires==snap['execution_window']['expires_at'],'WINDOW_EXPIRY_CHANGED','Exact current execution window required')
++        value['execution_window']=snap['execution_window']
+     validate_input(root,value)
+     write_new(registration_path(ctx),private_value(ctx,value))
+     return value
+@@ -129,7 +132,7 @@
+             and (value["project_id"],value["project_instance_id"],value["context_digest"])==
+             (ctx.project_id,ctx.project_instance_id,ctx.context_digest) and root==Path(ctx.test_root)/"engineering"
+             and config.value()==spec_config().value(),"TENSILE_REGISTRATION_MISMATCH","Registered context or runtime differs")
+-    if "continuation" in value or "readmission" in value or 'b_admission' in value or 'b_readmission' in value:
++    if "continuation" in value or "readmission" in value or 'b_admission' in value or 'b_readmission' in value or 'execution_window' in value:
+         # Initial creation has no persisted Plan. Any later preflight/authorization
+         # requires the same committed GD binding. No change to Grant/Owner core.
+         import sqlite3,subprocess
+@@ -145,8 +148,8 @@
+             committed=bool(persisted)
+             native_plan=json.loads(persisted[0][0]) if committed else None
+         finally:db.close()
+-        kind='b_readmission' if 'b_readmission' in value else 'b_admission' if 'b_admission' in value else ("readmission" if "readmission" in value else "continuation")
+-        op=('b-readmit:'+value[kind]['operation_id']) if kind=='b_readmission' else 'phase:B' if kind=='b_admission' else (("readmit:" if kind=="readmission" else "")+value[kind]["operation_id"])
++        kind='execution_window' if 'execution_window' in value else 'b_readmission' if 'b_readmission' in value else 'b_admission' if 'b_admission' in value else ("readmission" if "readmission" in value else "continuation")
++        op=('b-window:'+value[kind]['operation_id']) if kind=='execution_window' else ('b-readmit:'+value[kind]['operation_id']) if kind=='b_readmission' else 'phase:B' if kind=='b_admission' else (("readmit:" if kind=="readmission" else "")+value[kind]["operation_id"])
+         # Only tensile_terminal's trusted read-only evidence call supplies True.
+         # Plan/registration/request data never selects this branch. All native
+         # prepare/preflight/Grant/dispatch callers use the strict default.
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info/METADATA
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info/METADATA
+@@ -1,3 +0,0 @@
+-Metadata-Version: 2.1
+-Name: abqjobpilot-gdcae-internal
+-Version: 0.0.0+tensilebreentry1
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info/WHEEL
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info/WHEEL
+@@ -1,4 +0,0 @@
+-Wheel-Version: 1.0
+-Generator: bounded-pre-ready-recovery
+-Root-Is-Purelib: true
+-Tag: py3-none-any
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/METADATA
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/METADATA
+@@ -0,0 +1,3 @@
++Metadata-Version: 2.1
++Name: abqjobpilot-gdcae-internal
++Version: 0.0.0+tensileusability1
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/WHEEL
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/WHEEL
+@@ -0,0 +1,4 @@
++Wheel-Version: 1.0
++Generator: bounded-pre-ready-recovery
++Root-Is-Purelib: true
++Tag: py3-none-any
+--- a/src/gd/admission_snapshot.py
++++ b/src/gd/admission_snapshot.py
+@@ -10,7 +10,7 @@
+     import workflow
+     work=Path(sys.argv[1]);pin=hashlib.sha256((work/"contract.json").read_bytes()).hexdigest()
+     pkg=hashlib.sha256((root/"package-manifest.json").read_bytes()).hexdigest()
+-    is_b=len(sys.argv)>2 and (sys.argv[2]=='phase:B' or sys.argv[2].startswith('b-readmit:'))
++    is_b=len(sys.argv)>2 and (sys.argv[2]=='phase:B' or sys.argv[2].startswith(('b-readmit:','b-window:')))
+     camp=workflow.Campaign(work,pin,pkg,readonly=True,candidate_b_admission=is_b)
+     try:
+         camp.db.execute("BEGIN")
+@@ -18,6 +18,9 @@
+             import b_admission
+             mode=sys.argv[3] if len(sys.argv)>3 else '--preparation'
+             if mode not in ('--preparation','--committed','--terminal'):raise ValueError('SNAPSHOT_MODE_REQUIRED')
++            if sys.argv[2].startswith('b-window:'):
++                import execution_windows
++                return execution_windows.snapshot(camp,mode,sys.argv[2][9:])
+             if sys.argv[2].startswith('b-readmit:'):
+                 import b_readmission
+                 snap=b_readmission.snapshot(camp,mode)
+--- a/src/gd/approval_dialog.py
++++ b/src/gd/approval_dialog.py
+@@ -0,0 +1,253 @@
++"""Local Win32 review surface. A mouse decision is not a native AF Grant.
++
++No Solver, Owner or authorization API is imported here. The orchestration caller
++revalidates the exact packet and calls the existing native issuer once.
++"""
++import ctypes
++from ctypes import wintypes as w
++from datetime import datetime, timedelta, timezone
++import hashlib
++import json
++import queue
++import threading
++import time
++
++
++def require(ok, reason):
++    if not ok: raise ValueError(reason)
++
++
++def packet_bytes(value):
++    return json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode('utf8')
++
++
++def packet_digest(value): return hashlib.sha256(packet_bytes(value)).hexdigest()
++
++
++class DecisionState:
++    """One start and one approve; focus and keyboard events cannot grant either."""
++    def __init__(self,wall=time.time,clock=time.monotonic):
++        self.wall,self.clock=wall,clock
++        self.lock=threading.Lock();self.event=threading.Event()
++        self.mode='INITIAL';self.cancelled=False;self.choice=None
++        self.expires=None;self.deadline=None;self.used=set()
++    def arm(self,mode,*,expires=None,deadline=None):
++        with self.lock:
++            require(not self.cancelled and mode not in self.used,'DIALOG_STAGE_UNAVAILABLE')
++            self.mode=mode;self.choice=None;self.expires=expires;self.deadline=deadline;self.event.clear()
++    def expired(self):
++        return ((self.expires is not None and self.wall()>=self.expires)
++                or (self.deadline is not None and self.clock()>=self.deadline))
++    def click(self,action,*,mouse):
++        with self.lock:
++            if action=='cancel':
++                self.cancelled=True;self.choice='cancel';self.mode='CANCELLED';self.event.set();return True
++            if not mouse or self.cancelled or self.choice is not None or self.mode not in ('START','APPROVE') or self.mode in self.used:return False
++            if self.expired():
++                self.mode='EXPIRED';self.choice='expired';self.event.set();return False
++            if action!=self.mode.lower():return False
++            self.used.add(self.mode);self.choice=action;self.mode='BUSY';self.event.set();return True
++    def tick(self):
++        with self.lock:
++            if self.mode=='APPROVE' and self.expired():
++                self.mode='EXPIRED';self.choice='expired';self.event.set()
++            return self.mode
++    def wait(self):
++        while not self.event.wait(.05): self.tick()
++        require(not self.cancelled,'HUMAN_CANCELLED_NO_RETRY')
++        require(self.choice not in (None,'expired'),'APPROVAL_EXPIRED_NO_GRANT')
++        return self.choice
++    def check(self):
++        require(not self.cancelled,'HUMAN_CANCELLED_NO_RETRY')
++        require(not self.expired(),'APPROVAL_EXPIRED_NO_GRANT')
++
++
++class Win32Window:
++    """One modeless window, two buttons, read-only full details; no focus policy."""
++    def __init__(self,state,*,test_only=False):
++        self.state=state;self.test_only=test_only;self.commands=queue.Queue()
++        self.created=threading.Event();self.failure=None;self.hwnd=None
++        self.thread=threading.Thread(target=self._run,name='gdcae-native-review',daemon=True)
++        self.thread.start()
++        require(self.created.wait(10),'APPROVAL_WINDOW_CREATION_TIMEOUT')
++        if self.failure:raise RuntimeError('APPROVAL_WINDOW_UNAVAILABLE') from self.failure
++    def update(self,status,details='',button=None,enabled=False,summary=''):
++        require(self.thread.is_alive(),'APPROVAL_WINDOW_CLOSED')
++        self.commands.put(('update',status,details,button,enabled,summary))
++    def close(self):
++        if self.thread.is_alive():self.commands.put(('close',))
++        self.thread.join(2)
++    def _run(self):
++        try:self._windows()
++        except BaseException as exc:
++            self.failure=exc;self.state.click('cancel',mouse=False);self.created.set()
++    def _windows(self):
++        u=ctypes.WinDLL('user32',use_last_error=True);k=ctypes.WinDLL('kernel32',use_last_error=True)
++        LRESULT=ctypes.c_ssize_t;WNDPROC=ctypes.WINFUNCTYPE(LRESULT,w.HWND,w.UINT,w.WPARAM,w.LPARAM)
++        class WNDCLASS(ctypes.Structure):
++            _fields_=[('style',w.UINT),('lpfnWndProc',WNDPROC),('cbClsExtra',ctypes.c_int),('cbWndExtra',ctypes.c_int),
++                      ('hInstance',w.HINSTANCE),('hIcon',w.HICON),('hCursor',w.HANDLE),('hbrBackground',w.HBRUSH),
++                      ('lpszMenuName',w.LPCWSTR),('lpszClassName',w.LPCWSTR)]
++        k.GetModuleHandleW.argtypes=[w.LPCWSTR];k.GetModuleHandleW.restype=w.HMODULE
++        u.RegisterClassW.argtypes=[ctypes.POINTER(WNDCLASS)];u.RegisterClassW.restype=w.ATOM
++        u.CreateWindowExW.argtypes=[w.DWORD,w.LPCWSTR,w.LPCWSTR,w.DWORD,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_int,w.HWND,w.HMENU,w.HINSTANCE,ctypes.c_void_p];u.CreateWindowExW.restype=w.HWND
++        u.DefWindowProcW.argtypes=[w.HWND,w.UINT,w.WPARAM,w.LPARAM];u.DefWindowProcW.restype=LRESULT
++        u.CallWindowProcW.argtypes=[ctypes.c_void_p,w.HWND,w.UINT,w.WPARAM,w.LPARAM];u.CallWindowProcW.restype=LRESULT
++        u.SetWindowLongPtrW.argtypes=[w.HWND,ctypes.c_int,ctypes.c_void_p];u.SetWindowLongPtrW.restype=ctypes.c_void_p
++        u.SetWindowTextW.argtypes=[w.HWND,w.LPCWSTR];u.EnableWindow.argtypes=[w.HWND,w.BOOL]
++        u.ShowWindow.argtypes=[w.HWND,ctypes.c_int];u.DestroyWindow.argtypes=[w.HWND]
++        u.SetFocus.argtypes=[w.HWND];u.SetFocus.restype=w.HWND
++        u.GetMessageW.argtypes=[ctypes.POINTER(w.MSG),w.HWND,w.UINT,w.UINT];u.GetMessageW.restype=w.BOOL
++        u.TranslateMessage.argtypes=[ctypes.POINTER(w.MSG)];u.DispatchMessageW.argtypes=[ctypes.POINTER(w.MSG)];u.DispatchMessageW.restype=LRESULT
++        u.SetTimer.argtypes=[w.HWND,ctypes.c_size_t,w.UINT,ctypes.c_void_p];u.SetTimer.restype=ctypes.c_size_t
++        u.KillTimer.argtypes=[w.HWND,ctypes.c_size_t]
++        controls={};mouse_release=[False];held=[False];original_proc=[None];expanded=[False]
++        @WNDPROC
++        def button_proc(hwnd,msg,wp,lp):
++            # No Enter/Space/default-button or BM_CLICK approval. A real button
++            # mouse up must follow its mouse down. TEST_ONLY automation is not
++            # represented as human approval evidence.
++            if msg in (0x100,0x101,0x104,0x105,0x102,0xF5):return 0
++            if msg==0x201:held[0]=True
++            if msg==0x202:
++                mouse_release[0]=held[0];held[0]=False
++                try:return u.CallWindowProcW(original_proc[0],hwnd,msg,wp,lp)
++                finally:mouse_release[0]=False
++            return u.CallWindowProcW(original_proc[0],hwnd,msg,wp,lp)
++        def refresh():
++            self.state.tick()
++            while True:
++                try:item=self.commands.get_nowait()
++                except queue.Empty:break
++                if item[0]=='close':u.DestroyWindow(self.hwnd);return
++                _,status,details,button,enabled,summary=item
++                u.SetWindowTextW(controls['status'],status)
++                if details:u.SetWindowTextW(controls['details'],details)
++                if summary:u.SetWindowTextW(controls['summary'],summary)
++                if button:u.SetWindowTextW(controls['approve'],button)
++                u.EnableWindow(controls['approve'],enabled)
++            if self.state.mode=='APPROVE':
++                seconds=max(0,int(min(self.state.expires-self.state.wall(),self.state.deadline-self.state.clock())))
++                u.SetWindowTextW(controls['countdown'],'剩余 %d 秒；Enter 不批准。失焦或最小化不延长有效期。'%seconds)
++            elif self.state.mode=='EXPIRED':
++                u.EnableWindow(controls['approve'],False)
++                u.SetWindowTextW(controls['countdown'],'已过期：未批准，不会创建 Grant 或启动求解。保留证据，停止。')
++            if self.state.mode in ('BUSY','CANCELLED'):u.EnableWindow(controls['approve'],False)
++        @WNDPROC
++        def wndproc(hwnd,msg,wp,lp):
++            try:
++                if msg==0x111:
++                    ident=wp&0xffff
++                    if ident==102:
++                        self.state.click('cancel',mouse=False);u.DestroyWindow(hwnd)
++                    elif ident==101 and mouse_release[0]:
++                        mode=self.state.mode
++                        if self.state.click(mode.lower(),mouse=True):
++                            u.EnableWindow(controls['approve'],False)
++                            u.SetWindowTextW(controls['status'],'已收到点击，正在核验。尚未获得原生 Grant。')
++                    elif ident==204:
++                        expanded[0]=not expanded[0]
++                        u.ShowWindow(controls['details'],5 if expanded[0] else 0)
++                        u.ShowWindow(controls['summary'],0 if expanded[0] else 5)
++                        u.SetWindowTextW(controls['details_toggle'],'返回科研摘要 ▲' if expanded[0] else '查看完整身份与证据详情 ▼')
++                    return 0
++                if msg==0x10:
++                    self.state.click('cancel',mouse=False);u.DestroyWindow(hwnd);return 0
++                if msg==2:u.PostQuitMessage(0);return 0
++                if msg==0x113:refresh();return 0
++                # No dialog manager/IsDialogMessage, no default Enter action.
++                if msg==0x100 and wp==27:self.state.click('cancel',mouse=False);return 0
++                return u.DefWindowProcW(hwnd,msg,wp,lp)
++            except BaseException as exc:
++                self.failure=exc;self.state.click('cancel',mouse=False);return 0
++        instance=k.GetModuleHandleW(None);name='GDCAEReview_'+str(id(self))
++        cls=WNDCLASS();cls.lpfnWndProc=wndproc;cls.hInstance=instance;cls.hbrBackground=6;cls.lpszClassName=name
++        require(u.RegisterClassW(ctypes.byref(cls)),'REGISTER_WINDOW_FAILED')
++        title=('TEST_ONLY — ' if self.test_only else '')+'GD-CAE 本机执行审查'
++        self.hwnd=u.CreateWindowExW(0,name,title,0x00CF0000,100,80,980,780,None,None,instance,None)
++        require(self.hwnd,'CREATE_WINDOW_FAILED')
++        def child(kind,text,style,x,y,width,height,ident):
++            h=u.CreateWindowExW(0,kind,text,0x50000000|style,x,y,width,height,self.hwnd,w.HMENU(ident),instance,None)
++            require(h,'CREATE_CONTROL_FAILED');return h
++        controls['status']=child('STATIC','正在静态检查。尚未创建新 Plan，尚未批准执行。',0,20,15,925,65,201)
++        controls['countdown']=child('STATIC','默认取消。点击“发起审查”才创建 JIT Plan；不会自动批准。',0,20,82,925,38,202)
++        controls['summary']=child('STATIC','请等待静态检查；检查通过后可点击“发起审查”。',0,20,140,925,460,205)
++        controls['details']=child('EDIT','',0x00200000|0x0040|0x0004|0x0800,20,140,925,460,203)
++        controls['details_toggle']=child('STATIC','查看完整身份与证据详情 ▼',0x100,20,620,925,30,204)
++        controls['approve']=child('BUTTON','发起审查',0,520,683,200,40,101)
++        controls['cancel']=child('BUTTON','取消',0,745,683,200,40,102)
++        original_proc[0]=u.SetWindowLongPtrW(controls['approve'],-4,ctypes.cast(button_proc,ctypes.c_void_p))
++        require(original_proc[0],'BUTTON_SUBCLASS_FAILED')
++        u.EnableWindow(controls['approve'],False)
++        u.ShowWindow(controls['details'],0)
++        u.SetTimer(self.hwnd,1,100,None);u.ShowWindow(self.hwnd,5);u.SetFocus(controls['cancel'])
++        self.controls=controls;self.created.set()
++        msg=w.MSG()
++        while True:
++            result=u.GetMessageW(ctypes.byref(msg),None,0,0)
++            if result<=0:break
++            u.TranslateMessage(ctypes.byref(msg));u.DispatchMessageW(ctypes.byref(msg))
++        u.KillTimer(self.hwnd,1)
++        require(result!=-1,'WINDOW_MESSAGE_LOOP_FAILED')
++
++
++class ApprovalDialog:
++    def __init__(self,*,wall=time.time,clock=time.monotonic,window_factory=Win32Window):
++        self.state=DecisionState(wall,clock);self.wall,self.clock=wall,clock
++        self.window=window_factory(self.state)
++        self.packet_pin=None;self.operation=None;self.grant_received=False
++    def ready(self,static,operation):
++        self.operation=operation;self.state.arm('START')
++        details=json.dumps(dict(operation_id=operation,static=static,execution_authorized=False),indent=2,ensure_ascii=False)
++        self.window.update('静态准备完成。点击“发起审查”才创建 JIT Plan；这不是计算批准。',details,'发起审查',True,
++            '下一步：发起 Candidate B 的本机执行审查。\r\n\r\n'
++            '研究目的：用真实 B 力–位移响应检验基于 A 反馈提出的两参数调整。\r\n\r\n'
++            '本阶段尚无新 Plan，也没有新 Solver Grant。\r\n'
++            'B 的实际参数、资源、已预留次数和到期时间将在 Plan 核验后显示。\r\n\r\n'
++            '不重算 A，不自动重试，不执行 C。\r\n'
++            '取消将停止后续流程；窗口不会自行终止任何进程。')
++        require(self.state.wait()=='start','REVIEW_START_REQUIRED')
++        return dict(status='READY_RECEIVED_NO_EXECUTION_AUTHORITY',operation_id=operation,proposal_digest=static['proposal_digest'],received_at=self.wall(),input_method='local_win32_mouse')
++    def authorize(self,packet,*,monotonic_deadline):
++        require(self.operation==packet['operation_id'] and 'START' in self.state.used,'REVIEW_NOT_STARTED')
++        require(self.packet_pin is None,'APPROVAL_ALREADY_ATTEMPTED')
++        raw=packet_bytes(packet);value=json.loads(raw);self.packet_pin=hashlib.sha256(raw).hexdigest()
++        plan=value['plan'];expires=plan['expires_at']
++        require(value['owner']['state']=='CONNECTED','OWNER_NOT_CONNECTED')
++        require(min(expires-self.wall(),monotonic_deadline-self.clock())>=15,'INSUFFICIENT_REVIEW_WINDOW')
++        summary={k:value[k] for k in ('project','candidate','parameters','budget','job_id','job_revision','input_manifest','engineering','scratch','expected_outputs','resources','owner')}
++        summary.update(plan_id=plan['plan_id'],plan_digest=plan['plan_digest'],scope_digest=value['scope_digest'],
++                       expires_beijing=datetime.fromtimestamp(expires,timezone(timedelta(hours=8))).isoformat(),expires_epoch=expires,
++                       immutable_packet_sha256=self.packet_pin,installation=value['installation'])
++        self.state.arm('APPROVE',expires=expires,deadline=monotonic_deadline)
++        parameters=value['parameters'];resources=value['resources'];budget=value['budget']
++        readable=('项目：'+str(value['project'])+'\r\n候选：'+str(value['candidate'])+'（Candidate B）\r\n\r\n'
++            '研究目的：验证 A 反馈产生的两参数调整对真实力–位移曲线的影响。\r\n'
++            'sigma_y = '+str(parameters['sigma_y_MPa'])+' MPa；H = '+str(parameters['H_MPa'])+' MPa\r\n\r\n'
++            '资源：'+str(resources['cpus'])+' CPU / '+str(resources['gpus'])+' GPU / '+str(resources['memory_mb'])+' MB\r\n'
++            '次数：使用原 B 已预留的 1 次；本次最多启动 1 次。\r\n'
++            '科研预算：总量 '+str(budget['limit'])+' / 已用 '+str(budget['charged'])+' / 已预留 '+str(budget['held'])+' / 可用 '+str(budget['available'])+'\r\n\r\n'
++            'Plan 到期（北京时间）：'+summary['expires_beijing']+'\r\n\r\n'
++            '不重算 A；零自动重试；不执行 C。\r\n'
++            '点击批准后会重新核验，只有原生 Grant 返回成功才算批准成功。')
++        self.window.update('Owner 已连接。仅审查下方精确 B Plan。尚未获得 Solver Grant。',
++                           json.dumps(dict(summary=summary,complete_packet=value),indent=2,ensure_ascii=False),'批准本次计算',True,readable)
++        require(self.state.wait()=='approve','APPROVAL_REQUIRED')
++        require(packet_bytes(packet)==raw,'CONFIRMATION_PACKET_CHANGED')
++        return dict(status='USER_DECISION_CAPTURED',packet_sha256=self.packet_pin,operation_id=self.operation,
++                    received_at=self.wall(),input_method='local_win32_mouse')
++    def before_native_authorize(self,*,expires,monotonic_deadline):
++        require(self.packet_pin and 'APPROVE' in self.state.used,'HUMAN_APPROVAL_REQUIRED')
++        self.state.check()
++        require(self.wall()<expires and self.clock()<monotonic_deadline,'APPROVAL_EXPIRED_NO_GRANT')
++    def status(self,text):
++        if self.window.thread.is_alive():self.window.update(text)
++    def check_cancelled(self):require(not self.state.cancelled,'HUMAN_CANCELLED_NO_RETRY')
++    def native_granted(self,grant):
++        require(grant['receipt']['grant_id'] and grant['replayed'] is False,'NATIVE_GRANT_REQUIRED')
++        self.grant_received=True
++        self.status('原生批准成功：'+grant['receipt']['grant_id']+'。正在按已批准范围单次提交。取消不会撤销已有 Grant 或终止 Solver。')
++    def close(self):self.window.close()
++    def finish(self):
++        # Keep the final outcome visible. Closing only closes this review UI.
++        while self.window.thread.is_alive():time.sleep(.1)
+--- a/src/gd/execution_window_compatibility.json
++++ b/src/gd/execution_window_compatibility.json
+@@ -0,0 +1,176 @@
++{
++  "files": {
++    "af\\abqjobpilot\\__init__.py": "ffe48486be792813b57ebf73bdc9d47e64b49dc7b3894844f76bc378d2491208",
++    "af\\abqjobpilot\\abaqus_preview\\__init__.py": "1b74c8e9b0f117d1eb68cb20e53bcb63a286651e10d963e81be01b17c8f51b3e",
++    "af\\abqjobpilot\\abaqus_preview\\inputs.py": "66f9b58d79b66161770a91a33111cd270bbf1d21a2b10a501056fdbe756948de",
++    "af\\abqjobpilot\\abaqus_preview\\preview.py": "beda61c592784e0d78ac2283b9e64cac1ddc16554937e13d767f1b680e2305d0",
++    "af\\abqjobpilot\\agent_session.py": "fe6a544bdae2f07ef56483a0eb3646b313ba38254a4fe1b6c2248e519a9b1bd6",
++    "af\\abqjobpilot\\api\\__init__.py": "e4eafded208a5f06ebd8af5c845de0bc4200c458075945bf17b207f43e349386",
++    "af\\abqjobpilot\\api\\cli.py": "266b456be6354f9b4b9d971d6a3a0932a9626e5b3b709589c93fa34b7f662eec",
++    "af\\abqjobpilot\\api\\client.py": "274ee8c46b998ee84ecf1b67d77b3b93f7cdb708f9a774ef3c0c2b1635a68348",
++    "af\\abqjobpilot\\api\\errors.py": "1038953c45589250e2f53a01fccb03a92c694dbc0c72afa2a0313b7346d2bd93",
++    "af\\abqjobpilot\\api\\models.py": "72484d3fa1f2b3eebac636e521a823de8101b8679e438144ea3d49b4e0ef8bc6",
++    "af\\abqjobpilot\\api\\project_surface.py": "07eee9f825ed6d9483420e9014860343e276a46f98eb9906de45d8fde57df35d",
++    "af\\abqjobpilot\\api\\status_reader.py": "79725c3145654bfe0ff65b0076761de0233b903c50e67d24400d1ab4f492f8b1",
++    "af\\abqjobpilot\\app_metadata.py": "baccd0c11ee2a26586241767c7bc98c073f96370f23ec74366b95ae3e4058313",
++    "af\\abqjobpilot\\application_runtime.py": "3d6707cdcddfda34b61b00fc0e573ad1ca7fa56cfa74af56a15591b32a9509b2",
++    "af\\abqjobpilot\\classic_workspace.py": "52c9daf1a6a9fbc4f6d645e9547ba6ad539b2d161212b9e0c03a777d730383ad",
++    "af\\abqjobpilot\\cockpit_display.py": "e3b4c03f7826c86ce220b7fcf7a5360e38b2ca2bd2b46a24df6d493ce73f2a82",
++    "af\\abqjobpilot\\cockpit_layout.py": "17f8ecd6f9ffc0c9ba5cbb8e1a45ed7584839c7b217396c6845802fdf32c0c80",
++    "af\\abqjobpilot\\command_console.py": "74335d1352c549d9550dae0768f4aa202cf5bbc3b8d10002bf70cd79d5a38f9d",
++    "af\\abqjobpilot\\command_parser.py": "3f16f9f67c6ab6ae08f500ced92998bfe3c6780e75e75be4b5d2b846a92c088d",
++    "af\\abqjobpilot\\config.py": "7bef9479a29bcfd33e931e2f20a9d44fe848db30d64e2a345bf263e024e2651b",
++    "af\\abqjobpilot\\database\\__init__.py": "78725ef9195189c1551a3d6202475094d3bc842d09445b84e386fa9ff4c610f3",
++    "af\\abqjobpilot\\database\\connection.py": "d2e3e01a3b99747c4e21aec51fc30894c00cbadc02c985728735e0dc4ecde546",
++    "af\\abqjobpilot\\database\\migrations.py": "e4a12c3b47c020865bbe81f0d6089b3c39ce46ab9a8ab65427f56f6bde74da32",
++    "af\\abqjobpilot\\database\\portability.py": "370436174c8ac35faa912c0b22ab2ace51827b246d538f5bee6d14da1601cf00",
++    "af\\abqjobpilot\\database\\reconciliation.py": "fa69d43a5a9ab602f54c56eca7409a74e30859d4f1076ab42a5a0935524a7762",
++    "af\\abqjobpilot\\database\\repository.py": "cd5706c0e1b3e03027a2b2bc457466364872f62c6e057f1dd2cf04798c4f9dd1",
++    "af\\abqjobpilot\\database\\schema.py": "8125422170e3a1eda54c479f912d8f441b348073e2792f095f29fad4a7b5bfcb",
++    "af\\abqjobpilot\\desktop_workspace.py": "2aece38f1abc57c2d10cc189b6f958666b10e6b70cd8e80377518b5c86e7ed3c",
++    "af\\abqjobpilot\\execution\\__init__.py": "d01f3fab0e1bc7762d76635f09b030c6854b29eb5f88235832828d00aa7ea078",
++    "af\\abqjobpilot\\execution\\audit_export.py": "08c2da9e8b7046511cb09c09519f4300b2a5f0243d8cb4e9eceba97f4555428f",
++    "af\\abqjobpilot\\execution\\authorization.py": "855a37f066f8b7bafd14a1663cde3aa10cd04db95945fcb7805cb2ab86a8f4d3",
++    "af\\abqjobpilot\\execution\\client.py": "f61c4b5dd23f9944aa6f7fe85b9e85222b7262838065f31fc57724b725cadfc3",
++    "af\\abqjobpilot\\execution\\closeout.py": "bedf03b4db29f6fe813a539abbd9cf2322f47fbee203e67b4363257ef874f465",
++    "af\\abqjobpilot\\execution\\diagnostics.py": "911c181663c041442acb2031dc50b737a21b266ee2c6571d71a57a688d07a0a7",
++    "af\\abqjobpilot\\execution\\fake_backend.py": "daa2c9949be9741597de245e0a40eb3cb41421d9a21b0821d119318d0d985032",
++    "af\\abqjobpilot\\execution\\interruption.py": "0d14c28e54caf5aac908051326b236fb2e565fbc3f10f7c360eaa8a983807d43",
++    "af\\abqjobpilot\\execution\\interruption_probe.py": "b7a9496d9df7f369b01718b86dff54ec18e2750f169ec84c9ab5c620b5b64240",
++    "af\\abqjobpilot\\execution\\lifecycle.py": "cacbe052fa35b17e1a187ff49cf87451a4f7cfc6f5c39b422d2e985fe4060b60",
++    "af\\abqjobpilot\\execution\\managed_process.py": "d7678b3dc89bbc9fcb3a0fc9e7d44f28c6f8b982171793e1165cd37d7d80f48d",
++    "af\\abqjobpilot\\execution\\models.py": "7242ae21ca764628dd3a2aefc5311d021184364139d53572127437c0bd5a1825",
++    "af\\abqjobpilot\\execution\\ownership.py": "01a2188b695ca7192b06a01df51f7ffb26efcdf736e4994c911b777bd969d66f",
++    "af\\abqjobpilot\\execution\\paths.py": "4c78b31ce3aacebdc407f5ba0bd732aece5154418c6a8ddc247b66ed0dc77f71",
++    "af\\abqjobpilot\\execution\\planning.py": "d1da4ca59114ab1a84c313c1e709647c7cc0227d22b80da551ba30d58225abf4",
++    "af\\abqjobpilot\\execution\\process_backend.py": "660b50e378db49c8d38edc9b169ddfeff3cfa8e3229ddc6632c49f0d07f54a61",
++    "af\\abqjobpilot\\execution\\process_contract.py": "310f3d6ee08684412ec38bf80c2b091d0c0a71976219fbb769459cb5ebb69fe8",
++    "af\\abqjobpilot\\execution\\process_fixture.py": "031166877683c7220806429cbacc2a2ffe69896b031dd919d3da21568a45ccf7",
++    "af\\abqjobpilot\\execution\\process_handles.py": "1c3f7961c49c72d55c011d095404413668ea606488db49e05d5c182ad99e453d",
++    "af\\abqjobpilot\\execution\\process_reconciliation.py": "aff565901c54050572a446c12181e54c33a554aa1f55aaa10203682f846efaa5",
++    "af\\abqjobpilot\\execution\\process_validation.py": "3c3dab14b5edd97b8b066c0762b3b1f48de115f83027277f86f9f5a53e8f151d",
++    "af\\abqjobpilot\\execution\\product_standard.py": "7393457ea7b9716309fa68a2106f5432e3284d85c9f36d93a48eb7d6a5079cb3",
++    "af\\abqjobpilot\\execution\\progress_log.py": "422b7f83eb0bc748cdc5e1e88db343339fe20e12f6591be4400d7a5164603c4a",
++    "af\\abqjobpilot\\execution\\protocol.py": "e5583e17261db8924cfc09804a675845d9a869c5ad881cfe78f119797f8188c6",
++    "af\\abqjobpilot\\execution\\public_workflow.py": "82317a92d18c7b594dadd0e79c462a2aca8c5fbf52b8abdf54af155880346075",
++    "af\\abqjobpilot\\execution\\reconciliation.py": "bb20bac14d7b8d5dd6cfb1ef7ddc8e41bdf81efcd2790397f7065c5f08a83ba8",
++    "af\\abqjobpilot\\execution\\recovery.py": "79ab0fc0c5d56c2a759a7a00eae7ac2b18c0198c4f1f626d73a56d6e9fd1e390",
++    "af\\abqjobpilot\\execution\\rod_authority.py": "85c1b9da662837c420ca84d9ffce747d673b630ba6ccbf79fafda2492469819d",
++    "af\\abqjobpilot\\execution\\rod_authorization.py": "0d02aa4bc31b554cef5e8979295c6b649a6bf5a8167bf2aa13ab953fad9550e7",
++    "af\\abqjobpilot\\execution\\rod_dat.py": "a8a7ee23018ade4df8ebe13171a92308924ae2dddbed7e7d054defb2455b1776",
++    "af\\abqjobpilot\\execution\\rod_evidence.py": "3dee617207763805dfaafe584ac8bbf02aa8a6ce908e5ce8a8f57e0361593506",
++    "af\\abqjobpilot\\execution\\rod_evidence_port.py": "014332c997e806d6fc1d850f0cde5a846a75da2276c83676cbed4877a69f932a",
++    "af\\abqjobpilot\\execution\\rod_lifecycle.py": "7300ee6846e6353545f9117f4c500d31e7b658a84c46e987a62942e10d7b15bf",
++    "af\\abqjobpilot\\execution\\rod_local_hil.py": "ccbcf7be704616f59018eb1d5e58f6156849eaedf2aef4651121bd2e55d6485e",
++    "af\\abqjobpilot\\execution\\rod_local_read.py": "c3ceb57c4899e80a87e9886eab6db0cad96f434002864a77f90bf831e60654bd",
++    "af\\abqjobpilot\\execution\\rod_output_dat_v2.py": "bfd3067bb4084a460496b83faedb0385ff99e40996c7acc962fe0639d8e792ce",
++    "af\\abqjobpilot\\execution\\rod_output_v2.py": "3e1173e52e618e62648641c0572c45ee9e376a8394104c214c889fc61a458a51",
++    "af\\abqjobpilot\\execution\\rod_plan_adapter.py": "1b15faca4ec820ad4db2737af7c352ac4b3db1cba8b2a74bb578bf06656c3bac",
++    "af\\abqjobpilot\\execution\\rod_profile.py": "e7ec9f5b41ee19c58433df9aee0b8222ec375bed9c4d15d467176a66997ee7b8",
++    "af\\abqjobpilot\\execution\\rod_real_source.py": "c55142ae0e38fec07012b5cd48a6aceadc8ca60a1e12487743cf7c6c96808047",
++    "af\\abqjobpilot\\execution\\rod_review.py": "dd0d716c488a3f4f2a1532ab2723579dadfc6d10839c37be127617bcfbab8ae3",
++    "af\\abqjobpilot\\execution\\rod_standard_adapter.py": "763633b40b9ba2965b49dc50d74f7fde45604c2ed011d7eb5fbbc397b54326ff",
++    "af\\abqjobpilot\\execution\\rod_trusted.py": "5dcc7d7fd0939466aec3a9653309d6b6bd01fb0020788998ad18f7ad6122f81c",
++    "af\\abqjobpilot\\execution\\service.py": "4d399f2cbdd1eb83d8b7371fdb0f8bc5281c79930b075fba223b06d365d08beb",
++    "af\\abqjobpilot\\execution\\standard_backend.py": "44f1fdb08a07ddd0d550d81000fc0de274a17325b649ebfbe7a12dbe0e2b0f80",
++    "af\\abqjobpilot\\execution\\standard_contract.py": "9dca5547057461d367745faa8e5a89b17533cf312c899110a2c6e4b11c858536",
++    "af\\abqjobpilot\\execution\\standard_dat.py": "6946666f0bd1040fc849ea0684a75382483aeaf0326397863dbfe64a47e08c74",
++    "af\\abqjobpilot\\execution\\standard_process.py": "6c291f21a4200a1bc1d5535f8aa822d416d04a8f9574466b841e4a0f84fcc623",
++    "af\\abqjobpilot\\execution\\standard_profiles.py": "afeb3131ad5084fe104f885d6f99a2c2da1c8a88769574c3e662d731b384a42e",
++    "af\\abqjobpilot\\execution\\standard_sequence.py": "49c5ac932b99041e5e0b04b699482f4379626fa61298b6ff7fec90644f747b7b",
++    "af\\abqjobpilot\\execution\\store.py": "7a54a00036dafb0a917cfe895de8b0e6c1366a0125e2a4906e7e1a7b95da96aa",
++    "af\\abqjobpilot\\execution\\supervisor.py": "a3741ca600ad6d7a93d0427ebeb26af78d4118b5c6f75511f47e4978183a4ea0",
++    "af\\abqjobpilot\\execution\\tensile_catalog.py": "6e4abc83e3363fc2b2131941a6f22a3289cd6070db9a46d21ae0d49d2bdf40b4",
++    "af\\abqjobpilot\\execution\\tensile_profile.py": "5131964163c449ce78a3d64320cac02c44eacc10761d0ca17f5c0ecb9459ab22",
++    "af\\abqjobpilot\\execution\\tensile_terminal.py": "7c30a322a2ce781d3308492b1bb93845c8a1826b75b6113909485bda90cced09",
++    "af\\abqjobpilot\\execution\\terminal_feedback_compat.py": "03a34e639bfcd987e6b61b5c0456fcd81118fe4ac32cc6cfc9cdff15252c96af",
++    "af\\abqjobpilot\\execution\\terminal_feedback_scope.json": "8928d8659b5b3d6e4bf7f2d9e86b5bb20ad8f671438be18b46f9f4b6ac70ca91",
++    "af\\abqjobpilot\\execution\\test_authority.py": "95611e416d911d079ac9fca4d0e64c744a2721eadea1d80ed313690060d79eaf",
++    "af\\abqjobpilot\\execution\\validation.py": "107f8fd6ad27b923cf281e5686458a277e9087676c9f54f3377b80ddaf979f22",
++    "af\\abqjobpilot\\execution_gui.py": "d2c268555c7a6c0223c13233ae663ef7644ae818422b1f43b3cb0acee2019b43",
++    "af\\abqjobpilot\\gui_app.py": "1c89dced79843f9c1d60adead75f5957ce3a7b40cdd1d7976d9d4abbb5470d46",
++    "af\\abqjobpilot\\gui_legacy.py": "26ce4ba7e66537d3169461a1ff636738c4bc8bef8f42eb52d7fe46e0d82b0638",
++    "af\\abqjobpilot\\gui_presentation.py": "3e096a97338d8e6dfb47bbfa63d9f34dd1b5563278207726e4f404ce9ccc4874",
++    "af\\abqjobpilot\\gui_table_state.py": "3ed4910a071eb0b7dad96fe610c659dd286ea476296660803e7a1075bc14a9b3",
++    "af\\abqjobpilot\\local_credentials.py": "3b39bec883452bf8af2b3b74913d15ff5b3b63e85d62bb7b29b754573bc767bb",
++    "af\\abqjobpilot\\locales\\de-DE.json": "f10f294689e85360d1acfa5005f0f3a018700e0c09655684332a26023e68dacd",
++    "af\\abqjobpilot\\locales\\en.json": "2025926c1287072c192b3626021d2fa370540dd04f2361ca756e3dadb12eb61c",
++    "af\\abqjobpilot\\locales\\fr-FR.json": "b8abdb3739d5214c405732e35b536cc809b779d86637213cc717190126a5e529",
++    "af\\abqjobpilot\\locales\\zh-CN.json": "e8db8b6911924c8b6f1a37e4a0936efee9facd39e5df49b06754be7ae3a285ff",
++    "af\\abqjobpilot\\mcp\\__init__.py": "fb33b415d1aaad9290178756903c38ddf328c26ed7f1d9a33bbf98070baf86ad",
++    "af\\abqjobpilot\\mcp\\server.py": "eb9a7712fc93ab24085f526bb510bfa1d4e32b03392ed7716c3e2ace903c23bc",
++    "af\\abqjobpilot\\mcp\\tools.py": "ec2af28dcb141a699b1538c08507b6619f8dfd2656f4131afb4a7d4eea2aa5dd",
++    "af\\abqjobpilot\\monitor.py": "da48154d130aca9fa3d865d280b158c0ed96a86dc3d13f36b0bc494c895b34eb",
++    "af\\abqjobpilot\\parsers.py": "1a09574c9c13bcd28b4369732da8d8838864842a58bf563c27327e9fe6f5bf91",
++    "af\\abqjobpilot\\passive_lineage.py": "b559c25b2b7654c710c7ecaf647826ef2ef92d39185bd7808ddeef98b8ec351c",
++    "af\\abqjobpilot\\pre_ready_recovery.py": "d3d6bb62f37bd5fa51620301aaf89501bbc99cc794f0398d8a9fe600fe2b5619",
++    "af\\abqjobpilot\\process_identity.py": "ae8c3b8eace9c1a3e741837556914e0c80bc911a4e57e70c32003b0a66207897",
++    "af\\abqjobpilot\\product_project.py": "c2dee38fe16eb8bff85c2927d96296f288808b0146965fc0f80a4e21b30f4288",
++    "af\\abqjobpilot\\product_rod.py": "0992bcfdbd5aacb756477199ad0a371fdf47874a092b1e274fc92d1c14a5b924",
++    "af\\abqjobpilot\\product_standard.py": "84efb851fac6d5554bcdbfa5d1b7fee3f0a0a317f1b06db9613339860761165c",
++    "af\\abqjobpilot\\project\\__init__.py": "dc831f9406186f24dfed17ebd1679f28c01b13e78b7f4827be51b094c3a1102b",
++    "af\\abqjobpilot\\project\\archive.py": "36dcdf861458cfd4ffcd009333edba4325d3ae92b4503ded6b05f901b091c8eb",
++    "af\\abqjobpilot\\project\\legacy_import.py": "d97c32985a3694b01a974901528e9abd87f566e96152eef7d8bfb7abced27bb0",
++    "af\\abqjobpilot\\project\\manager.py": "1fb2bd29f65856ef753fe2f880c4c0e8ea9bde0922e61aa19d99846679bacf79",
++    "af\\abqjobpilot\\project\\models.py": "d9dbb11eb5c03750bdac9bc2d5e624009cb946bf04119e4eb1c9c54538eaa905",
++    "af\\abqjobpilot\\queue_store.py": "f392163b1a700808130cd405907697b0c0182307922165d11cad76f2d052341d",
++    "af\\abqjobpilot\\recovery_assessment.py": "2e094a4e0df1fb1921590ddaac10e4114c70b483166d9386856687001c6205a5",
++    "af\\abqjobpilot\\recovery_dialog.py": "9790fe69a6c5d80e6cf7c662269e184c2636001712ac7d511cce2ee02c6b6388",
++    "af\\abqjobpilot\\recovery_management.py": "4f6aab538694beba855e416205c784d98e7d4c0c55147881a18aa815d7306b36",
++    "af\\abqjobpilot\\recovery_workflow.py": "7a94edd70e54c0b43814346ff2e837c0e5274092b8c91c1704040f20dd805a68",
++    "af\\abqjobpilot\\rod_local_console.py": "6fa221c4bbcb5ea9b35a1808f1470003afcd6d35cad0b851ae0eb78259bd794d",
++    "af\\abqjobpilot\\run_evidence.py": "7566ef094db6c242a8bc9f03c335866f8dfebdf5657e48baf31930bbe0b21e71",
++    "af\\abqjobpilot\\runner_core.py": "6ca361ede23cc737e736a71c2089c271897329a60a4fb1d463c5cc7b4ac833ce",
++    "af\\abqjobpilot\\runtime_coordination.py": "f6c72bb7a09dbe5db335d4e71c6a3033e497a7062cf60f4986557ff98c06b38c",
++    "af\\abqjobpilot\\service_discovery.py": "d729a60d2994f183b0b0645f9394ba0c9986d5f6aa4b7fe979a2c5c14994ab9c",
++    "af\\abqjobpilot\\service_host.py": "5599deb419f59aecb0f3828cc09446e5b67b794d30ed88a5c4a3538d89472224",
++    "af\\abqjobpilot\\service_lifecycle.py": "8834b2df2291c8d9861aa5ef23ce25cb376d40a993c1e051c81d7dbed1c57270",
++    "af\\abqjobpilot\\service_owner.py": "554a7b6efcb1a2882736f281b4b778f3a13336dd29a2ef3d351dabeb697953eb",
++    "af\\abqjobpilot\\settings_store.py": "c5b2f69696c355a4c8aa2bb2fbe0bf255a413e3da52378682c3586e87b50fdb2",
++    "af\\abqjobpilot\\status_codes.py": "39b9bdb78c819d61c6fa91c909edf836562170910bdbb9d149d7c2f2c14f9bbd",
++    "af\\abqjobpilot\\ui_resources.py": "8591328e11ae26078291ffa8521acde344a18d30631bcdbc4512d7d75b2a410f",
++    "af\\abqjobpilot\\utils.py": "f44818d4b9f5ff3a552874677adc8657b99ce039f708564be657cf185ebc3daf",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\METADATA": "8168ddc52a15994d29c549ba76a851f105c6f8fbeb6bdba23cab0efd16d208f5",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\RECORD": "e390057e8c294c18fd3fe1ae9e183aa6e054da6bbc3ee887f42f7efec84106d4",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\WHEEL": "4aa9dcde95cc0afeca04d4331fa4cdb6b4ac0c14b4b82d02d051916497552ca6",
++    "af\\abqjobpilot_gdcae_internal-0.0.0+tensilebreentry1.dist-info\\direct_url.json": "590e127f5417bf0cff8c9230b87f976b77f8412d0ece9135bd08dc786ffdbe60",
++    "gd\\admission_snapshot.py": "adcf92a6488f857d71696f4ec4dedb84d13612ccce9a1bad8904fe397578dcc3",
++    "gd\\af_installation.py": "1530388b4125b5662ca36c8a1b4c67b1410896ec18630bac39f6627d7fd27755",
++    "gd\\b_admission.py": "b8e8b797a7450b61c97eabbebe9d42d9d32a066a2daa1bc0037d0ff17f9f5c80",
++    "gd\\b_control.py": "9242c912b264eea72ecce4670924c677a442d25c47643fc11ba697505808001d",
++    "gd\\b_parameters.py": "21d36bb7afdeac343a5b86a1dd9e9feeaa9a11595e4a49fb66a9b460ce6912b6",
++    "gd\\b_readmission.py": "0a3848ab4bc34baa0478a23043284498859017d795c84bda9feadc91d213c811",
++    "gd\\b_scope.json": "48edb8630525defe0d15d9b42c6c38a9ac284e78f20ac86dfc223b42168c4770",
++    "gd\\b_window_compatibility.json": "8afb958d1e9282597def3af0d381f4a3eba0442eaa0aa458c28c77b7e4236000",
++    "gd\\compatibility.json": "ce1837e05e2c5fe85e60ed758a66ed8d3c15a69fc969f4aedcd26d26a651a75a",
++    "gd\\continuation.py": "7fe3bb5b85f5c98044eb58b9743f9ee181dde7f2d75feaa156bc1d9060c409b3",
++    "gd\\local_confirmation.py": "58adf00cb025597cde5233c1990129e7d92979780ab41d40f54adc604415f104",
++    "gd\\main.py": "1565b302f57978d2c94790da300d00ad8acb958e4c1a3f8a1129013111a62400",
++    "gd\\native_feedback.py": "475dbbfb778edf97d976a2838f363c8419e2ca10d787a6675dcdc5404d78580b",
++    "gd\\odb_reader.py": "98975266348cfaa830c000407c69c8fb990732762c7aec511a8ad01ca0f43d49",
++    "gd\\operator_entry.py": "21b27f03b11fce6f6284ee15bd757b92c356504d87dfad56a81cf753e5a51bde",
++    "gd\\original_a_snapshot.py": "b1aff361f75c495256843d7f4e65e77bb836664aad9d5e113536cddbcb2dfdd2",
++    "gd\\package-manifest.json": "990fe1d58344328715b47f4fa009f0c3b21dc556aa432481aabc80fd0942c9da",
++    "gd\\plugin.json": "8e39d8b19cac06efd08c3aa8242eed26c5cbd390c2d9da132f3ce8c425fb4782",
++    "gd\\r3_bridge.py": "80ce3156b5a0fdb0baebea621a6ac2279a33b4318b1a66a30b486bdfe833b4d3",
++    "gd\\readiness.py": "ad145cf55d5bb422dc0ac9ce27b16eb1721a04fe4b2d475fb82bf55fff2b0d74",
++    "gd\\readmission.py": "5c040b310c961defd5c9730f05653d8b838272aec6ae9ed704fc1bb153c33e6a",
++    "gd\\recover_feedback.py": "5600b906e4fcbc1a2524569b4379abb86f91da5ab8bfa70180cbc00f8fb697d5",
++    "gd\\runtime\\aegiscae\\__init__.py": "03cad15b185a6b873f497355a7f349e3c2771b7a13a84e913c05187d7333e910",
++    "gd\\runtime\\aegiscae\\contracts\\__init__.py": "9f3e24fec4f6884cf63b3b585e5f041a43fbfac800ef40f87bb1d320c79e4b92",
++    "gd\\runtime\\aegiscae\\contracts\\research_contracts.py": "8f8fb5017fa9b9f0bfcdd827dab6915da8af93d488b81500bd6a440167fcff16",
++    "gd\\runtime\\aegiscae\\research\\__init__.py": "865f21faca277a7de68665865ba9ea2cffa6537464594cd526ac148b5b6654f6",
++    "gd\\runtime\\aegiscae\\research\\budget_rules.py": "00bac1cf42db66d3104f6df02e5372d8de48d31f87ed1f02b8499e6e714d84a9",
++    "gd\\runtime\\aegiscae\\research\\mutation_rules.py": "7670788c38fc7d57aff36dad5845cb3e63fa90074134b174df1856a59e5ff758",
++    "gd\\scoring.py": "3a16ffc91275de6351d6dbe32e8d465054edd81cea876da250567fffd43db7ed",
++    "gd\\skills\\research\\SKILL.md": "4d68cbe43f976b9dce3b1ab32a6adfd78d2cbf32f458a2c1ea88b51599a29b91",
++    "gd\\tensile.py": "554f094276551e994fbe5409add9501fd0854e55f3192ed49a43d5619f68a392",
++    "gd\\workflow.py": "14a07f107b0106c369cee2c5dfa496c89de50ce07c34c11198f7cd53521312d8"
++  },
++  "freeze_sha256": "26be7836963bbbaf69946020d52f3a9874e782735bed15b2a915b94cbbf2c027",
++  "package": "990fe1d58344328715b47f4fa009f0c3b21dc556aa432481aabc80fd0942c9da",
++  "root": "D:\\Projects\\GDCAETEST\\TENSILE-B-READMISSION-UX-20261105-dev-09c7a1e4bd",
++  "schema": "execution-window-parent-compatibility-v1"
++}--- a/src/gd/execution_windows.py
++++ b/src/gd/execution_windows.py
+@@ -0,0 +1,269 @@
++"""One explicitly qualified B window; original scientific B/HOLD stays authoritative.
++
++The append-only window_revision is not a Core revision, retry or new Candidate. Cross
++database preparation uses a durable INTENT and explicit reconciliation, not an
++atomic transaction claim. Read-only opening never creates the table.
++"""
++import json,os,re,subprocess,time,sqlite3
++from pathlib import Path
++import continuation as c
++import b_admission as b
++import window_history as old_recovery
++import b_readmission as legacy
++
++TABLE='tensile_execution_windows'
++SCHEMA='expired-unexecuted-b-execution-window-v1'
++BUDGET=dict(limit=2,held=1,charged=1,available=0)
++COUNTS=dict(plans=1,grants=0,runs=0,receipts=0,consumption=0)
++
++def compatibility():
++    path=c.local(Path(__file__).with_name('execution_window_compatibility.json'))
++    manifest=json.loads(c.local(Path(__file__).with_name('package-manifest.json')).read_bytes())
++    c.require(c.sha(path)==manifest['files']['execution_window_compatibility.json'],'B_COMPATIBILITY_RECORD_CHANGED')
++    spec=json.loads(path.read_bytes())
++    c.require(spec['schema']=='execution-window-parent-compatibility-v1','B_COMPATIBILITY_REQUIRED')
++    root=c.local(spec['root'])
++    c.require(c.sha(root/'FREEZE.json')==spec['freeze_sha256'],'B_PARENT_FREEZE_CHANGED')
++    actual={str(p.relative_to(root)):c.sha(p) for part in ('gd','af') for p in sorted((root/part).rglob('*')) if p.is_file()}
++    c.require(actual==spec['files'] and c.sha(root/'gd/package-manifest.json')==spec['package'],'B_PARENT_INSTALLATION_CHANGED')
++    for name in ('tensile.py','scoring.py','odb_reader.py','workflow.py'):
++        c.require(c.sha(Path(__file__).with_name(name))==c.sha(root/'gd'/name),'B_SCIENTIFIC_SEMANTICS_CHANGED')
++    return spec
++
++def historical_records(camp):
++    """Original scientific request and every prior committed execution binding.
++
++    Read raw historical records through their exact structural validators, not
++    the old runtime's current-window/PID-absence admission convenience path.
++    """
++    spec=compatibility();original_install=legacy.compatibility()
++    first,body=b.record(camp)
++    c.require(first['state']=='COMMITTED','ORIGINAL_B_COMMITTED_REQUIRED')
++    stage=camp.db.execute("SELECT * FROM stages WHERE phase='B'").fetchone();request=camp.check_row(stage)
++    accepted,_=b.decision(camp)
++    c.require(body['request']==request and body['original_request']==c.case.hashbytes(stage['request'])
++        and body['project']==request['project'] and body['candidate']==request['candidate_id']
++        and body['contract']==camp.pin and body['budget']==BUDGET and body['package']==original_install['package']
++        and body['source_A_result']==accepted['source_A_result_sha256'] and body['decision_reference']==accepted['decision_reference'],
++        'ORIGINAL_B_SCIENTIFIC_LINEAGE_CHANGED')
++    chain=[(dict(first),body)]
++    for r in legacy.rows(camp):
++        c.require(r['state']=='COMMITTED','LEGACY_PENDING_RECONCILE_REQUIRED')
++        v=json.loads(r['body']);c.require(v['package']==spec['package'],'LEGACY_PACKAGE_CHANGED')
++        c.require(v['request']==request and v['original_request']==body['original_request'] and v['project']==body['project']
++            and v['candidate']==body['candidate'] and v['contract']==camp.pin and v['source_A_result']==body['source_A_result']
++            and v['decision_reference']==body['decision_reference'],'LEGACY_B_SCIENTIFIC_LINEAGE_CHANGED')
++        chain.append((dict(r),v))
++    for r in rows(camp):
++        v=json.loads(r['body']);pr,pb=chain[-1];pp=v['parent']['parent']
++        c.require(pp['operation_id']==pr['operation_id'] and pp['body_pin']==pr['body_pin'] and pp['result_pin']==pr['result_pin']
++            and pp['package']==pb['package'] and pp['identity']==c.identity(json.loads(pr['result'])['new'])
++            and pp['chain_digest']==c.pin([dict(operation_id=x['operation_id'],body_pin=x['body_pin'],result_pin=x['result_pin']) for x,_ in chain]),'WINDOW_PARENT_CHAIN_CHANGED')
++        if r['state']=='COMMITTED':chain.append((dict(r),v))
++    return chain
++
++def parent(camp):
++    chain=historical_records(camp);r,body=chain[-1];result=json.loads(r['result'])
++    return dict(operation_id=r['operation_id'],body_pin=r['body_pin'],result_pin=r['result_pin'],
++                package=body['package'],identity=c.identity(result['new']),
++                chain_digest=c.pin([dict(operation_id=x['operation_id'],body_pin=x['body_pin'],result_pin=x['result_pin']) for x,_ in chain])),result
++
++def stopped(camp,ref,expected=None):
++    chain=historical_records(camp)
++    # During INTENT/COMMITTED re-reading, ancestry ends before this window.
++    if expected is not None:
++        match=[i for i,(r,_) in enumerate(chain) if r['operation_id']==expected['parent']['operation_id']]
++        c.require(len(match)==1,'WINDOW_PARENT_NOT_FOUND');chain=chain[:match[0]+1]
++    p_r,p_b=chain[-1];p=dict(operation_id=p_r['operation_id'],body_pin=p_r['body_pin'],result_pin=p_r['result_pin'],
++        package=p_b['package'],identity=c.identity(json.loads(p_r['result'])['new']),
++        chain_digest=c.pin([dict(operation_id=x['operation_id'],body_pin=x['body_pin'],result_pin=x['result_pin']) for x,_ in chain]))
++    proofs=[];managers=[]
++    for i,(r,body) in enumerate(chain):
++        result=json.loads(r['result']);new=result['new'];identity=c.identity(new)
++        qref=ref if i==len(chain)-1 else chain[i+1][1]['qualification_reference']
++        actual,m=b.native(new['af_project'])
++        c.require(all(actual[k]==new[k] for k in new if k!='counts'),'ANCESTOR_ACTUAL_PLAN_CHANGED')
++        proof,m=old_recovery.closed_window(new['af_project'],identity,qref)
++        proofs.append(proof);managers.append(m)
++    value=dict(parent=p,stopped=proofs)
++    c.require(expected is None or value==expected,'B_ANCESTOR_CHANGED')
++    return value,managers
++
++def rows(camp):
++    if not camp.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(TABLE,)).fetchone():return []
++    rs=list(camp.db.execute('SELECT * FROM '+TABLE+' ORDER BY window_revision'));c.require([r['window_revision'] for r in rs]==list(range(1,len(rs)+1)) and all(r['state']=='COMMITTED' for r in rs[:-1]),'WINDOW_CHAIN_OR_PENDING_CHANGED')
++    for r in rs:
++        body=json.loads(r['body'])
++        c.require(r['window_revision']==body['window_revision'] and r['body_pin']==c.case.hashbytes(r['body']) and body['schema']==SCHEMA
++                  and body['operation_id']==r['operation_id'] and body['window_revision']>=1
++                  and r['state'] in ('INTENT','COMMITTED'),'B_READMISSION_RECORD_CHANGED')
++        if r['state']=='INTENT':c.require(r['result'] is None and r['result_pin'] is None,'B_READMISSION_UNKNOWN')
++        else:
++            v=json.loads(r['result'])
++            c.require(c.case.hashbytes(r['result'])==r['result_pin'] and set(v)=={'schema','operation_id','window_revision','proposal_digest','parent','new','project','candidate','contract','original_request','request_digest','budget','execution_authorized'}
++                      and v['schema']==SCHEMA and v['execution_authorized'] is False and v['proposal_digest']==r['body_pin']
++                      and all(v[k]==body[k] for k in ('operation_id','window_revision','parent','project','candidate','contract','original_request','request_digest','budget')),
++                      'B_READMISSION_RESULT_CHANGED')
++            n=v['new'];p=n['plan'];reg=p['registration'];req=body['effective_request']
++            c.require(set(n)=={'plan','scope_digest','af_project','project_id','project_instance_id','counts'} and n['counts']==COUNTS
++                      and n['af_project']==body['new_af_project'] and p['expires_at']==r['expires_at']
++                      and reg['project_id']==n['project_id'] and reg['project_instance_id']==n['project_instance_id']==p['project_instance_id']
++                      and reg['context_digest']==p['context_digest'] and reg['research_project']==body['project']
++                      and reg['candidate']==body['candidate'] and reg['contract']==body['contract'] and reg['request']==body['request_digest']
++                      and reg['gd_package']==body['package'] and reg['phase']==req['phase']=='B'
++                      and reg['job']==p['job_name']==req['job'] and reg['engineering']==p['engineering']==req['expected_work_dir']
++                      and reg['output']==req['output_key'] and reg['parameters']==req['parameters']
++                      and reg['input_digest']=='sha256:'+req['inp_sha256'] and reg['prior']==req['prior_feedback_sha256']
++                      and reg['resources']==p['resources']==req['resource_review'] and reg['purpose']==body['purpose'],
++                      'B_READMISSION_NATIVE_SCOPE_CHANGED')
++    return rs
++
++def record(camp):
++    rs=rows(camp);c.require(bool(rs),'EXECUTION_WINDOW_REQUIRED');return rs[-1],json.loads(rs[-1]['body'])
++
++def new_unstarted_window(product):
++    """Full native empty-window proof for finalize/gate, never terminal reads."""
++    value,m=c.native(product)
++    db=sqlite3.connect((Path(m.context.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:c.require(all(db.execute('SELECT count(*) FROM '+t).fetchone()[0]==0 for t in ('management_grants','management_consumption','reconciliations','control_events')),'B_NEW_ADMINISTRATIVE_UNKNOWN')
++    finally:db.close()
++    return {**value,'counts':{k:value['counts'][k] for k in COUNTS}},m
++
++def proposal(camp,op,qualification):
++    c.require(re.fullmatch('[a-f0-9]{32}',op or '') is not None,'EXACT_B_OPERATION_REQUIRED')
++    c.require(all(r['state']=='COMMITTED' for r in rows(camp)),'WINDOW_PENDING_RECONCILE_ONLY')
++    row,req,budget=b.phase(camp);accepted,_=b.decision(camp)
++    ancestry,_=stopped(camp,qualification)
++    dest=camp.root/('af-B-window-'+op);job='Tensile_B_'+op[:16]
++    c.require(not dest.exists() and not (camp.root/job).exists(),'UNIQUE_B_OUTPUT_REQUIRED')
++    effective={**req,'job':job,'input_name':job+'.inp','expected_odb':job+'.odb','output_key':op[:16],'expected_work_dir':str(dest/'engineering')}
++    return dict(schema=SCHEMA,operation_id=op,window_revision=len(rows(camp))+1,project=req['project'],candidate=req['candidate_id'],contract=camp.pin,
++                original_request=c.case.hashbytes(row['request']),request=req,effective_request=effective,request_digest=c.pin(effective),
++                package=c.sha(Path(__file__).with_name('package-manifest.json')),parent=ancestry,
++                source_A_result=accepted['source_A_result_sha256'],decision_reference=accepted['decision_reference'],
++                qualification_reference=qualification,history=c.fingerprint(camp),budget=budget,purpose=camp.c['af_purpose'],
++                new_af_project=str(dest),execution_authorized=False)
++
++def static(camp,op,qualification):
++    from r3_bridge import trusted_af
++    trusted_af()
++    from readiness import operator_readiness
++    camp.db.execute('BEGIN')
++    try:
++        p=proposal(camp,op,qualification);_,ms=stopped(camp,qualification,p['parent'])
++        return dict(status='STATIC_READONLY_READY',proposal=p,proposal_digest=c.pin(p),budget=p['budget'],plan_created=False,
++                    execution_authorized=False,native_operator_readiness=operator_readiness(ms[-1]),scope='ONE_CURRENT_B_WINDOW_NO_EXECUTION_RETRY')
++    finally:camp.db.rollback()
++
++def snapshot(camp,mode,operation_id=None):
++    c.require(mode in ('--preparation','--committed','--terminal'),'B_SNAPSHOT_MODE_REQUIRED')
++    row,req,budget=b.phase(camp,mode=='--terminal');r,body=record(camp)
++    if operation_id is not None:
++        matches=[v for v in rows(camp) if v['operation_id']==operation_id]
++        c.require(len(matches)==1,'EXACT_WINDOW_REQUIRED');r=matches[0];body=json.loads(r['body'])
++    if mode=='--committed':
++        c.require(rows(camp)[-1]['operation_id']==r['operation_id'] and all(x['state']=='COMMITTED' for x in rows(camp)),'WINDOW_NOT_CURRENT_OR_PENDING')
++    accepted,_=b.decision(camp);op=r['operation_id'];dest=camp.root/('af-B-window-'+op);job='Tensile_B_'+op[:16]
++    effective={**req,'job':job,'input_name':job+'.inp','expected_odb':job+'.odb','output_key':op[:16],'expected_work_dir':str(dest/'engineering')}
++    c.require(body['contract']==camp.pin and body['project']==req['project'] and body['candidate']==req['candidate_id']
++              and body['original_request']==c.case.hashbytes(row['request']) and body['request']==req
++              and body['effective_request']==effective and body['request_digest']==c.pin(effective) and body['new_af_project']==str(dest)
++              and body['package']==c.sha(Path(__file__).with_name('package-manifest.json')) and body['budget']==BUDGET
++              and body['purpose']==camp.c['af_purpose'] and body['source_A_result']==accepted['source_A_result_sha256']
++              and body['decision_reference']==accepted['decision_reference'] and body['execution_authorized'] is False,'B_READMISSION_SCOPE_CHANGED')
++    stopped(camp,body['qualification_reference'],body['parent'])
++    if mode in ('--committed','--terminal'):c.require(r['state']=='COMMITTED','B_READMISSION_NOT_COMMITTED')
++    if r['state']=='INTENT':c.require(c.fingerprint(camp)==body['history'],'B_READMISSION_PENDING_CAS_CHANGED')
++    folder=c.local(camp.root/job)
++    c.require((folder/effective['input_name']).read_bytes()==row['inp'] and (folder/'handoff.json').read_bytes()==c.pack(effective),'B_EFFECTIVE_INPUT_CHANGED')
++    lineage=dict(schema=SCHEMA,window_revision=r['window_revision'],operation_id=op,body_digest=r['body_pin'],parent=body['parent']['parent'],
++                 source_A_result=body['source_A_result'],original_request=body['original_request'],expires_at=r['expires_at'])
++    return dict(req=effective,project=body['project'],request=body['request_digest'],package=body['package'],contract=camp.pin,
++                purpose=body['purpose'],execution_window=lineage,state=r['state'],result=json.loads(r['result']) if r['result'] else None)
++
++def claim(camp,p,pin,expires):
++    c.require(type(expires) is int and time.time()<expires<=int(time.time())+600,'BOUNDED_B_EXPIRY_REQUIRED')
++    camp.db.execute('BEGIN IMMEDIATE')
++    try:
++        c.require(c.pin(p)==pin and proposal(camp,p['operation_id'],p['qualification_reference'])==p,'B_READMISSION_STATIC_CAS_CHANGED')
++        row,_,_=b.phase(camp)
++        camp.db.execute('CREATE TABLE IF NOT EXISTS '+TABLE+' (operation_id TEXT PRIMARY KEY,window_revision INTEGER UNIQUE,body BLOB,body_pin TEXT,state TEXT,expires_at INTEGER,result BLOB,result_pin TEXT)')
++        camp.db.execute('INSERT INTO '+TABLE+' VALUES(?,?,?,?,?,?,NULL,NULL)',(p['operation_id'],p['window_revision'],c.pack(p),pin,'INTENT',expires));camp.db.commit();return row
++    except BaseException:camp.db.rollback();raise
++
++def finalize(camp,op):
++    from abqjobpilot.product_standard import inspect_preparation
++    r,body=record(camp);c.require(r['operation_id']==op and r['state']=='INTENT','SAME_PENDING_B_OPERATION_REQUIRED')
++    _,m=stopped(camp,body['qualification_reference'],body['parent'])
++    with c.leases(m):
++        snap=snapshot(camp,'--preparation');actual,_=new_unstarted_window(body['new_af_project']);p=actual['plan']
++        from abqjobpilot.execution.tensile_profile import spec_config
++        c.require(actual['counts']==COUNTS and p['registration']['execution_window']==snap['execution_window']
++                  and p['runtime_binding']==spec_config().value() and p['expires_at']==r['expires_at'] and p['expires_at']>time.time(),
++                  'B_NEW_WINDOW_NOT_QUALIFIED')
++        camp.db.execute('BEGIN IMMEDIATE')
++        try:
++            rr,bb=record(camp);b.phase(camp)
++            c.require(rr['state']=='INTENT' and bb==body and c.fingerprint(camp)==body['history'],'B_READMISSION_FINALIZE_CAS_CHANGED')
++            stopped(camp,body['qualification_reference'],body['parent'])
++            v=dict(schema=SCHEMA,window_revision=r['window_revision'],operation_id=op,proposal_digest=r['body_pin'],parent=body['parent'],new=actual,
++                   project=body['project'],candidate=body['candidate'],contract=camp.pin,original_request=body['original_request'],
++                   request_digest=body['request_digest'],budget=body['budget'],execution_authorized=False)
++            q=camp.db.execute('UPDATE '+TABLE+" SET state='COMMITTED',result=?,result_pin=? WHERE operation_id=? AND state='INTENT' AND body_pin=?",
++                             (c.pack(v),c.pin(v),op,r['body_pin']));c.require(q.rowcount==1,'B_READMISSION_FINALIZE_CONFLICT');camp.db.commit()
++        except BaseException:camp.db.rollback();raise
++    c.require(inspect_preparation(body['new_af_project'])['plan']==p,'B_NATIVE_RECHECK_FAILED')
++    return v
++
++def prepare(camp,p,pin,expires):
++    from r3_bridge import trusted_af
++    trusted_af()
++    from abqjobpilot.product_project import create_project
++    from abqjobpilot.product_standard import prepare_product
++    from abqjobpilot.execution.tensile_profile import spec_config
++    _,m=stopped(camp,p['qualification_reference'],p['parent'])
++    with c.leases(m):
++        row=claim(camp,p,pin,expires);req=p['effective_request'];folder=camp.root/req['job'];folder.mkdir()
++        for path,raw in ((folder/req['input_name'],row['inp']),(folder/'handoff.json',c.pack(req))):
++            with path.open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
++        product=Path(p['new_af_project']);create_project(product,req['job']);eng=Path(req['expected_work_dir']);eng.mkdir();(eng/'scratch').mkdir()
++        with (eng/req['input_name']).open('xb') as f:f.write(row['inp']);f.flush();os.fsync(f.fileno())
++        prepare_product(product,eng,req['job'],spec_config(),expires_at=expires,model_profile='tensile-bilinear-3d-r3',preparation_purpose=p['purpose'])
++    return finalize(camp,p['operation_id'])
++
++def dynamic(camp,path):
++    from r3_bridge import trusted_af
++    trusted_af()
++    from abqjobpilot.product_standard import inspect_preparation
++    from readiness import operator_readiness
++    supplied=json.loads(c.local(path).read_bytes());camp.db.execute('BEGIN')
++    try:
++        snap=snapshot(camp,'--committed');r,body=record(camp);result=json.loads(r['result'])
++        c.require(result==supplied,'B_RESULT_NOT_PERSISTED');actual,m=new_unstarted_window(body['new_af_project'])
++        c.require(actual==result['new'],'B_NATIVE_PLAN_CHANGED')
++        view=inspect_preparation(actual['af_project']);p=actual['plan']
++        c.require(view['plan']==p and p['registration']['execution_window']==snap['execution_window'] and view['counts']==COUNTS
++                  and view['supervisor_started']=='0' and view['gate']['state']=='PAUSED' and p['expires_at']-time.time()>=60,'B_DYNAMIC_PREFLIGHT_CHANGED')
++        owner=m.inspect();c.require(owner==dict(state='NOT_RUNNING',reason='EXPLICIT_START_REQUIRED'),'B_OWNER_NOT_EMPTY')
++        return dict(result,status='DYNAMIC_READONLY_PASS',plan_id=p['plan_id'],plan_digest=p['plan_digest'],scope_digest=actual['scope_digest'],
++                    expires_at=p['expires_at'],native_operator_readiness=operator_readiness(m),owner=owner)
++    finally:camp.db.rollback()
++
++def effective(camp,row):
++    rs=rows(camp)
++    committed=[r for r in rs if r['state']=='COMMITTED']
++    if not committed:return legacy.effective(camp,row)
++    r=committed[-1];snap=snapshot(camp,'--terminal',r['operation_id'])
++    return snap['req'],snap['request'],Path(json.loads(r['body'])['new_af_project'])
++
++def reconcile(camp,op):
++    r,body=record(camp);c.require(r['operation_id']==op,'B_OPERATION_MISMATCH')
++    if r['state']=='COMMITTED':
++        snapshot(camp,'--terminal');result=json.loads(r['result']);actual,_=b.native(body['new_af_project'])
++        c.require(all(actual[k]==result['new'][k] for k in actual if k!='counts'),'B_RECONCILIATION_NATIVE_CHANGED')
++        return dict(state='COMMITTED',result=result,current_native_counts=actual['counts'],execution_authorized=False)
++    try:
++        snap=snapshot(camp,'--preparation');actual,_=new_unstarted_window(body['new_af_project'])
++        c.require(actual['plan']['registration']['execution_window']==snap['execution_window'],'B_PARTIAL_LINEAGE_CHANGED')
++        return dict(state='AF_PREPARED_GD_INTENT',operation_id=op,new=actual,next='explicit same-operation finalize only',execution_authorized=False)
++    except Exception as exc:return dict(state='RECONCILIATION_REQUIRED',detail=str(exc),automatic_retry=False,execution_authorized=False)
+--- a/src/gd/main.py
++++ b/src/gd/main.py
+@@ -27,7 +27,7 @@
+ 
+ def run():
+     parser=argparse.ArgumentParser()
+-    parser.add_argument("action",choices=("doctor","init","prepare","observe-fixture","status","af-admission","review-extraction","observe-native","continue-propose","continue-prepare","continue-reconcile","continue-finalize","continue-static","continue-gate","readmit-static","readmit-propose","readmit-prepare","readmit-reconcile","readmit-finalize","readmit-gate"))
++    parser.add_argument("action",choices=("doctor","init","prepare","observe-fixture","status","af-admission","review-extraction","observe-native","continue-propose","continue-prepare","continue-reconcile","continue-finalize","continue-static","continue-gate","readmit-static","readmit-propose","readmit-prepare","readmit-reconcile","readmit-finalize","readmit-gate","window-static","window-reconcile","window-finalize","window-gate","window-feedback"))
+     parser.add_argument("--package-pin",required=True);parser.add_argument("--python-exe",required=True)
+     for arg in ("workspace","source","target","target-pin","contract-pin","request-pin","extraction","extraction-pin","binding","binding-pin","operation-id","proposal","proposal-pin","result","qualification","qualification-pin"):
+         parser.add_argument("--"+arg)
+@@ -48,8 +48,20 @@
+     if a.action=="init":
+         check(a.mode and a.source and a.target and a.target_pin,"EXPLICIT_CONTRACT_INPUTS_REQUIRED")
+         return workflow.initialize(a.workspace,a.source,a.target,a.target_pin,a.mode,a.package_pin,a.af_purpose)
+-    camp=workflow.Campaign(a.workspace,a.contract_pin,a.package_pin,readonly=a.action in ('status','continue-static','continue-propose','continue-reconcile','continue-gate','readmit-static','readmit-propose','readmit-reconcile','readmit-gate'))
++    camp=workflow.Campaign(a.workspace,a.contract_pin,a.package_pin,readonly=a.action in ('status','continue-static','continue-propose','continue-reconcile','continue-gate','readmit-static','readmit-propose','readmit-reconcile','readmit-gate','window-static','window-reconcile','window-gate'),candidate_b_admission=a.action.startswith('window-'))
+     try:
++        if a.action.startswith('window-'):
++            import execution_windows as ew
++            if a.action=='window-static':
++                check(a.qualification and a.qualification_pin,'EXACT_WINDOW_QUALIFICATION_REQUIRED')
++                with safe(a.qualification).open('rb') as stream:raw=stream.read((2<<20)+1)
++                check(len(raw)<=2<<20 and hashlib.sha256(raw).hexdigest()==a.qualification_pin,'QUALIFICATION_CHANGED')
++                return ew.static(camp,a.operation_id,json.loads(raw))
++            if a.action=='window-reconcile':return ew.reconcile(camp,a.operation_id)
++            if a.action=='window-finalize':return ew.finalize(camp,a.operation_id)
++            if a.action=='window-gate':return ew.dynamic(camp,safe(a.result))
++            from native_accounting import feedback_once
++            return feedback_once(camp,a.request_pin)
+         if a.action=="status":return camp.inspect()
+         if a.action.startswith("readmit-"):
+             import readmission as rm
+--- a/src/gd/native_accounting.py
++++ b/src/gd/native_accounting.py
+@@ -0,0 +1,83 @@
++"""Native acceptance facts in the existing workflow DB; not a second balance.
++
++The frozen campaign's scientific outcome still settles its reservation. Native
++consumption is recorded and displayed separately while feedback is pending.
++No Grant-only charge, refund, replay or execution authority is implemented.
++"""
++import json,sqlite3
++from pathlib import Path
++import continuation as c
++TABLE='tensile_native_acceptance_facts'
++
++def source(camp,phase='B'):
++    c.require(phase=='B','EXACT_B_FACT_REQUIRED')
++    import execution_windows as w
++    row=camp.db.execute("SELECT * FROM stages WHERE phase='B'").fetchone()
++    req,pin,product=w.effective(camp,row)
++    expected=w.snapshot(camp,'--terminal')['result']['new']
++    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++    from abqjobpilot.execution.models import digest,canonical_json,CANONICAL,CONTRACT
++    m=ServiceLifecycleManager(product)
++    db=sqlite3.connect((Path(m.context.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:
++        db.execute('BEGIN')
++        runs=db.execute('SELECT body FROM runs').fetchall();receipts=db.execute('SELECT namespace,key,request_digest,run_id,body FROM receipts').fetchall()
++        c.require(len(runs)==len(receipts)==1,'EXACT_ONE_NATIVE_ACCEPTANCE_REQUIRED')
++        run=json.loads(runs[0][0]);rr=receipts[0];receipt=json.loads(rr[4])
++        p=json.loads(db.execute('SELECT body FROM plans').fetchone()[0]);u=dict(p)
++        c.require(u.pop('plan_digest')==digest(u),'NATIVE_PLAN_CHANGED')
++        from abqjobpilot.execution.product_standard import scope
++        c.require(expected['plan']==p and expected['scope_digest']==digest(scope(p))
++            and expected['af_project']==str(product) and expected['project_id']==m.context.project_id
++            and expected['project_instance_id']==m.context.project_instance_id,'NATIVE_FACT_CURRENT_BINDING_CHANGED')
++        c.require(p['registration']['request']==pin and p['registration']['candidate']==req['candidate_id']
++                  and p['registration']['research_project']==req['project'],'NATIVE_SCIENTIFIC_BINDING_CHANGED')
++        c.require(run['plan_id']==p['plan_id'] and run['plan_digest']==p['plan_digest'] and run['project_instance_id']==m.context.project_instance_id
++                  and run['job_id']==p['job_id'] and run['job_revision']==p['job_revision'],'NATIVE_RUN_BINDING_CHANGED')
++        c.require(receipt['request_status']=='ACCEPTED' and receipt['run_id']==run['run_id'] and receipt['job_id']==run['job_id']
++                  and tuple(rr[:4])==(receipt['namespace'],receipt['idempotency_key'],receipt['request_digest'],run['run_id']), 'NATIVE_RECEIPT_BINDING_CHANGED')
++        semantic=dict(contract_version=CONTRACT,operation='submit',project_id=m.context.project_id,project_instance_id=m.context.project_instance_id,
++            job_id=p['job_id'],job_revision=p['job_revision'],plan_id=p['plan_id'],plan_digest=p['plan_digest'],grant_id=run['grant_id'],retry_of=None,
++            context_digest=m.context.context_digest,canonicalization=CANONICAL)
++        c.require(receipt['namespace']==canonical_json([m.context.project_instance_id,m._profile()['client_namespace'],'submit'])
++            and receipt['request_digest']==digest(semantic),'NATIVE_RECEIPT_SEMANTIC_CHANGED')
++        c.require(db.execute('SELECT grant_id,run_id FROM consumption').fetchall()==[(run['grant_id'],run['run_id'])],'NATIVE_CONSUMPTION_CHANGED')
++        grant=json.loads(db.execute('SELECT body FROM grants WHERE grant_id=?',(run['grant_id'],)).fetchone()[0])
++        c.require(grant['plan_id']==p['plan_id'] and grant['plan_digest']==p['plan_digest'],'NATIVE_GRANT_BINDING_CHANGED')
++        ev=[dict(json.loads(x[1]),project_sequence=x[0]) for x in db.execute('SELECT sequence,body FROM events WHERE run_id=?',(run['run_id'],))]
++        accepted=[e for e in ev if e['type']=='REQUEST_ACCEPTED']
++        c.require(len(accepted)==1 and accepted[0]['project_sequence']==receipt['accepted_sequence'],'NATIVE_ACCEPTED_EVENT_CHANGED')
++        return dict(schema='native-acceptance-fact-v1',phase=phase,project=req['project'],candidate=req['candidate_id'],contract=camp.pin,
++          original_request=c.case.hashbytes(row['request']),effective_request=pin,af_project=str(product),project_instance_id=m.context.project_instance_id,
++          plan_id=p['plan_id'],plan_digest=p['plan_digest'],run_id=run['run_id'],grant_id=run['grant_id'],receipt=receipt,
++          accepted_event=accepted[0],native_consumed=1,scientific_charge_policy='UNCHANGED_FROZEN_OUTCOME_SETTLEMENT',execution_authorized=False)
++    finally:db.close()
++
++def record_acceptance(camp,phase='B'):
++    value=source(camp,phase);raw=c.pack(value);pin=c.pin(value)
++    camp.db.execute('BEGIN IMMEDIATE')
++    try:
++        camp.verified_rows(terminal_structure_only=True)
++        camp.db.execute('CREATE TABLE IF NOT EXISTS '+TABLE+'(phase TEXT PRIMARY KEY,run_id TEXT UNIQUE NOT NULL,body BLOB NOT NULL,pin TEXT NOT NULL)')
++        old=camp.db.execute('SELECT run_id,body,pin FROM '+TABLE+' WHERE phase=?',(phase,)).fetchone()
++        if old is not None:c.require(tuple(old)==(value['run_id'],raw,pin),'NATIVE_FACT_CONFLICT')
++        else:camp.db.execute('INSERT INTO '+TABLE+' VALUES(?,?,?,?)',(phase,value['run_id'],raw,pin))
++        camp.db.commit();return dict(value,replayed=old is not None)
++    except BaseException:camp.db.rollback();raise
++
++def feedback_once(camp,request_pin):
++    """Idempotent terminal observation. An incomplete scientific INTENT is not retried."""
++    rows=camp.verified_rows(terminal_structure_only=True)
++    c.require(len(rows)==2 and rows[0]['state']=='MISS','ORIGINAL_A_AND_B_REQUIRED')
++    row=rows[-1]
++    c.require(row['phase']=='B' and c.case.hashbytes(row['request'])==request_pin,'EXACT_ORIGINAL_B_REQUEST_REQUIRED')
++    if row['state'] in ('GOAL_MET','EXHAUSTED','FAILED'):
++        c.require(row['result'] is not None,'TERMINAL_RESULT_REQUIRED')
++        feedback=camp.feedback(row)
++        return dict(status='ALREADY_COMMITTED_NATIVE',phase='B',feedback=feedback,budget=camp.counts(rows),replayed=True)
++    record_acceptance(camp,'B')
++    if row['state']=='INTENT':
++        from terminal_materialization import complete_intent
++        return complete_intent(camp,row)
++    c.require(row['state']=='PREPARED','SCIENTIFIC_STATE_UNKNOWN_READONLY_RECONCILE_ONLY')
++    return camp.observe('B',request_pin,'NATIVE')
+--- a/src/gd/native_feedback.py
++++ b/src/gd/native_feedback.py
+@@ -18,8 +18,8 @@
+         req,request_pin,product=effective(camp,r)
+         binding_reader=bind_compatible
+     else:
+-        import b_readmission
+-        req,request_pin,product=b_readmission.effective(camp,r);binding_reader=bind
++        import execution_windows
++        req,request_pin,product=execution_windows.effective(camp,r);binding_reader=bind
+     reader=local(Path(__file__).with_name("odb_reader.py"))
+     b=binding_reader(product,req,request_pin,digest(reader))
+     return req,reader,b,ServiceLifecycleManager(product)
+@@ -37,10 +37,21 @@
+             "frames":frames,"assessment":case.compare(camp.target,frames,req["parameters"])}
+ 
+ def extract(camp,r):
+-    from abqjobpilot.execution.standard_contract import CMD,ENTRY
++    if r['phase']=='B':
++        from terminal_materialization import extract_once
++        return extract_once(camp,r)
+     from abqjobpilot.local_credentials import private_value
+     from abqjobpilot.service_lifecycle import write_new
+     req,reader,b,m=source(camp,r)
++    ex=read_extraction(camp,req,reader,b)
++    case.check(source(camp,r)[2]==b,"TERMINAL_SOURCE_CHANGED")
++    result=evaluate(camp,req,b,ex)
++    write_new(m._path("tensile-feedback.json"),private_value(m.context,{"result_digest":case.hashbytes(case.pack(result)),
++              "binding_digest":case.hashbytes(case.pack(b))}))
++    return result
++
++def read_extraction(camp,req,reader,b):
++    from abqjobpilot.execution.standard_contract import CMD,ENTRY
+     # Only the fixed 'python' reader action. No solver subcommand or arbitrary script.
+     with tempfile.TemporaryDirectory(dir=camp.root,prefix="native-read-") as tmp:
+         tmp=local(tmp)
+@@ -57,11 +68,7 @@
+                        stderr=subprocess.DEVNULL,timeout=120,check=True)
+         case.check(local(out).is_file() and out.stat().st_size<=64<<20,"EXTRACTION_LIMIT")
+         ex=json.loads(out.read_bytes())
+-    case.check(source(camp,r)[2]==b,"TERMINAL_SOURCE_CHANGED")
+-    result=evaluate(camp,req,b,ex)
+-    write_new(m._path("tensile-feedback.json"),private_value(m.context,{"result_digest":case.hashbytes(case.pack(result)),
+-              "binding_digest":case.hashbytes(case.pack(b))}))
+-    return result
++    return ex
+ 
+ def verify(camp,r):
+     from abqjobpilot.local_credentials import read_private
+--- a/src/gd/operator_entry.py
++++ b/src/gd/operator_entry.py
+@@ -1,438 +1,602 @@
+-"""One local Candidate B handoff; every execution effect uses the native AF API.
+-
+-No executor, retry loop, authority ledger, or automatic recovery is implemented.
+-The scope file records prior operator/Main/Testing readiness; it is NOT a Grant.
+-Only the exact live Plan's native authorize call can issue an execution Grant.
+-"""
+-import argparse
+-import hashlib
+-import json
+-import os
+-from pathlib import Path
+-import re
+-import sqlite3
+-import secrets
+-import sys
+-import time
+-import traceback
+-import uuid
+-
+-
+-def require(value, reason):
+-    if not value:
+-        raise ValueError(reason)
+-
+-
+-def sha(path):
+-    with Path(path).open('rb') as stream:
+-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+-
+-
+-def read_bound_json(path, expected):
+-    from main import safe
+-    path = safe(path)
+-    require(path.stat().st_size <= 1048576, 'REFERENCE_FILE_LIMIT')
+-    with path.open('rb') as stream:
+-        raw = stream.read(1048577)
+-    require(len(raw) <= 1048576 and hashlib.sha256(raw).hexdigest() == expected, 'REFERENCE_FILE_DIGEST_MISMATCH')
+-    return json.loads(raw)
+-
+-
+-def check_decision_reference(value):
+-    require(isinstance(value, dict) and set(value) == {'path', 'sha256'}
+-            and isinstance(value['path'], str) and Path(value['path']).is_absolute()
+-            and isinstance(value['sha256'], str) and re.fullmatch('[a-f0-9]{64}', value['sha256']),
+-            'EXACT_B_DECISION_REFERENCE_REQUIRED')
+-    return value
+-
+-
+-def check_qualification(value):
+-    require(isinstance(value,dict) and set(value)=={'schema','pre_call','final','review','index'}
+-            and value['schema']=='retained-stop-review-reference-v1','EXACT_STOP_QUALIFICATION_REQUIRED')
+-    for key in ('pre_call','final','review','index'):check_decision_reference(value[key])
+-    return value
+-
+-
+-def write_new(path, value):
+-    with Path(path).open('x', encoding='utf-8') as stream:
+-        json.dump(value, stream, sort_keys=True, indent=2, allow_nan=False)
+-        stream.flush()
+-        os.fsync(stream.fileno())
+-
+-
+-class Journal:
+-    """Exclusive operation evidence directory, not a second authoritative store."""
+-    def __init__(self, root):
+-        self.root = Path(root)
+-        self.root.mkdir(parents=False, exist_ok=False)
+-
+-    def put(self, name, value):
+-        write_new(self.root / (name + '.json'), value)
+-        return value
+-
+-    def call(self, name, arguments, action):
+-        key = name.replace('-', '_') + '_' + uuid.uuid4().hex
+-        self.put(name + '-request', dict(operation_key=key, arguments=arguments))
+-        # Request survives exceptions and process death. Never create another key.
+-        result = action(key)
+-        return self.put(name + '-result', result)
+-
+-
+-RESOURCES = dict(slots=1, cpus=1, gpus=0, memory_mb=2048,
+-                 observation_seconds=300, launch_budget=1)
+-ACTIONS = ['jit_candidate_b_readmission', 'owner_start', 'human_exact_grant', 'submit_once',
+-           'dispatch_once', 'observe_bounded', 'normal_completed_idle_stop',
+-           'raw_evidence', 'native_odb_observation']
+-
+-
+-def check_scope(scope, *, package, contract, work, operation, checker):
+-    require(set(scope) == {'schema', 'workspace', 'contract_pin', 'package_pin',
+-                           'operation_id', 'checker_sha256', 'actions',
+-                           'independent_readiness_reference', 'site_authorization_reference',
+-                           'operator_ready', 'retry', 'resources', 'purpose', 'decision_reference','qualification'}, 'EXACT_SCOPE_FIELDS_REQUIRED')
+-    require(scope['schema'] == 'tensile-b-readmission-local-one-shot-scope-v1'
+-            and scope['workspace'] == str(work) and scope['contract_pin'] == contract
+-            and scope['package_pin'] == package and scope['operation_id'] == operation
+-            and scope['checker_sha256'] == checker and scope['actions'] == ACTIONS
+-            and scope['operator_ready'] is True and scope['retry'] == 0
+-            and scope['resources'] == RESOURCES and scope['purpose'] == 'JIT_HUMAN_REVIEW',
+-            'EXACT_SCOPE_MISMATCH')
+-    require(all(isinstance(scope[k], str) and scope[k].strip() for k in
+-                ('independent_readiness_reference', 'site_authorization_reference')),
+-            'PREWINDOW_REVIEW_REFERENCES_REQUIRED')
+-    check_decision_reference(scope['decision_reference'])
+-    check_qualification(scope['qualification'])
+-    return scope
+-
+-
+-class Native:
+-    """Installed APIs only. No command line Solver launch is present here."""
+-    def __init__(self, camp):
+-        from r3_bridge import trusted_af
+-        trusted_af()
+-        import b_readmission
+-        from abqjobpilot.service_lifecycle import ServiceLifecycleManager
+-        from abqjobpilot.product_standard import StandardOperator, inspect_preparation
+-        from abqjobpilot.execution.product_standard import scope
+-        from abqjobpilot.execution.models import digest
+-        from abqjobpilot.local_credentials import user_sid
+-        self.camp, self.b_admission = camp, b_readmission
+-        self.Manager, self.Operator, self.inspect = ServiceLifecycleManager, StandardOperator, inspect_preparation
+-        self.scope, self.digest, self.sid = scope, digest, user_sid
+-
+-    def static(self, operation):
+-        return self.b_admission.static(self.camp, operation, self.camp.b_readmission_qualification)
+-
+-    def prepare(self, proposal, pin, expires):
+-        return self.b_admission.prepare(self.camp, proposal, pin, expires)
+-
+-    def dynamic(self, path):
+-        return self.b_admission.dynamic(self.camp, path)
+-
+-    def attach(self, project):
+-        self.manager = self.Manager(project)
+-        self.operator = self.Operator(project)
+-
+-    def start(self):
+-        return self.manager.start(wait_seconds=8)
+-
+-    def connect(self, owner):
+-        self.client, context, health = self.manager.connect()
+-        require(self.client.endpoint['owner_id'] == owner['owner_id']
+-                and health['lifecycle_start_id'] == owner['start_id'], 'CONNECTED_IDENTITY_MISMATCH')
+-        return dict(project_instance_id=context.project_instance_id,
+-                    owner_id=self.client.endpoint['owner_id'], start_id=health['lifecycle_start_id'])
+-
+-    def authorize(self, args, key, owner):
+-        return self.operator.request('authorize', args, operation_key=key, owner_id=owner)
+-
+-    def submit(self, request):
+-        return self.client.submit(request)
+-
+-    def run(self, run_id):
+-        return self.client.run(run_id)
+-
+-    def gate(self):
+-        return self.client.dispatch_gate()
+-
+-    def project_view(self):
+-        return self.client.project_view(limit=1)
+-
+-    def dispatch(self, args, key, owner):
+-        return self.operator.request('dispatch_once', args, operation_key=key, owner_id=owner)
+-
+-    def stop(self, owner, key):
+-        return self.manager.stop(owner_id=owner, operation_key=key)
+-
+-    def stopped(self):
+-        # No reconnect/poll against a stopped Owner. Require the native persistent receipt/marker pair.
+-        marker = self.manager._stopped(self.manager._current())
+-        return marker
+-
+-    def observe(self, request):
+-        return self.camp.observe('B', request, 'NATIVE')
+-
+-
+-def check_plan(plan, checked, now):
+-    require(plan == checked['new']['plan'] and checked['plan_id'] == plan['plan_id']
+-            and checked['plan_digest'] == plan['plan_digest']
+-            and checked['scope_digest'] == checked['new']['scope_digest'], 'GATE_PLAN_MISMATCH')
+-    require(plan['registration']['purpose'] == 'JIT_HUMAN_REVIEW' and plan['registration']['phase'] == 'B'
+-            and plan['resources'] == RESOURCES and plan['expires_at'] > now
+-            and checked['execution_authorized'] is False
+-            and checked['budget'] == dict(limit=2, held=1, charged=1, available=0), 'PLAN_SCOPE_OR_EXPIRY')
+-
+-
+-def raw_artifacts(plan):
+-    from main import safe
+-    root = safe(plan['engineering'])
+-    require(not (root / (plan['job_name'] + '.lck')).exists(), 'OUTPUT_STILL_LOCKED')
+-    values = {}
+-    for ext in ('inp', 'odb', 'sta', 'msg', 'dat'):
+-        path = safe(root / (plan['job_name'] + '.' + ext))
+-        if ext == 'dat' and not path.exists():
+-            values[ext] = dict(status='NOT_PRESENT', path=str(path),
+-                               reason='Not generated or missing; existence check cannot distinguish')
+-            continue
+-        require(path.is_file() and path.stat().st_size > 0 and path.stat().st_nlink == 1, 'RAW_ARTIFACT_REQUIRED')
+-        values[ext] = dict(status='PRESENT', path=str(path), sha256=sha(path), size=path.stat().st_size)
+-    return values
+-
+-
+-def execute(native, journal, operation, *, confirmation=None, emit=print, wall=time.time,
+-            clock=time.monotonic, sleep=time.sleep, artifacts=raw_artifacts):
+-    """Bounded orchestration, testable with in-memory native substitutes only."""
+-    static = journal.put('static', native.static(operation))
+-    require(static['status'] == 'STATIC_READONLY_READY' and static['plan_created'] is False,
+-            'STATIC_NOT_READY')
+-    require(static['proposal']['purpose'] == 'JIT_HUMAN_REVIEW', 'LIVE_SCOPE_REQUIRED_BEFORE_JIT')
+-    from local_confirmation import LocalConfirmation,packet_digest
+-    if confirmation is None:confirmation=LocalConfirmation()
+-    ready=journal.put('human-ready',confirmation.ready(static,operation))
+-    require(ready['status']=='READY_RECEIVED_NO_EXECUTION_AUTHORITY' and ready['operation_id']==operation
+-            and ready['proposal_digest']==static['proposal_digest'],'PRE_JIT_HUMAN_READINESS_REQUIRED')
+-    # Actual human handshake completed. TTL begins only now, not at launch.
+-    jit_wall,jit_clock=wall(),clock()
+-    jit_expires=int(jit_wall)+600
+-    jit_deadline=jit_clock+(jit_expires-jit_wall)
+-    journal.put('jit-clock-anchor',dict(epoch=jit_wall,monotonic=jit_clock,expires_epoch=jit_expires,monotonic_deadline=jit_deadline))
+-    result = journal.call('jit', dict(operation_id=operation, proposal_digest=static['proposal_digest']),
+-                          lambda key: native.prepare(static['proposal'], static['proposal_digest'], jit_expires))
+-    path = journal.root / 'jit-result.json'
+-    checked = journal.put('dynamic-gate', native.dynamic(path))
+-    require(checked['status'] == 'DYNAMIC_READONLY_PASS' and checked['operation_id'] == operation,
+-            'DYNAMIC_GATE_REQUIRED')
+-    plan = checked['new']['plan']
+-    check_plan(plan, checked, wall())
+-    require(native.digest(native.scope(plan)) == checked['scope_digest'], 'NATIVE_SCOPE_CHANGED')
+-    native.attach(checked['new']['af_project'])
+-    view = native.inspect(checked['new']['af_project'])
+-    require(view['plan'] == plan and view['counts'] == dict(plans=1, grants=0, runs=0, receipts=0, consumption=0)
+-            and view['gate']['state'] == 'PAUSED' and view['supervisor_started'] == '0', 'NATIVE_PREFLIGHT_CHANGED')
+-    require(wall() < plan['expires_at'] and clock()<jit_deadline, 'PLAN_EXPIRED_BEFORE_START')
+-    owner = journal.call('owner-start', dict(project=checked['new']['af_project'], plan_id=plan['plan_id']), lambda key: native.start())
+-    require(owner['state'] == 'CONNECTED' and owner['created'] is True, 'OWNER_START_UNKNOWN')
+-    connected = journal.put('connected', native.connect(owner))
+-    require(connected['project_instance_id'] == plan['project_instance_id'], 'PROJECT_INSTANCE_CHANGED')
+-    # Full exact identity displayed locally. The text itself is not native permission.
+-    display = dict(plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], scope_digest=checked['scope_digest'],
+-                   resources=plan['resources'], expires_at=plan['expires_at'], input_manifest=plan['input_manifest'],
+-                   job_id=plan['job_id'], job_revision=plan['job_revision'], job_name=plan['job_name'],
+-                   engineering=plan['engineering'], scratch=plan['scratch'], output_key=plan['output_key'],
+-                   expected_outputs={ext:str(Path(plan['engineering'])/(plan['job_name']+'.'+ext)) for ext in ('odb','sta','msg','dat')},
+-                   project=checked['project'], candidate=checked['candidate'], budget=checked['budget'],
+-                   af_project=checked['new']['af_project'], owner=owner)
+-    packet=json.loads(json.dumps(dict(display,operation_id=operation,parameters=plan['registration']['parameters'],
+-                                     plan=plan,challenge=secrets.token_hex(3).upper()),allow_nan=False))
+-    packet_pin=packet_digest(packet)
+-    journal.put('confirmation-packet',packet)
+-    proof=journal.put('human-confirmation',confirmation.authorize(packet,monotonic_deadline=jit_deadline))
+-    require(proof['status']=='HUMAN_EXACT_PACKET_CONFIRMED' and proof['packet_sha256']==packet_pin
+-            and proof['operation_id']==operation and proof['challenge']==packet['challenge']
+-            and packet_digest(packet)==packet_pin,'CONFIRMATION_PACKET_CHANGED')
+-    # A short local challenge cannot hide a changed native Plan or scope.
+-    saved_packet_path=journal.root/'confirmation-packet.json'
+-    require(saved_packet_path.stat().st_size<=1048576,'CONFIRMATION_PACKET_FILE_LIMIT')
+-    with saved_packet_path.open('rb') as stream: saved_packet_raw=stream.read(1048577)
+-    require(len(saved_packet_raw)<=1048576,'CONFIRMATION_PACKET_FILE_LIMIT')
+-    saved_packet=json.loads(saved_packet_raw)
+-    require(saved_packet==packet and packet_digest(saved_packet)==packet_pin,'PERSISTED_CONFIRMATION_PACKET_CHANGED')
+-    fresh=journal.put('pre-authorize-inspection',native.inspect(checked['new']['af_project']))
+-    require(fresh['plan']==packet['plan'] and fresh['counts']==dict(plans=1,grants=0,runs=0,receipts=0,consumption=0)
+-            and fresh['gate']['state']=='PAUSED' and fresh['gate']['owner_id']==owner['owner_id']
+-            and fresh['supervisor_started']=='1'
+-            and native.digest(native.scope(plan))==packet['scope_digest'],'PRE_AUTHORIZE_NATIVE_STATE_CHANGED')
+-    reconnected=journal.put('pre-authorize-connected',native.connect(owner))
+-    require(reconnected==connected and reconnected['owner_id']==owner['owner_id']
+-            and reconnected['start_id']==owner['start_id'],'PRE_AUTHORIZE_OWNER_CHANGED')
+-    project_view=journal.put('pre-authorize-project-view',native.project_view())
+-    require(project_view['project_id']==plan['registration']['project_id']
+-            and project_view['project_instance_id']==plan['project_instance_id']
+-            and project_view['gate']['state']=='PAUSED' and project_view['gate']['owner_id']==owner['owner_id']
+-            and project_view['slot_run_id'] is None and project_view['runs']==[], 'PRE_AUTHORIZE_SLOT_OR_RUN_CHANGED')
+-    require(wall() < plan['expires_at'] and clock()<jit_deadline, 'PLAN_EXPIRED_DURING_CONFIRMATION')
+-    confirmation.before_native_authorize(expires=plan['expires_at'],monotonic_deadline=jit_deadline)
+-    args = dict(plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], expires_at=plan['expires_at'],
+-                subject=native.sid(), source=checked['scope_digest'])
+-    grant = journal.call('authorize', args, lambda key: native.authorize(args, key, owner['owner_id']))
+-    gr = grant['receipt']
+-    require(gr['scope_digest'] == checked['scope_digest'] and grant['replayed'] is False
+-            and wall() < min(plan['expires_at'], gr['expires_at']) and clock()<jit_deadline, 'GRANT_RESPONSE_MISMATCH')
+-    emit('Native Grant received: '+gr['grant_id']+'; submitting exactly once.')
+-    submit = dict(contract_version='af-experiment-v1', operation='submit', project_id=plan['registration']['project_id'],
+-                  project_instance_id=plan['project_instance_id'], job_id=plan['job_id'], job_revision=plan['job_revision'],
+-                  plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], grant_id=gr['grant_id'], retry_of=None)
+-    accepted = journal.call('submit', submit, lambda key: native.submit(dict(submit, idempotency_key=key)))
+-    require(accepted['request_status'] == 'ACCEPTED', 'SUBMIT_UNKNOWN')
+-    run_id = accepted['receipt']['run_id']
+-    run, gate = native.run(run_id), native.gate()
+-    require(run['plan_id'] == plan['plan_id'] and run['plan_digest'] == plan['plan_digest']
+-            and run['grant_id'] == gr['grant_id'] and run['execution'] == 'PLANNED'
+-            and run['queue_state'] == 'PENDING' and run['launch_state'] == 'NOT_CALLED'
+-            and gate['state'] == 'PAUSED' and gate['owner_id'] == owner['owner_id'], 'PRE_DISPATCH_CHANGED')
+-    require(wall() < min(plan['expires_at'], gr['expires_at']) and clock()<jit_deadline, 'PLAN_OR_GRANT_EXPIRED')
+-    dispatch = dict(run_id=run_id, revision=run['revision'], gate_version=gate['version'],
+-                    start_not_after=min(int(wall()) + 30, plan['expires_at'], gr['expires_at']))
+-    started = clock()
+-    dispatched = journal.call('dispatch', dispatch, lambda key: native.dispatch(dispatch, key, owner['owner_id']))
+-    require(dispatched['receipt']['run_id'] == run_id and dispatched['receipt']['grant_id'] == gr['grant_id'], 'DISPATCH_UNKNOWN')
+-    observations = []
+-    while clock() < started + 294:
+-        run = native.run(run_id)
+-        item = dict(at=wall(), elapsed=clock() - started, run=run)
+-        journal.put('observation-%04d' % len(observations), item)
+-        observations.append(item)
+-        if run['reconciliation'] != 'NONE' or run['execution'] in ('BLOCKED', 'FINISHED'):
+-            break
+-        sleep(min(2, max(0, started + 294 - clock())))
+-    elapsed = clock() - started
+-    journal.put('observation-elapsed', dict(elapsed=elapsed, over_300_seconds=elapsed > 300))
+-    require(observations and elapsed <= 300 and run['execution'] == 'FINISHED'
+-            and run['reconciliation'] == 'NONE' and run.get('managed_completion') == 'COMMITTED_EMPTY_SCOPE',
+-            'OBSERVATION_UNKNOWN_NO_CLEANUP')
+-    final = native.run(run_id)
+-    require(final['execution'] == 'FINISHED' and final['reconciliation'] == 'NONE'
+-            and final.get('managed_completion') == 'COMMITTED_EMPTY_SCOPE', 'COMPLETION_CHANGED')
+-    stop = journal.call('normal-stop', dict(owner_id=owner['owner_id'], start_id=owner['start_id'], run_id=run_id),
+-                        lambda key: native.stop(owner['owner_id'], key))
+-    require(stop['receipt']['state'] == 'STOP_COMMITTED' and stop['receipt']['owner_id'] == owner['owner_id']
+-            and stop['receipt']['start_id'] == owner['start_id'], 'STOP_UNKNOWN')
+-    deadline = clock() + 10
+-    marker = None
+-    while clock() < deadline:
+-        marker = native.stopped()
+-        if marker:
+-            break
+-        sleep(.25)
+-    require(marker and marker['receipt'] == stop['receipt'], 'ORDERLY_STOP_NOT_RECORDED')
+-    journal.put('stopped-marker', marker)
+-    journal.put('owner-exit-status', dict(status='NOT_INDEPENDENTLY_VERIFIED',
+-                                         evidence='Native orderly-stop receipt and marker only',
+-                                         limitation='No retained Windows process exit handles are collected by this entry'))
+-    journal.put('raw-artifact-identities', artifacts(plan))
+-    feedback = journal.call('native-observation', dict(original_request=checked['original_request']),
+-                            lambda key: native.observe(checked['original_request']))
+-    return journal.put('handoff', dict(status='NATIVE_FEEDBACK_PENDING_INDEPENDENT_REVIEW', result=feedback,
+-                                      independent_acceptance='NOT_PERFORMED', next_candidate='NOT_PROPOSED',
+-                                      execution_retry=False, operation_id=operation))
+-
+-
+-def native_context(project):
+-    from r3_bridge import trusted_af
+-    trusted_af()
+-    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
+-    # Constructor only: resolve the native product/project layout, never connect.
+-    return ServiceLifecycleManager(project).context
+-
+-
+-def reconcile(evidence):
+-    """Existing artifacts and durable native records only; never reconnect/restart."""
+-    root = Path(evidence)
+-    require(root.is_dir(), 'EVIDENCE_REQUIRED')
+-    records = {p.name: json.loads(p.read_bytes()) for p in root.glob('*.json')}
+-    result = records.get('jit-result.json')
+-    if not result:
+-        return dict(status='READONLY_JOURNAL_ONLY', records=records, automatic_resume=False)
+-    from main import safe
+-    project = safe(result['new']['af_project'])
+-    require(project.parent == safe(root.parent), 'RECONCILIATION_PROJECT_OUTSIDE_WORKSPACE')
+-    context = native_context(project)
+-    require(safe(context.test_root) == project and safe(context.root).is_relative_to(project),
+-            'RECONCILIATION_CONTEXT_MISMATCH')
+-    db = sqlite3.connect(safe(Path(context.root) / 'execution.sqlite3').as_uri() + '?mode=ro', uri=True)
+-    db.row_factory = sqlite3.Row
+-    try:
+-        db.execute('BEGIN')
+-        native = {table: [dict(row) for row in db.execute('SELECT * FROM ' + table)]
+-                  for table in ('plans', 'runs', 'receipts', 'management_receipts', 'dispatch_gate', 'slot')}
+-        require(len(native['plans']) == 1 and json.loads(native['plans'][0]['body']) == result['new']['plan'],
+-                'RECONCILIATION_PLAN_IDENTITY_MISMATCH')
+-    finally:
+-        db.close()
+-    markers = {str(p.relative_to(project)): json.loads(p.read_bytes())
+-               for p in project.glob('private/start_*/stopped.json')}
+-    return dict(status='READONLY_RECONCILIATION_REQUIRED', records=records, native=native, stopped_markers=markers,
+-                receipt_actions=['product_standard_authorize', 'product_standard_dispatch_once', 'lifecycle_stop_idle_v1'],
+-                automatic_resume=False, execution_authorized=False)
+-
+-
+-def main():
+-    from types import SimpleNamespace
+-    parser = argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('action', choices=('static', 'run', 'reconcile'))
+-    for field in ('workspace', 'contract-pin', 'package-pin', 'python-exe', 'operation-id', 'evidence'):
+-        parser.add_argument('--' + field, required=True)
+-    parser.add_argument('--scope'); parser.add_argument('--scope-pin')
+-    parser.add_argument('--decision'); parser.add_argument('--decision-pin')
+-    parser.add_argument('--qualification'); parser.add_argument('--qualification-pin')
+-    a = parser.parse_args()
+-    root = Path(__file__).resolve().parent
+-    sys.path[:0] = [str(root), str(root / 'runtime')]
+-    from main import verify, safe
+-    verify(root, SimpleNamespace(python_exe=a.python_exe, package_pin=a.package_pin))
+-    work, evidence = safe(a.workspace), safe(a.evidence)
+-    require(Path(a.workspace).is_absolute() and Path(a.evidence).is_absolute()
+-            and evidence.parent == work and not evidence.is_relative_to(root), 'RESEARCH_OPERATION_DIRECTORY_REQUIRED')
+-    require(re.fullmatch('[a-f0-9]{32}', a.operation_id) is not None, 'EXACT_OPERATION_ID_REQUIRED')
+-    if a.action == 'reconcile':
+-        return reconcile(evidence)
+-    import workflow
+-    camp = workflow.Campaign(work, a.contract_pin, a.package_pin, readonly=a.action == 'static', candidate_b_admission=True)
+-    try:
+-        native = Native(camp)
+-        if a.action == 'static':
+-            require(a.decision and a.decision_pin, 'EXACT_B_DECISION_REFERENCE_REQUIRED')
+-            ref = check_decision_reference(dict(path=a.decision, sha256=a.decision_pin))
+-            camp.b_decision = read_bound_json(ref['path'], ref['sha256'])
+-            require(a.qualification and a.qualification_pin,'EXACT_STOP_QUALIFICATION_REQUIRED')
+-            camp.b_readmission_qualification=check_qualification(read_bound_json(a.qualification,a.qualification_pin))
+-            return native.static(a.operation_id)
+-        from local_confirmation import LocalConfirmation
+-        confirmation=LocalConfirmation()
+-        require(a.scope and a.scope_pin, 'REVIEWED_SCOPE_FILE_REQUIRED')
+-        scope = check_scope(read_bound_json(a.scope, a.scope_pin), package=a.package_pin, contract=a.contract_pin,
+-                            work=work, operation=a.operation_id, checker=sha(root / 'b_readmission.py'))
+-        ref = scope['decision_reference']
+-        if a.decision or a.decision_pin:
+-            require(dict(path=a.decision, sha256=a.decision_pin) == ref, 'B_DECISION_OVERRIDE_DENIED')
+-        camp.b_decision = read_bound_json(ref['path'], ref['sha256'])
+-        camp.b_readmission_qualification=scope['qualification']
+-        journal = Journal(evidence)
+-        journal.put('scope-reference', dict(scope=scope, scope_sha256=a.scope_pin,
+-                                           statement='Prior scope reference is not a native execution Grant'))
+-        try:
+-            return execute(native, journal, a.operation_id, confirmation=confirmation)
+-        except BaseException as exc:
+-            journal.put('halt', dict(status='UNKNOWN_STOPPED_NO_RETRY', error_type=type(exc).__name__,
+-                                     error=str(exc), traceback=traceback.format_exc(), automatic_resume=False))
+-            raise
+-    finally:
+-        camp.db.close()
+-
+-
+-if __name__ == '__main__':
+-    try:
+-        print(json.dumps(main(), indent=2, allow_nan=False))
+-    except BaseException as exc:
+-        print(json.dumps(dict(status='BLOCKED_OR_UNKNOWN_NO_RETRY', error=str(exc), traceback=traceback.format_exc())))
+-        sys.exit(2)
++"""One local Candidate B handoff; every execution effect uses the native AF API.
++
++No executor, retry loop, authority ledger, or automatic recovery is implemented.
++The scope file records prior operator/Main/Testing readiness; it is NOT a Grant.
++Only the exact live Plan's native authorize call can issue an execution Grant.
++"""
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import sqlite3
++import sys
++import time
++import traceback
++import uuid
++
++
++def require(value, reason):
++    if not value:
++        raise ValueError(reason)
++
++
++def sha(path):
++    with Path(path).open('rb') as stream:
++        return hashlib.file_digest(stream, 'sha256').hexdigest()
++
++
++def read_bound_json(path, expected):
++    from main import safe
++    path = safe(path)
++    require(path.stat().st_size <= 1048576, 'REFERENCE_FILE_LIMIT')
++    with path.open('rb') as stream:
++        raw = stream.read(1048577)
++    require(len(raw) <= 1048576 and hashlib.sha256(raw).hexdigest() == expected, 'REFERENCE_FILE_DIGEST_MISMATCH')
++    return json.loads(raw)
++
++
++def check_decision_reference(value):
++    require(isinstance(value, dict) and set(value) == {'path', 'sha256'}
++            and isinstance(value['path'], str) and Path(value['path']).is_absolute()
++            and isinstance(value['sha256'], str) and re.fullmatch('[a-f0-9]{64}', value['sha256']),
++            'EXACT_B_DECISION_REFERENCE_REQUIRED')
++    return value
++
++
++def check_qualification(value):
++    if isinstance(value,dict) and value.get('schema')=='execution-window-stop-reference-v1':
++        require(set(value)=={'schema','path','sha256'},'EXACT_WINDOW_STOP_REFERENCE_REQUIRED')
++        check_decision_reference(dict(path=value['path'],sha256=value['sha256']))
++        return value
++    require(isinstance(value,dict) and set(value)=={'schema','pre_call','final','review','index'}
++            and value['schema']=='retained-stop-review-reference-v1','EXACT_STOP_QUALIFICATION_REQUIRED')
++    for key in ('pre_call','final','review','index'):check_decision_reference(value[key])
++    return value
++
++
++def check_cleanup_delegation(value,*,operation,work,package):
++    require(isinstance(value,dict) and set(value)=={'permitted_actions','reference'}
++            and value['permitted_actions']==['normal_idle_stop_unexecuted'],'EXACT_CLEANUP_DELEGATION_REQUIRED')
++    ref=check_decision_reference(value['reference'])
++    source=read_bound_json(ref['path'],ref['sha256'])
++    require(set(source)=={'schema','operation_id','workspace','package_pin','permitted_actions','solver_grant','source_reference'}
++            and source['schema']=='local-operation-delegation-v1' and source['operation_id']==operation
++            and source['workspace']==str(work) and source['package_pin']==package
++            and source['permitted_actions']==value['permitted_actions'] and source['solver_grant'] is False
++            and isinstance(source['source_reference'],str) and source['source_reference'].strip(), 'CLEANUP_DELEGATION_BINDING_MISMATCH')
++    # This is a pinned record of prior delegation, not a permission issuer.
++    # Native lifecycle capability and atomic idle checks remain authoritative.
++    return dict(value,source=source)
++
++
++def write_new(path, value):
++    with Path(path).open('x', encoding='utf-8') as stream:
++        json.dump(value, stream, sort_keys=True, indent=2, allow_nan=False)
++        stream.flush()
++        os.fsync(stream.fileno())
++
++
++class Journal:
++    """Exclusive operation evidence directory, not a second authoritative store."""
++    def __init__(self, root):
++        self.root = Path(root)
++        self.root.mkdir(parents=False, exist_ok=False)
++
++    def put(self, name, value):
++        write_new(self.root / (name + '.json'), value)
++        return value
++
++    def call(self, name, arguments, action):
++        key = name.replace('-', '_') + '_' + uuid.uuid4().hex
++        self.put(name + '-request', dict(operation_key=key, arguments=arguments))
++        # Request survives exceptions and process death. Never create another key.
++        result = action(key)
++        return self.put(name + '-result', result)
++
++
++RESOURCES = dict(slots=1, cpus=1, gpus=0, memory_mb=2048,
++                 observation_seconds=300, launch_budget=1)
++ACTIONS = ['jit_candidate_b_execution_window', 'owner_start', 'human_exact_grant', 'submit_once',
++           'dispatch_once', 'observe_bounded', 'normal_completed_idle_stop',
++           'raw_evidence', 'native_odb_observation']
++
++
++def check_scope(scope, *, package, contract, work, operation, checker):
++    require(set(scope) == {'schema', 'workspace', 'contract_pin', 'package_pin',
++                           'operation_id', 'checker_sha256', 'actions',
++                           'independent_readiness_reference', 'site_authorization_reference',
++                           'operator_ready', 'retry', 'resources', 'purpose', 'decision_reference','qualification','cleanup_delegation'}, 'EXACT_SCOPE_FIELDS_REQUIRED')
++    require(scope['schema'] == 'tensile-b-execution-window-local-scope-v1'
++            and scope['workspace'] == str(work) and scope['contract_pin'] == contract
++            and scope['package_pin'] == package and scope['operation_id'] == operation
++            and scope['checker_sha256'] == checker and scope['actions'] == ACTIONS
++            and scope['operator_ready'] is True and scope['retry'] == 0
++            and scope['resources'] == RESOURCES and scope['purpose'] == 'JIT_HUMAN_REVIEW',
++            'EXACT_SCOPE_MISMATCH')
++    require(all(isinstance(scope[k], str) and scope[k].strip() for k in
++                ('independent_readiness_reference', 'site_authorization_reference')),
++            'PREWINDOW_REVIEW_REFERENCES_REQUIRED')
++    check_decision_reference(scope['decision_reference'])
++    check_qualification(scope['qualification'])
++    check_cleanup_delegation(scope['cleanup_delegation'],operation=operation,work=work,package=package)
++    return scope
++
++
++class Native:
++    """Installed APIs only. No command line Solver launch is present here."""
++    def __init__(self, camp):
++        from r3_bridge import trusted_af
++        trusted_af()
++        import execution_windows
++        from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++        from abqjobpilot.product_standard import StandardOperator, inspect_preparation
++        from abqjobpilot.execution.product_standard import scope
++        from abqjobpilot.execution.models import digest
++        from abqjobpilot.local_credentials import user_sid
++        self.camp, self.b_admission = camp, execution_windows
++        self.tracked=None
++        self.package_pin=sha(Path(__file__).resolve().parent/'package-manifest.json')
++        self.Manager, self.Operator, self.inspect = ServiceLifecycleManager, StandardOperator, inspect_preparation
++        self.scope, self.digest, self.sid = scope, digest, user_sid
++
++    def static(self, operation):
++        return self.b_admission.static(self.camp, operation, self.camp.b_readmission_qualification)
++
++    def prepare(self, proposal, pin, expires):
++        return self.b_admission.prepare(self.camp, proposal, pin, expires)
++
++    def dynamic(self, path):
++        return self.b_admission.dynamic(self.camp, path)
++
++    def review_binding(self):
++        return self.b_admission.snapshot(self.camp,'--committed')['result']
++
++    def installation(self):
++        from types import SimpleNamespace
++        from main import verify
++        from r3_bridge import trusted_af
++        from af_installation import ROOT
++        root=Path(__file__).resolve().parent
++        verify(root,SimpleNamespace(package_pin=self.package_pin,python_exe=sys.executable))
++        trusted_af()
++        return dict(gd_installed=str(root),gd_package_sha256=sha(root/'package-manifest.json'),
++                    af_installed=ROOT,af_identity=sha(root/'af_installation.py'))
++
++    def record_acceptance(self):
++        from native_accounting import record_acceptance
++        return record_acceptance(self.camp,phase='B')
++
++    def cleanup_preflight(self,plan,owner):
++        """Read current durable Plan without reviving its expired authorization."""
++        from abqjobpilot.execution.store import open_existing_read_only,document,gate_view
++        from abqjobpilot.execution.lifecycle import require_idle
++        self.installation()
++        budget=self.camp.inspect()['budget']
++        require(budget==dict(limit=2,held=1,charged=1,available=0),'CLEANUP_SCIENTIFIC_STATE_CHANGED')
++        connected=self.connect(owner)
++        require(connected['project_instance_id']==plan['project_instance_id'],'CLEANUP_INSTANCE_CHANGED')
++        current=self.manager._current()
++        require(current and current['start_id']==owner['start_id'] and self.manager._stopped(current) is None,'CLEANUP_LIFECYCLE_CHANGED')
++        client,context,health=self.manager.connect()
++        require(context==self.manager.context and client.endpoint['owner_id']==owner['owner_id']
++                and health['lifecycle_start_id']==owner['start_id'] and 'lifecycle_stop' in health['operations'], 'CLEANUP_NATIVE_CAPABILITY_REQUIRED')
++        extension=self.manager._profile()['standard_extension']
++        binding=extension['binding']
++        require(binding['plan_id']==plan['plan_id'] and binding['plan_digest']==plan['plan_digest'],'CLEANUP_PROFILE_CHANGED')
++        tables=('grants','runs','receipts','consumption','events','management_grants','management_receipts','management_consumption')
++        with open_existing_read_only(self.manager.context).read() as conn:
++            actual=document(conn,'plans','plan_id',plan['plan_id'])
++            counts={name:conn.execute('SELECT COUNT(*) FROM '+name).fetchone()[0] for name in tables}
++            gate=gate_view(conn);slot=conn.execute('SELECT run_id FROM slot WHERE id=1').fetchone()[0]
++            require(actual==plan and conn.execute('SELECT COUNT(*) FROM plans').fetchone()[0]==1
++                    and all(n==0 for n in counts.values()) and gate['state']=='PAUSED'
++                    and gate['owner_id']==owner['owner_id'] and slot is None,'CLEANUP_NOT_EXACT_UNEXECUTED_IDLE')
++            require_idle(conn,standard_binding=binding)
++        return dict(plan_id=plan['plan_id'],owner=connected,counts=counts,gate=gate,slot_run_id=slot,budget=budget,
++                    active_dispatches='NOT_OBSERVED_HERE_RECHECKED_AT_NATIVE_STOP',execution_authorized=False)
++
++    def cleanup_records(self,plan):
++        from abqjobpilot.execution.store import open_existing_read_only,document,gate_view
++        with open_existing_read_only(self.manager.context).read() as conn:
++            require(document(conn,'plans','plan_id',plan['plan_id'])==plan,'CLEANUP_POST_PLAN_CHANGED')
++            counts={name:conn.execute('SELECT COUNT(*) FROM '+name).fetchone()[0]
++                    for name in ('grants','runs','receipts','consumption','events')}
++            gate=gate_view(conn);slot=conn.execute('SELECT run_id FROM slot WHERE id=1').fetchone()[0]
++        require(all(n==0 for n in counts.values()) and gate['state']=='PAUSED' and slot is None,'CLEANUP_POST_EXECUTION_UNKNOWN')
++        budget=self.camp.inspect()['budget']
++        require(budget==dict(limit=2,held=1,charged=1,available=0),'CLEANUP_POST_SCIENTIFIC_STATE_CHANGED')
++        return dict(counts=counts,gate=gate,slot_run_id=slot,budget=budget,process_exit='NOT_INDEPENDENTLY_VERIFIED')
++
++
++    def attach(self, project):
++        self.manager = self.Manager(project)
++        self.operator = self.Operator(project)
++
++    def start(self):
++        return self.manager.start(wait_seconds=8)
++
++    def connect(self, owner):
++        self.client, context, health = self.manager.connect()
++        require(self.client.endpoint['owner_id'] == owner['owner_id']
++                and health['lifecycle_start_id'] == owner['start_id'], 'CONNECTED_IDENTITY_MISMATCH')
++        from window_closure import TrackedOwner
++        if self.tracked is None:self.tracked=TrackedOwner(self.manager,health,owner)
++        else:self.tracked.verify(health,owner)
++        return dict(project_instance_id=context.project_instance_id,
++                    owner_id=self.client.endpoint['owner_id'], start_id=health['lifecycle_start_id'])
++
++    def completion_exits(self,owner,stop):
++        require(self.tracked is not None,'RETAINED_OWNER_REFERENCES_REQUIRED')
++        return self.tracked.exit_record(owner,stop)
++
++    def closure(self,plan,owner,stop,journal_root):
++        require(self.tracked is not None,'RETAINED_OWNER_REFERENCES_REQUIRED')
++        return self.tracked.record(plan,owner,stop,journal_root,self.camp)
++
++    def close(self):
++        if self.tracked is not None:self.tracked.close()
++
++    def authorize(self, args, key, owner):
++        return self.operator.request('authorize', args, operation_key=key, owner_id=owner)
++
++    def submit(self, request):
++        return self.client.submit(request)
++
++    def run(self, run_id):
++        return self.client.run(run_id)
++
++    def gate(self):
++        return self.client.dispatch_gate()
++
++    def project_view(self):
++        return self.client.project_view(limit=1)
++
++    def dispatch(self, args, key, owner):
++        return self.operator.request('dispatch_once', args, operation_key=key, owner_id=owner)
++
++    def stop(self, owner, key):
++        return self.manager.stop(owner_id=owner, operation_key=key)
++
++    def stopped(self):
++        # No reconnect/poll against a stopped Owner. Require the native persistent receipt/marker pair.
++        marker = self.manager._stopped(self.manager._current())
++        return marker
++
++    def observe(self, request):
++        from native_accounting import feedback_once
++        return feedback_once(self.camp,request)
++
++
++def check_plan(plan, checked, now):
++    require(plan == checked['new']['plan'] and checked['plan_id'] == plan['plan_id']
++            and checked['plan_digest'] == plan['plan_digest']
++            and checked['scope_digest'] == checked['new']['scope_digest'], 'GATE_PLAN_MISMATCH')
++    require(plan['registration']['purpose'] == 'JIT_HUMAN_REVIEW' and plan['registration']['phase'] == 'B'
++            and plan['resources'] == RESOURCES and plan['expires_at'] > now
++            and checked['execution_authorized'] is False
++            and checked['budget'] == dict(limit=2, held=1, charged=1, available=0), 'PLAN_SCOPE_OR_EXPIRY')
++
++
++def raw_artifacts(plan):
++    from main import safe
++    root = safe(plan['engineering'])
++    require(not (root / (plan['job_name'] + '.lck')).exists(), 'OUTPUT_STILL_LOCKED')
++    values = {}
++    for ext in ('inp', 'odb', 'sta', 'msg', 'dat'):
++        path = safe(root / (plan['job_name'] + '.' + ext))
++        if ext == 'dat' and not path.exists():
++            values[ext] = dict(status='NOT_PRESENT', path=str(path),
++                               reason='Not generated or missing; existence check cannot distinguish')
++            continue
++        require(path.is_file() and path.stat().st_size > 0 and path.stat().st_nlink == 1, 'RAW_ARTIFACT_REQUIRED')
++        values[ext] = dict(status='PRESENT', path=str(path), sha256=sha(path), size=path.stat().st_size)
++    return values
++
++
++def _execute(native, journal, operation, *, confirmation=None, emit=print, wall=time.time,
++            clock=time.monotonic, sleep=time.sleep, artifacts=raw_artifacts):
++    """Bounded orchestration, testable with in-memory native substitutes only."""
++    static = journal.put('static', native.static(operation))
++    require(static['status'] == 'STATIC_READONLY_READY' and static['plan_created'] is False,
++            'STATIC_NOT_READY')
++    require(static['proposal']['purpose'] == 'JIT_HUMAN_REVIEW', 'LIVE_SCOPE_REQUIRED_BEFORE_JIT')
++    from approval_dialog import ApprovalDialog,packet_digest
++    if confirmation is None:confirmation=ApprovalDialog()
++    ready=journal.put('human-ready',confirmation.ready(static,operation))
++    require(ready['status']=='READY_RECEIVED_NO_EXECUTION_AUTHORITY' and ready['operation_id']==operation
++            and ready['proposal_digest']==static['proposal_digest'],'PRE_JIT_HUMAN_READINESS_REQUIRED')
++    confirmation.check_cancelled()
++    confirmation.status('正在创建 JIT Plan 并执行本地独立门控。尚未批准执行。')
++    # Actual human handshake completed. TTL begins only now, not at launch.
++    jit_wall,jit_clock=wall(),clock()
++    jit_expires=int(jit_wall)+600
++    jit_deadline=jit_clock+(jit_expires-jit_wall)
++    journal.put('jit-clock-anchor',dict(epoch=jit_wall,monotonic=jit_clock,expires_epoch=jit_expires,monotonic_deadline=jit_deadline))
++    result = journal.call('jit', dict(operation_id=operation, proposal_digest=static['proposal_digest']),
++                          lambda key: native.prepare(static['proposal'], static['proposal_digest'], jit_expires))
++    path = journal.root / 'jit-result.json'
++    checked = journal.put('dynamic-gate', native.dynamic(path))
++    require(checked['status'] == 'DYNAMIC_READONLY_PASS' and checked['operation_id'] == operation,
++            'DYNAMIC_GATE_REQUIRED')
++    plan = checked['new']['plan']
++    check_plan(plan, checked, wall())
++    require(native.digest(native.scope(plan)) == checked['scope_digest'], 'NATIVE_SCOPE_CHANGED')
++    native.attach(checked['new']['af_project'])
++    view = native.inspect(checked['new']['af_project'])
++    require(view['plan'] == plan and view['counts'] == dict(plans=1, grants=0, runs=0, receipts=0, consumption=0)
++            and view['gate']['state'] == 'PAUSED' and view['supervisor_started'] == '0', 'NATIVE_PREFLIGHT_CHANGED')
++    require(wall() < plan['expires_at'] and clock()<jit_deadline, 'PLAN_EXPIRED_BEFORE_START')
++    confirmation.check_cancelled()
++    confirmation.status('本地门控通过。正在连接原生 Owner；此操作不创建 Solver Grant。')
++    owner = journal.call('owner-start', dict(project=checked['new']['af_project'], plan_id=plan['plan_id']), lambda key: native.start())
++    require(owner['state'] == 'CONNECTED' and owner['created'] is True, 'OWNER_START_UNKNOWN')
++    connected = journal.put('connected', native.connect(owner))
++    require(connected['project_instance_id'] == plan['project_instance_id'], 'PROJECT_INSTANCE_CHANGED')
++    # Full exact identity displayed locally. The text itself is not native permission.
++    display = dict(plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], scope_digest=checked['scope_digest'],
++                   resources=plan['resources'], expires_at=plan['expires_at'], input_manifest=plan['input_manifest'],
++                   job_id=plan['job_id'], job_revision=plan['job_revision'], job_name=plan['job_name'],
++                   engineering=plan['engineering'], scratch=plan['scratch'], output_key=plan['output_key'],
++                   expected_outputs={ext:str(Path(plan['engineering'])/(plan['job_name']+'.'+ext)) for ext in ('odb','sta','msg','dat')},
++                   project=checked['project'], candidate=checked['candidate'], budget=checked['budget'],
++                   af_project=checked['new']['af_project'], owner=owner)
++    packet=json.loads(json.dumps(dict(display,operation_id=operation,parameters=plan['registration']['parameters'],
++                                     plan=plan,installation=native.installation()),allow_nan=False))
++    packet_pin=packet_digest(packet)
++    journal.put('confirmation-packet',packet)
++    proof=journal.put('human-confirmation',confirmation.authorize(packet,monotonic_deadline=jit_deadline))
++    require(proof['status']=='USER_DECISION_CAPTURED' and proof['packet_sha256']==packet_pin
++            and proof['operation_id']==operation
++            and packet_digest(packet)==packet_pin,'CONFIRMATION_PACKET_CHANGED')
++    # A button click is only a decision, never permission to skip native checks.
++    saved_packet_path=journal.root/'confirmation-packet.json'
++    require(saved_packet_path.stat().st_size<=1048576,'CONFIRMATION_PACKET_FILE_LIMIT')
++    with saved_packet_path.open('rb') as stream: saved_packet_raw=stream.read(1048577)
++    require(len(saved_packet_raw)<=1048576,'CONFIRMATION_PACKET_FILE_LIMIT')
++    saved_packet=json.loads(saved_packet_raw)
++    require(saved_packet==packet and packet_digest(saved_packet)==packet_pin,'PERSISTED_CONFIRMATION_PACKET_CHANGED')
++    review_binding=journal.put('pre-authorize-binding',native.review_binding())
++    require(review_binding['new']==checked['new'] and review_binding['budget']==checked['budget']
++            and review_binding['candidate']==checked['candidate'] and review_binding['original_request']==checked['original_request'],
++            'PRE_AUTHORIZE_BINDING_OR_BUDGET_CHANGED')
++    require(native.installation()==packet['installation'],'PRE_AUTHORIZE_INSTALLATION_CHANGED')
++    fresh=journal.put('pre-authorize-inspection',native.inspect(checked['new']['af_project']))
++    require(fresh['plan']==packet['plan'] and fresh['counts']==dict(plans=1,grants=0,runs=0,receipts=0,consumption=0)
++            and fresh['gate']['state']=='PAUSED' and fresh['gate']['owner_id']==owner['owner_id']
++            and fresh['supervisor_started']=='1'
++            and native.digest(native.scope(plan))==packet['scope_digest'],'PRE_AUTHORIZE_NATIVE_STATE_CHANGED')
++    reconnected=journal.put('pre-authorize-connected',native.connect(owner))
++    require(reconnected==connected and reconnected['owner_id']==owner['owner_id']
++            and reconnected['start_id']==owner['start_id'],'PRE_AUTHORIZE_OWNER_CHANGED')
++    project_view=journal.put('pre-authorize-project-view',native.project_view())
++    require(project_view['project_id']==plan['registration']['project_id']
++            and project_view['project_instance_id']==plan['project_instance_id']
++            and project_view['gate']['state']=='PAUSED' and project_view['gate']['owner_id']==owner['owner_id']
++            and project_view['slot_run_id'] is None and project_view['runs']==[], 'PRE_AUTHORIZE_SLOT_OR_RUN_CHANGED')
++    require(wall() < plan['expires_at'] and clock()<jit_deadline, 'PLAN_EXPIRED_DURING_CONFIRMATION')
++    confirmation.before_native_authorize(expires=plan['expires_at'],monotonic_deadline=jit_deadline)
++    args = dict(plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], expires_at=plan['expires_at'],
++                subject=native.sid(), source=checked['scope_digest'])
++    grant = journal.call('authorize', args, lambda key: native.authorize(args, key, owner['owner_id']))
++    gr = grant['receipt']
++    require(gr['scope_digest'] == checked['scope_digest'] and grant['replayed'] is False
++            and wall() < min(plan['expires_at'], gr['expires_at']) and clock()<jit_deadline, 'GRANT_RESPONSE_MISMATCH')
++    confirmation.native_granted(grant)
++    emit('Native Grant received: '+gr['grant_id']+'; submitting exactly once.')
++    confirmation.check_cancelled()
++    submit = dict(contract_version='af-experiment-v1', operation='submit', project_id=plan['registration']['project_id'],
++                  project_instance_id=plan['project_instance_id'], job_id=plan['job_id'], job_revision=plan['job_revision'],
++                  plan_id=plan['plan_id'], plan_digest=plan['plan_digest'], grant_id=gr['grant_id'], retry_of=None)
++    accepted = journal.call('submit', submit, lambda key: native.submit(dict(submit, idempotency_key=key)))
++    require(accepted['request_status'] == 'ACCEPTED', 'SUBMIT_UNKNOWN')
++    journal.call('native-acceptance-fact',dict(run_id=accepted['receipt']['run_id'],phase='B'),lambda key:native.record_acceptance())
++    run_id = accepted['receipt']['run_id']
++    run, gate = native.run(run_id), native.gate()
++    require(run['plan_id'] == plan['plan_id'] and run['plan_digest'] == plan['plan_digest']
++            and run['grant_id'] == gr['grant_id'] and run['execution'] == 'PLANNED'
++            and run['queue_state'] == 'PENDING' and run['launch_state'] == 'NOT_CALLED'
++            and gate['state'] == 'PAUSED' and gate['owner_id'] == owner['owner_id'], 'PRE_DISPATCH_CHANGED')
++    require(wall() < min(plan['expires_at'], gr['expires_at']) and clock()<jit_deadline, 'PLAN_OR_GRANT_EXPIRED')
++    confirmation.check_cancelled()
++    confirmation.status('原生 Run 已接受。正在单次 Dispatch；科研记账仍遵循原冻结合同，不会自动重试。')
++    dispatch = dict(run_id=run_id, revision=run['revision'], gate_version=gate['version'],
++                    start_not_after=min(int(wall()) + 30, plan['expires_at'], gr['expires_at']))
++    started = clock()
++    dispatched = journal.call('dispatch', dispatch, lambda key: native.dispatch(dispatch, key, owner['owner_id']))
++    require(dispatched['receipt']['run_id'] == run_id and dispatched['receipt']['grant_id'] == gr['grant_id'], 'DISPATCH_UNKNOWN')
++    observations = []
++    confirmation.status('已单次 Dispatch。正在读取原生运行状态（最多 300 秒）；关闭窗口不等于停止 Solver。')
++    while clock() < started + 294:
++        confirmation.check_cancelled()
++        run = native.run(run_id)
++        item = dict(at=wall(), elapsed=clock() - started, run=run)
++        journal.put('observation-%04d' % len(observations), item)
++        observations.append(item)
++        if run['reconciliation'] != 'NONE' or run['execution'] in ('BLOCKED', 'FINISHED'):
++            break
++        sleep(min(2, max(0, started + 294 - clock())))
++    elapsed = clock() - started
++    journal.put('observation-elapsed', dict(elapsed=elapsed, over_300_seconds=elapsed > 300))
++    require(observations and elapsed <= 300 and run['execution'] == 'FINISHED'
++            and run['reconciliation'] == 'NONE' and run.get('managed_completion') == 'COMMITTED_EMPTY_SCOPE',
++            'OBSERVATION_UNKNOWN_NO_CLEANUP')
++    final = native.run(run_id)
++    require(final['execution'] == 'FINISHED' and final['reconciliation'] == 'NONE'
++            and final.get('managed_completion') == 'COMMITTED_EMPTY_SCOPE', 'COMPLETION_CHANGED')
++    stop = journal.call('normal-stop', dict(owner_id=owner['owner_id'], start_id=owner['start_id'], run_id=run_id),
++                        lambda key: native.stop(owner['owner_id'], key))
++    require(stop['receipt']['state'] == 'STOP_COMMITTED' and stop['receipt']['owner_id'] == owner['owner_id']
++            and stop['receipt']['start_id'] == owner['start_id'], 'STOP_UNKNOWN')
++    deadline = clock() + 10
++    marker = None
++    while clock() < deadline:
++        marker = native.stopped()
++        if marker:
++            break
++        sleep(.25)
++    require(marker and marker['receipt'] == stop['receipt'], 'ORDERLY_STOP_NOT_RECORDED')
++    journal.put('stopped-marker', marker)
++    journal.put('owner-exit-status', native.completion_exits(owner,stop))
++    journal.put('raw-artifact-identities', artifacts(plan))
++    feedback = journal.call('native-observation', dict(original_request=checked['original_request']),
++                            lambda key: native.observe(checked['original_request']))
++    confirmation.status('原生运行、正常收尾和新 ODB 反馈已返回。等待独立科研验收；不自动生成下一候选。')
++    return journal.put('handoff', dict(status='NATIVE_FEEDBACK_PENDING_INDEPENDENT_REVIEW', result=feedback,
++                                      independent_acceptance='NOT_PERFORMED', next_candidate='NOT_PROPOSED',
++                                      execution_retry=False, operation_id=operation))
++
++
++def cleanup_unexecuted(native,journal,delegation,reason,*,clock=time.monotonic,sleep=time.sleep):
++    require(reason in {'HUMAN_CANCELLED_NO_RETRY','APPROVAL_EXPIRED_NO_GRANT','PLAN_EXPIRED_DURING_CONFIRMATION'},'CLEANUP_REASON_NOT_PERMITTED')
++    require(delegation and delegation['permitted_actions']==['normal_idle_stop_unexecuted'],'CLEANUP_NOT_DELEGATED')
++    require(not any((journal.root/(name+'.json')).exists() for name in
++                    ('authorize-request','authorize-result','submit-request','submit-result','dispatch-request','dispatch-result',
++                     'cancel-idle-stop-request','cancel-idle-stop-result')), 'CLEANUP_EXECUTION_OR_PRIOR_STOP_UNKNOWN')
++    owner_path=journal.root/'owner-start-result.json';gate_path=journal.root/'dynamic-gate.json'
++    require(owner_path.is_file() and gate_path.is_file(),'CLEANUP_OWNER_NOT_CONFIRMED')
++    owner=json.loads(owner_path.read_bytes());checked=json.loads(gate_path.read_bytes());plan=checked['new']['plan']
++    require(owner['state']=='CONNECTED' and owner['created'] is True,'CLEANUP_OWNER_NOT_CONFIRMED')
++    fresh=journal.put('cancel-idle-preflight',native.cleanup_preflight(plan,owner))
++    require(fresh['plan_id']==plan['plan_id'] and fresh['owner']['owner_id']==owner['owner_id']
++            and fresh['owner']['start_id']==owner['start_id'] and all(n==0 for n in fresh['counts'].values())
++            and fresh['gate']['state']=='PAUSED' and fresh['slot_run_id'] is None, 'CLEANUP_PREFLIGHT_NOT_IDLE')
++    journal.put('cancel-idle-delegation',dict(delegation=delegation,reason=reason,native_capability_required=True,solver_grant=False))
++    stopped=journal.call('cancel-idle-stop',dict(owner_id=owner['owner_id'],start_id=owner['start_id'],plan_id=plan['plan_id'],reason=reason),
++                         lambda key:native.stop(owner['owner_id'],key))
++    require(stopped.get('replayed') is not True and stopped['receipt']['state']=='STOP_COMMITTED'
++            and stopped['receipt']['owner_id']==owner['owner_id'] and stopped['receipt']['start_id']==owner['start_id'],'CLEANUP_STOP_UNKNOWN')
++    deadline=clock()+10;marker=None
++    while clock()<deadline:
++        marker=native.stopped()
++        if marker:break
++        sleep(.25)
++    require(marker and marker['receipt']==stopped['receipt'],'CLEANUP_MARKER_UNKNOWN')
++    journal.put('cancel-idle-stopped-marker',marker)
++    records=journal.put('cancel-idle-post-records',native.cleanup_records(plan))
++    qualification=check_qualification(native.closure(plan,owner,stopped,journal.root))
++    journal.put('cancel-idle-qualification',qualification)
++    return journal.put('cancel-idle-result',dict(status='NATIVE_UNEXECUTED_IDLE_STOP_RECORDED',receipt=stopped['receipt'],
++        records=records,qualification_reference=qualification,process_exit='RETAINED_HANDLE_FACTS_RECORDED',
++        independent_acceptance='NOT_PERFORMED',new_plan_created=False,solver_authorized=False))
++
++
++def execute(native,journal,operation,*,cleanup_delegation=None,**kwargs):
++    try:return _execute(native,journal,operation,**kwargs)
++    except BaseException as exc:
++        eligible=isinstance(exc,ValueError) and str(exc) in {'HUMAN_CANCELLED_NO_RETRY','APPROVAL_EXPIRED_NO_GRANT','PLAN_EXPIRED_DURING_CONFIRMATION'}
++        if eligible and cleanup_delegation is not None and (journal.root/'owner-start-result.json').is_file():
++            try:cleanup_unexecuted(native,journal,cleanup_delegation,str(exc),clock=kwargs.get('clock',time.monotonic),sleep=kwargs.get('sleep',time.sleep))
++            except BaseException as cleanup_exc:
++                journal.put('cancel-idle-blocked',dict(status='UNKNOWN_OR_REFUSED_NO_RETRY',error=str(cleanup_exc),traceback=traceback.format_exc()))
++        raise
++
++
++def native_context(project):
++    from r3_bridge import trusted_af
++    trusted_af()
++    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++    # Constructor only: resolve the native product/project layout, never connect.
++    return ServiceLifecycleManager(project).context
++
++
++def reconcile(evidence):
++    """Existing artifacts and durable native records only; never reconnect/restart."""
++    root = Path(evidence)
++    require(root.is_dir(), 'EVIDENCE_REQUIRED')
++    records = {p.name: json.loads(p.read_bytes()) for p in root.glob('*.json')}
++    result = records.get('jit-result.json')
++    if not result:
++        return dict(status='READONLY_JOURNAL_ONLY', records=records, automatic_resume=False)
++    from main import safe
++    project = safe(result['new']['af_project'])
++    require(project.parent == safe(root.parent), 'RECONCILIATION_PROJECT_OUTSIDE_WORKSPACE')
++    context = native_context(project)
++    require(safe(context.test_root) == project and safe(context.root).is_relative_to(project),
++            'RECONCILIATION_CONTEXT_MISMATCH')
++    db = sqlite3.connect(safe(Path(context.root) / 'execution.sqlite3').as_uri() + '?mode=ro', uri=True)
++    db.row_factory = sqlite3.Row
++    try:
++        db.execute('BEGIN')
++        native = {table: [dict(row) for row in db.execute('SELECT * FROM ' + table)]
++                  for table in ('plans', 'runs', 'receipts', 'management_receipts', 'dispatch_gate', 'slot')}
++        require(len(native['plans']) == 1 and json.loads(native['plans'][0]['body']) == result['new']['plan'],
++                'RECONCILIATION_PLAN_IDENTITY_MISMATCH')
++    finally:
++        db.close()
++    markers = {str(p.relative_to(project)): json.loads(p.read_bytes())
++               for p in project.glob('private/start_*/stopped.json')}
++    return dict(status='READONLY_RECONCILIATION_REQUIRED', records=records, native=native, stopped_markers=markers,
++                receipt_actions=['product_standard_authorize', 'product_standard_dispatch_once', 'lifecycle_stop_idle_v1'],
++                automatic_resume=False, execution_authorized=False)
++
++
++def main():
++    from types import SimpleNamespace
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('action', choices=('static', 'run', 'reconcile'))
++    for field in ('workspace', 'contract-pin', 'package-pin', 'python-exe', 'operation-id', 'evidence'):
++        parser.add_argument('--' + field, required=True)
++    parser.add_argument('--scope'); parser.add_argument('--scope-pin')
++    parser.add_argument('--decision'); parser.add_argument('--decision-pin')
++    parser.add_argument('--qualification'); parser.add_argument('--qualification-pin')
++    a = parser.parse_args()
++    root = Path(__file__).resolve().parent
++    sys.path[:0] = [str(root), str(root / 'runtime')]
++    from main import verify, safe
++    verify(root, SimpleNamespace(python_exe=a.python_exe, package_pin=a.package_pin))
++    work, evidence = safe(a.workspace), safe(a.evidence)
++    require(Path(a.workspace).is_absolute() and Path(a.evidence).is_absolute()
++            and evidence.parent == work and not evidence.is_relative_to(root), 'RESEARCH_OPERATION_DIRECTORY_REQUIRED')
++    require(re.fullmatch('[a-f0-9]{32}', a.operation_id) is not None, 'EXACT_OPERATION_ID_REQUIRED')
++    if a.action == 'reconcile':
++        return reconcile(evidence)
++    import workflow
++    camp = workflow.Campaign(work, a.contract_pin, a.package_pin, readonly=a.action == 'static', candidate_b_admission=True)
++    native=None
++    try:
++        native = Native(camp)
++        if a.action == 'static':
++            require(a.decision and a.decision_pin, 'EXACT_B_DECISION_REFERENCE_REQUIRED')
++            ref = check_decision_reference(dict(path=a.decision, sha256=a.decision_pin))
++            camp.b_decision = read_bound_json(ref['path'], ref['sha256'])
++            require(a.qualification and a.qualification_pin,'EXACT_STOP_QUALIFICATION_REQUIRED')
++            camp.b_readmission_qualification=check_qualification(read_bound_json(a.qualification,a.qualification_pin))
++            return native.static(a.operation_id)
++        from approval_dialog import ApprovalDialog
++        require(a.scope and a.scope_pin, 'REVIEWED_SCOPE_FILE_REQUIRED')
++        scope = check_scope(read_bound_json(a.scope, a.scope_pin), package=a.package_pin, contract=a.contract_pin,
++                            work=work, operation=a.operation_id, checker=sha(root / 'execution_windows.py'))
++        ref = scope['decision_reference']
++        if a.decision or a.decision_pin:
++            require(dict(path=a.decision, sha256=a.decision_pin) == ref, 'B_DECISION_OVERRIDE_DENIED')
++        camp.b_decision = read_bound_json(ref['path'], ref['sha256'])
++        camp.b_readmission_qualification=scope['qualification']
++        cleanup_delegation=check_cleanup_delegation(scope['cleanup_delegation'],operation=a.operation_id,work=work,package=a.package_pin)
++        journal = Journal(evidence)
++        journal.put('scope-reference', dict(scope=scope, scope_sha256=a.scope_pin,
++                                           statement='Prior scope reference is not a native execution Grant'))
++        confirmation=ApprovalDialog()
++        try:
++            result=execute(native, journal, a.operation_id, confirmation=confirmation,cleanup_delegation=cleanup_delegation)
++            confirmation.finish()
++            return result
++        except BaseException as exc:
++            journal.put('halt', dict(status='UNKNOWN_STOPPED_NO_RETRY', error_type=type(exc).__name__,
++                                     error=str(exc), traceback=traceback.format_exc(), automatic_resume=False))
++            confirmation.status('停止：'+str(exc)+'。未自动重试或终止进程；保留证据并只读对账。')
++            confirmation.finish()
++            raise
++    finally:
++        try:
++            if native is not None:native.close()
++        finally:camp.db.close()
++
++
++if __name__ == '__main__':
++    try:
++        print(json.dumps(main(), indent=2, allow_nan=False))
++    except BaseException as exc:
++        print(json.dumps(dict(status='BLOCKED_OR_UNKNOWN_NO_RETRY', error=str(exc), traceback=traceback.format_exc())))
++        sys.exit(2)
+--- a/src/gd/plugin.json
++++ b/src/gd/plugin.json
+@@ -1,6 +1,6 @@
+ {
+   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+   "name": "gdcae-tensile-v1",
+-  "version": "0.1.0-tensile.9",
++  "version": "0.1.0-tensile.10",
+   "description": "Tensile bar research preparation, bounded synthetic feedback rehearsal and read-only ODB evidence review."
+ }--- a/src/gd/terminal_materialization.py
++++ b/src/gd/terminal_materialization.py
+@@ -0,0 +1,71 @@
++"""Resume only the same completed native B evidence, never an execution request.
++
++One immutable extraction is persisted in the existing campaign database before
++the private seal/scientific settlement. No independent budget is maintained.
++"""
++import json
++import continuation as c
++TABLE='tensile_native_materializations'
++
++def extract_once(camp,row):
++    import native_feedback as nf
++    from abqjobpilot.local_credentials import private_value,read_private
++    from abqjobpilot.service_lifecycle import write_new
++    c.require(row['phase']=='B','B_MATERIALIZATION_ONLY')
++    req,reader,binding,manager=nf.source(camp,row)
++    identity=dict(schema='completed-native-b-materialization-v1',phase='B',project=req['project'],candidate=req['candidate_id'],
++        contract=camp.pin,original_request=c.case.hashbytes(row['request']),binding=binding,reader_sha256=c.sha(reader))
++    camp.db.execute('BEGIN IMMEDIATE')
++    try:
++        fresh=camp.db.execute("SELECT * FROM stages WHERE phase='B'").fetchone()
++        c.require(fresh['state']=='INTENT' and fresh['request']==row['request'],'SAME_SCIENTIFIC_INTENT_REQUIRED')
++        camp.verified_rows(terminal_structure_only=True)
++        camp.db.execute('CREATE TABLE IF NOT EXISTS '+TABLE+'(phase TEXT PRIMARY KEY,run_id TEXT UNIQUE,identity BLOB,identity_pin TEXT,extraction BLOB,extraction_pin TEXT,result BLOB,result_pin TEXT)')
++        stored=camp.db.execute('SELECT * FROM '+TABLE+" WHERE phase='B'").fetchone()
++        reused=stored is not None
++        if stored is None:
++            # Holding this same-DB write lease serializes materialization. Reads
++            # of completed ODB/native evidence remain read-only. A crash before
++            # commit has no durable result and never grants Solver retry rights.
++            extraction=nf.read_extraction(camp,req,reader,binding)
++            c.require(nf.source(camp,row)[2]==binding,'TERMINAL_SOURCE_CHANGED')
++            result=nf.evaluate(camp,req,binding,extraction)
++            camp.db.execute('INSERT INTO '+TABLE+' VALUES(?,?,?,?,?,?,?,?)',('B',binding['run_id'],c.pack(identity),c.pin(identity),c.pack(extraction),c.pin(extraction),c.pack(result),c.pin(result)))
++        else:
++            c.require(stored['run_id']==binding['run_id'] and stored['identity']==c.pack(identity) and stored['identity_pin']==c.pin(identity)
++                and c.case.hashbytes(stored['extraction'])==stored['extraction_pin'] and c.case.hashbytes(stored['result'])==stored['result_pin'],'MATERIALIZATION_IDENTITY_CHANGED')
++            extraction=json.loads(stored['extraction']);result=nf.evaluate(camp,req,binding,extraction)
++            c.require(c.pack(result)==stored['result'],'MATERIALIZED_RESULT_CHANGED')
++        camp.db.commit()
++    except BaseException:camp.db.rollback();raise
++    c.require(nf.source(camp,row)[2]==binding,'TERMINAL_SOURCE_CHANGED')
++    seal={'result_digest':c.pin(result),'binding_digest':c.pin(binding)};path=manager._path('tensile-feedback.json')
++    if path.exists():c.require(read_private(manager.context,path)==seal,'EXISTING_FEEDBACK_SEAL_CHANGED')
++    else:
++        if reused:
++            # An unsealed cache is not authoritative evidence. Re-read the same
++            # immutable ODB through the reviewed reader before first sealing.
++            actual=nf.read_extraction(camp,req,reader,binding)
++            c.require(c.pack(actual)==c.pack(extraction) and nf.evaluate(camp,req,binding,actual)==result
++                and nf.source(camp,row)[2]==binding,'UNSEALED_CACHE_NOT_REPRODUCED')
++        write_new(path,private_value(manager.context,seal))
++    return result
++
++def complete_intent(camp,row):
++    """CAS the existing scientific INTENT to NATIVE using verified cached facts."""
++    import native_feedback as nf
++    result=extract_once(camp,row);raw=c.pack(result)
++    nf.verify(camp,dict(row,result=raw))
++    camp.db.execute('BEGIN IMMEDIATE')
++    try:
++        rows=camp.verified_rows(terminal_structure_only=True);current=rows[-1]
++        c.require(current['phase']=='B' and current['request']==row['request'],'SCIENTIFIC_CAS_CHANGED')
++        if current['state']!='INTENT':
++            c.require(current['result']==raw and current['state']==camp.assessment_state('B',result['assessment']),'SCIENTIFIC_CAS_CHANGED')
++        else:
++            changed=camp.db.execute("UPDATE stages SET state=?,result=? WHERE phase='B' AND state='INTENT' AND request=?",
++                (camp.assessment_state('B',result['assessment']),raw,row['request']))
++            c.require(changed.rowcount==1,'SCIENTIFIC_CAS_CHANGED');camp.record('B','NATIVE',row['request'],raw)
++        camp.db.commit()
++        return dict(status='SAME_NATIVE_INTENT_COMMITTED',phase='B',feedback=result,budget=camp.counts(camp.verified_rows()),execution_authorized=False)
++    except BaseException:camp.db.rollback();raise
+--- a/src/gd/window_closure.py
++++ b/src/gd/window_closure.py
+@@ -0,0 +1,118 @@
++"""Machine evidence for this profile's newly created Owner, not human attestation.
++
++Only native worker/transport members evidenced by the authenticated health and
++created record are tracked. No descendant-completeness or conhost claim.
++"""
++import json,time
++from pathlib import Path
++import continuation as c
++SCHEMA='execution-window-stop-reference-v1'
++
++def load(path):
++    path=c.local(path)
++    with path.open('rb') as stream:raw=stream.read((2<<20)+1)
++    c.require(len(raw)<=2<<20,'CLOSURE_DOCUMENT_LIMIT')
++    return json.loads(raw)
++
++class TrackedOwner:
++    def __init__(self,manager,health,owner):
++        from abqjobpilot.execution.process_handles import ProcessReference
++        self.manager=manager;self.refs=[];self.owner=owner;self.health=health
++        current=manager._current();start=owner['start_id']
++        c.require(current and current['start_id']==start and health['lifecycle_start_id']==start,'TRACKED_START_CHANGED')
++        ready=load(manager._path(start+'/ready.json'));created=load(manager._path(start+'/created.json'))
++        c.require(ready['start_id']==created['start_id']==start and ready['owner_id']==owner['owner_id']
++            and ready['process']==health['process'],'AUTHENTICATED_READY_IDENTITY_REQUIRED')
++        self.ready=ready;self.created=created
++        try:
++            self.refs.append(ProcessReference(health['process']['pid'],health['process']))
++            if created['transport_pid']!=health['process']['pid']:
++                c.require(health['process']['parent_pid']==created['transport_pid'],'TRANSPORT_PARENT_CHANGED')
++                self.refs.append(ProcessReference(created['transport_pid']))
++                c.require(self.refs[1].identity['creation_time_100ns']<=self.refs[0].identity['creation_time_100ns']
++                    and Path(self.refs[1].identity['image_path']).name.lower()=='python.exe','TRANSPORT_IDENTITY_UNKNOWN')
++            self.verify(health,owner)
++        except BaseException:self.close();raise
++
++    def verify(self,health,owner):
++        c.require(owner['owner_id']==self.owner['owner_id'] and owner['start_id']==self.owner['start_id']
++            and health['lifecycle_start_id']==self.owner['start_id'] and health['process']==self.health['process'], 'RETAINED_OWNER_CHANGED')
++        c.require(all(ref.exit_evidence() is None for ref in self.refs),'RETAINED_OWNER_ALREADY_EXITED')
++
++    def exit_record(self,owner,stop):
++        receipt=stop['receipt']
++        c.require(receipt['owner_id']==self.owner['owner_id']==owner['owner_id'] and receipt['start_id']==self.owner['start_id']==owner['start_id']
++            and receipt['state']=='STOP_COMMITTED' and stop.get('replayed') is not True,'EXACT_NATIVE_STOP_REQUIRED')
++        deadline=time.monotonic()+10
++        while time.monotonic()<deadline and any(ref.exit_evidence() is None for ref in self.refs):time.sleep(.05)
++        exits=[ref.exit_evidence() for ref in self.refs]
++        c.require(all(e and e['exit_code']==0 and e['exit_source']=='retained_windows_handle' for e in exits),'TRACKED_EXIT_UNKNOWN_NO_RETRY')
++        marker=self.manager._stopped(self.manager._current())
++        c.require(marker and marker['receipt']==receipt,'NATIVE_STOP_MARKER_REQUIRED')
++        return dict(classification='MACHINE_EVIDENCE_NOT_INDEPENDENT_HUMAN_APPROVAL',receipt=receipt,
++            identities=[r.identity for r in self.refs],exits=exits,
++            member_scope='Authenticated native worker and recorded transport only',unexecuted_readmission_qualification=False)
++
++    def record(self,plan,owner,stop,journal_root,camp):
++        from abqjobpilot.local_credentials import private_value
++        from abqjobpilot.service_lifecycle import write_new
++        c.require('execution_window' in plan['registration'],'NEW_WINDOW_CLOSURE_ONLY')
++        receipt=stop['receipt']
++        c.require(receipt['owner_id']==self.owner['owner_id']==owner['owner_id'] and receipt['start_id']==self.owner['start_id']==owner['start_id']
++            and receipt['state']=='STOP_COMMITTED' and stop.get('replayed') is not True,'EXACT_NATIVE_STOP_REQUIRED')
++        deadline=time.monotonic()+10
++        while time.monotonic()<deadline and any(ref.exit_evidence() is None for ref in self.refs):time.sleep(.05)
++        exits=[ref.exit_evidence() for ref in self.refs]
++        c.require(all(e and e['exit_code']==0 and e['exit_source']=='retained_windows_handle' for e in exits),'TRACKED_EXIT_UNKNOWN_NO_RETRY')
++        marker=self.manager._stopped(self.manager._current())
++        c.require(marker and marker['receipt']==receipt,'NATIVE_STOP_MARKER_REQUIRED')
++        budget=camp.counts(camp.verified_rows())
++        c.require(budget==dict(limit=2,held=1,charged=1,available=0),'BUDGET_CHANGED_DURING_CLEANUP')
++        from abqjobpilot.execution.product_standard import scope
++        from abqjobpilot.execution.models import digest
++        payload=dict(schema=SCHEMA,classification='MACHINE_EVIDENCE_NOT_INDEPENDENT_HUMAN_APPROVAL',
++            project_id=self.manager.context.project_id,project_instance_id=self.manager.context.project_instance_id,
++            context_digest=self.manager.context.context_digest,plan_id=plan['plan_id'],plan_digest=plan['plan_digest'],scope_digest=digest(scope(plan)),
++            execution_window=plan['registration']['execution_window'],research_project=camp.c['project'],contract=camp.pin,budget=budget,
++            receipt=receipt,ready=self.ready,created=self.created,identities=[r.identity for r in self.refs],exits=exits,
++            member_scope='Authenticated native worker and its recorded Python transport only; no arbitrary descendants')
++        path=c.local(Path(journal_root)/'native-window-closure.json')
++        write_new(path,private_value(self.manager.context,payload))
++        return dict(schema=SCHEMA,path=str(path),sha256=c.sha(path))
++
++    def close(self):
++        for ref in self.refs:ref.close()
++        self.refs=[]
++
++def qualification(ref,receipt,expected,ready,created,manager):
++    """Deterministic gate for new-schema evidence; historical 3-member rule stays."""
++    from abqjobpilot.local_credentials import read_private
++    c.require(type(ref) is dict and set(ref)=={'schema','path','sha256'} and ref['schema']==SCHEMA,'EXACT_NEW_CLOSURE_REFERENCE_REQUIRED')
++    path=c.local(ref['path']);load(path)
++    c.require(c.sha(path)==ref['sha256'],'CLOSURE_EVIDENCE_CHANGED')
++    value=read_private(manager.context,path)
++    c.require(value['schema']==SCHEMA and value['classification']=='MACHINE_EVIDENCE_NOT_INDEPENDENT_HUMAN_APPROVAL'
++        and value['project_id']==expected['project_id'] and value['project_instance_id']==expected['project_instance_id']
++        and value['context_digest']==manager.context.context_digest and value['receipt']==receipt
++        and value['ready']==ready and value['created']==created and value['budget']==dict(limit=2,held=1,charged=1,available=0), 'CLOSURE_NATIVE_BINDING_CHANGED')
++    for key in ('plan_id','plan_digest','scope_digest'):c.require(value[key]==expected[key],'CLOSURE_PLAN_CHANGED')
++    import sqlite3
++    db=sqlite3.connect((Path(manager.context.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:plan=json.loads(db.execute('SELECT body FROM plans').fetchone()[0])
++    finally:db.close()
++    reg=plan['registration']
++    c.require(value['execution_window']==reg.get('execution_window') and value['research_project']==reg['research_project']
++        and value['contract']==reg['contract'],'CLOSURE_SCIENTIFIC_BINDING_CHANGED')
++    identities=value['identities'];exits=value['exits'];expected_count=1 if created['transport_pid']==ready['process']['pid'] else 2
++    c.require(len(identities)==len(exits)==expected_count and len({v['pid'] for v in identities})==expected_count,'EXACT_TRACKED_MEMBERS_REQUIRED')
++    c.require(all(identities[0][k]==ready['process'][k] for k in identities[0]),'CLOSURE_WORKER_CHANGED')
++    if expected_count==2:
++        c.require(identities[1]['pid']==created['transport_pid']==ready['process']['parent_pid']
++            and identities[1]['creation_time_100ns']<=identities[0]['creation_time_100ns']
++            and Path(identities[1]['image_path']).name.lower()=='python.exe','CLOSURE_TRANSPORT_CHANGED')
++    from window_history import original_process_exited
++    for ident,exit in zip(identities,exits):
++        c.require(set(ident)=={'pid','creation_time_100ns','image_path'} and all(exit[k]==v for k,v in ident.items())
++            and exit['exit_code']==0 and exit['exit_source']=='retained_windows_handle','CLOSURE_EXIT_CHANGED')
++        original_process_exited(ident)
++    return dict(reference=ref,identities=identities,exits=exits,scope=value['member_scope'],classification='AUTOMATED_READONLY_GATE_NOT_HUMAN_SIGNATURE')
+--- a/src/gd/window_history.py
++++ b/src/gd/window_history.py
+@@ -0,0 +1,191 @@
++"""Versioned historical normal-stop evidence; PID reuse is not original-process survival."""
++import ctypes,json,sqlite3,time
++from pathlib import Path
++import continuation as c
++
++def closed_window(project,expected,reference):
++    """Either proven never-started or a fully reviewed orderly stopped window.
++
++    A reboot/no PID/START_UNCONFIRMED is neither condition.
++    """
++    from r3_bridge import trusted_af
++    trusted_af()
++    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++    m=ServiceLifecycleManager(c.local(project))
++    if m._current():return stopped_window(project,expected,reference,review_kind='B')
++    from abqjobpilot.execution.models import canonical_json,digest
++    from abqjobpilot.execution.product_standard import ProductStandardControl,scope
++    from abqjobpilot.execution.standard_contract import StandardConfig
++    from abqjobpilot.execution.lifecycle import require_idle
++    from abqjobpilot.execution.tensile_profile import validate_input
++    from abqjobpilot.local_credentials import read_private
++    profile=m._profile();ext=profile['standard_extension'];ctx=m.context
++    db=sqlite3.connect((Path(ctx.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:
++        db.execute('BEGIN')
++        tables=('plans','grants','runs','receipts','consumption','events','management_receipts','control_events','management_grants','management_consumption','reconciliations','observations','validations')
++        counts={t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in tables}
++        c.require(counts=={t:int(t=='plans') for t in tables},'ANCESTOR_NOT_UNEXECUTED')
++        plan=json.loads(db.execute('SELECT body FROM plans').fetchone()[0]);unsigned=dict(plan)
++        c.require(unsigned.pop('plan_digest')==digest(unsigned),'ANCESTOR_PLAN_CHANGED')
++        require_idle(db,standard_binding=ext['binding'])
++        c.require(dict(db.execute('SELECT key,value FROM meta'))['supervisor_started']=='0','ANCESTOR_OWNER_UNKNOWN')
++    finally:db.close()
++    config=StandardConfig(canonical_json(ext['standard_config']));config.verify()
++    ProductStandardControl(ext['binding']).check_plan(plan)
++    c.require(plan['runtime_binding']==config.value() and plan['expires_at']<=time.time(),'ANCESTOR_RUNTIME_OR_EXPIRY')
++    reg=read_private(ctx,m._path('tensile-registration.json'))
++    c.require(reg==plan['registration'] and reg['context_digest']==ctx.context_digest,'ANCESTOR_REGISTRATION')
++    c.require(validate_input(Path(plan['engineering']),reg)==plan['input_manifest'][0],'ANCESTOR_INPUT')
++    view=dict(plan=plan,scope_digest=digest(scope(plan)),af_project=str(c.local(project)),project_id=ctx.project_id,project_instance_id=ctx.project_instance_id)
++    c.require(c.identity(view)==expected,'ANCESTOR_IDENTITY')
++    eng=Path(plan['engineering'])
++    c.require({p.name for p in eng.iterdir()}=={plan['job_name']+'.inp','scratch'} and not list((eng/'scratch').iterdir()),'ANCESTOR_OUTPUT_UNKNOWN')
++    c.require(not any(p.name.startswith('start_') or p.name.endswith('.intent.json') for p in Path(ctx.test_root).rglob('*')),'ANCESTOR_START_INTENT')
++    return dict(identity=expected,lifecycle='NEVER_STARTED',counts=counts),m
++
++def original_process_exited(identity):
++    """Retained exit is primary evidence. A reused PID identifies another process.
++
++    Access denial/ambiguous identity rejects. Never opens TERMINATE permissions.
++    """
++    from ctypes import wintypes as w
++    api=ctypes.WinDLL('kernel32',use_last_error=True)
++    api.OpenProcess.argtypes=[w.DWORD,w.BOOL,w.DWORD];api.OpenProcess.restype=w.HANDLE
++    api.CloseHandle.argtypes=[w.HANDLE]
++    api.GetProcessTimes.argtypes=[w.HANDLE]+[ctypes.POINTER(w.FILETIME)]*4
++    api.QueryFullProcessImageNameW.argtypes=[w.HANDLE,w.DWORD,w.LPWSTR,ctypes.POINTER(w.DWORD)]
++    api.WaitForSingleObject.argtypes=[w.HANDLE,w.DWORD];api.WaitForSingleObject.restype=w.DWORD
++    h=api.OpenProcess(0x100000|0x1000,False,identity['pid'])
++    if not h:
++        c.require(ctypes.get_last_error()==87,'PROCESS_IDENTITY_UNKNOWN');return 'ABSENT_WITH_PRIOR_RETAINED_EXIT'
++    try:
++        a,b,d,e=[w.FILETIME() for _ in range(4)]
++        c.require(api.GetProcessTimes(h,*[ctypes.byref(v) for v in (a,b,d,e)]),'PROCESS_TIMES_UNKNOWN')
++        created=(a.dwHighDateTime<<32)|a.dwLowDateTime
++        # Windows may no longer expose the image of an already exited process.
++        # Exact creation + signaled handle and prior retained image/exit proof
++        # suffice; this is not a PID-absence inference.
++        if created==identity['creation_time_100ns'] and api.WaitForSingleObject(h,0)==0:
++            return 'ORIGINAL_PROCESS_SIGNALED_WITH_PRIOR_RETAINED_IDENTITY'
++        size=w.DWORD(32768);buf=ctypes.create_unicode_buffer(size.value)
++        c.require(api.QueryFullProcessImageNameW(h,0,buf,ctypes.byref(size)),'PROCESS_IMAGE_UNKNOWN')
++        if created!=identity['creation_time_100ns']:
++            return 'PID_REUSED_DISTINCT_CREATION_AND_OBSERVED_IMAGE'
++        c.require(str(Path(buf.value)).casefold()==str(Path(identity['image_path'])).casefold(),'ORIGINAL_PROCESS_IMAGE_CHANGED')
++        c.require(api.WaitForSingleObject(h,0)==0,'ORIGINAL_PROCESS_STILL_LIVE')
++        return 'ORIGINAL_PROCESS_SIGNALED'
++    finally:api.CloseHandle(h)
++
++
++def qualification(ref,receipt,expected,ready,created,*,review_kind="A"):
++    c.require(type(ref) is dict and set(ref)=={'schema','pre_call','final','review','index'} and ref['schema']=='retained-stop-review-reference-v1','RETAINED_EXIT_REVIEW_REQUIRED')
++    raw={}
++    for key in ('pre_call','final','review','index'):
++        item=ref[key];c.require(set(item)=={'path','sha256'} and Path(item['path']).is_absolute(),'EXACT_REVIEW_REFERENCE_REQUIRED')
++        path=c.local(item['path'])
++        with path.open('rb') as f:data=f.read((2<<20)+1)
++        c.require(len(data)<=2<<20 and c.case.hashbytes(data)==item['sha256'],'REVIEW_SOURCE_CHANGED')
++        raw[key]=data
++    before=json.loads(raw['pre_call']);after=json.loads(raw['final']);index=json.loads(raw['index']);review=raw['review'].decode('utf8')
++    for key in ('pre_call','final'):
++        c.require(index[ref[key]['path']]['sha256']==ref[key]['sha256'],'REVIEW_INDEX_MISMATCH')
++    c.require(review_kind in ('A','B'),'REVIEW_KIND_REQUIRED')
++    if review_kind=='A':
++        c.require('PASS_LIMITED_NATIVE_IDLE_STOP_AND_RETAINED_HANDLE_EXIT' in review
++                  and all(value in review for value in (receipt['owner_id'],receipt['start_id'],expected['project_id'],expected['project_instance_id'],expected['plan_id'],expected['plan_digest'])),'INDEPENDENT_REVIEW_SCOPE_MISMATCH')
++    else:
++        verified=json.loads(raw['review'])
++        c.require(verified['verdict']=='PASS_B_NATIVE_IDLE_STOP_AND_THREE_RETAINED_EXITS'
++                  and verified['receipt']==receipt and verified['exits']==after['process_exits']
++                  and verified['B_preparation']==before['research']['binding']
++                  and verified['A_result_sha256']==before['research']['A_result_sha256']
++                  and verified['research_sha256']==before['research']['workflow_sha256']
++                  and verified['budget']==before['research']['budget']==dict(limit=2,held=1,charged=1,available=0)
++                  and verified['B_solver_execution_count']==0 and verified['native_stop_count']==1,
++                  'INDEPENDENT_B_REVIEW_SCOPE_MISMATCH')
++    c.require(before['owner']==receipt['owner_id'] and before['start']==receipt['start_id']
++              and before['project_id']==expected['project_id'] and before['instance']==expected['project_instance_id']
++              and after['receipt']==receipt and after['orderly_stop']==dict(state='NOT_RUNNING',reason='ORDERLY_STOP_RECORDED')
++              and after['status']=='NATIVE_IDLE_STOP_RECORDED_EXIT_OBSERVED' and after['solver_started'] is False
++              and after['budget_changed'] is False and before['research']==after['research'],'EXIT_REVIEW_SCOPE_MISMATCH')
++    for key in ('plan_id','plan_digest','scope_digest'):
++        c.require(before['store'][key]==after['store'][key]==expected[key],'EXIT_REVIEW_PLAN_MISMATCH')
++    identities=before['processes'];exits=after['process_exits']
++    c.require(len(identities)==len(exits)==3 and len({p['pid'] for p in identities})==3,'EXACT_THREE_RETAINED_MEMBERS_REQUIRED')
++    for ident,exit in zip(identities,exits):
++        c.require(set(ident)=={'pid','creation_time_100ns','image_path'} and ident['creation_time_100ns']>0
++                  and all(exit[k]==v for k,v in ident.items()) and exit['exit_source']=='retained_windows_handle'
++                  and exit['exit_code']==0,'RETAINED_EXIT_IDENTITY_MISMATCH')
++    c.require(all(identities[0][k]==ready['process'][k] for k in identities[0]) and identities[1]['pid']==created['transport_pid']
++              and Path(identities[2]['image_path']).name.lower()=='conhost.exe','RETAINED_TREE_SOURCE_MISMATCH')
++    for ident in identities:original_process_exited(ident)
++    return dict(reference=ref,identities=identities,exits=exits,scope='Only three independently reviewed retained members; no claim for arbitrary descendants')
++
++def stopped_window(project,expected,review_reference,*,review_kind="A"):
++    """Native stopped evidence, zero execution, old runtime and immutable Plan.
++
++    No Owner call, no repair, no writes; lifecycle marker alone is insufficient.
++    """
++    from r3_bridge import trusted_af
++    trusted_af()
++    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++    from abqjobpilot.execution.models import digest,canonical_json
++    from abqjobpilot.execution.product_standard import ProductStandardControl,scope
++    from abqjobpilot.execution.standard_contract import StandardConfig
++    from abqjobpilot.local_credentials import read_private
++    from abqjobpilot.execution.lifecycle import STOP,require_idle
++    from abqjobpilot.execution.tensile_profile import validate_input
++    m=ServiceLifecycleManager(c.local(project));ctx=m.context;profile=m._profile();ext=profile['standard_extension']
++    current=m._current();stopped=m._stopped(current)
++    c.require(current and stopped,'ORDERLY_STOP_REQUIRED')
++    start=current['start_id'];base=m._path(start)
++    load=lambda name:json.loads(c.local(base/name).read_bytes())
++    intent=load('intent.json');created=load('created.json');ready=load('ready.json');owner=json.loads(c.local(Path(ctx.root)/'owner.json').read_bytes())
++    receipt=stopped['receipt']
++    c.require(intent['start_id']==created['start_id']==ready['start_id']==receipt['start_id']==start
++              and intent['context_digest']==ctx.context_digest and current['profile_digest']==digest(profile)
++              and ready['owner_id']==owner['owner_id']==receipt['owner_id']
++              and receipt['project_instance_id']==ctx.project_instance_id and receipt['action']==STOP
++              and receipt['state']=='STOP_COMMITTED' and receipt['source']=='explicit_lifecycle_operator_capability'
++              and receipt['effects']==['PAUSED','orderly_idle_stop'],'STOP_IDENTITY_CHANGED')
++    db=sqlite3.connect(c.local(Path(ctx.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:
++        db.execute('BEGIN')
++        counts={t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in
++                ('plans','grants','runs','receipts','consumption','events','management_receipts','control_events','management_grants','management_consumption','reconciliations','observations','validations')}
++        c.require(counts==dict(plans=1,grants=0,runs=0,receipts=0,consumption=0,events=0,management_receipts=1,control_events=1,management_grants=0,management_consumption=0,reconciliations=0,observations=0,validations=0),'EXECUTION_OR_EXTRA_MANAGEMENT_EVIDENCE')
++        plan=json.loads(db.execute('SELECT body FROM plans').fetchone()[0]);unsigned=dict(plan)
++        c.require(unsigned.pop('plan_digest')==digest(unsigned),'PLAN_DIGEST_CHANGED')
++        ProductStandardControl(ext['binding']).check_plan(plan)
++        require_idle(db,standard_binding=ext['binding'])
++        c.require(dict(db.execute('SELECT key,value FROM meta'))['supervisor_started']=='1'
++                  and db.execute('SELECT state,owner_id FROM dispatch_gate').fetchone()==('PAUSED',receipt['owner_id']),'STOP_STATE_CHANGED')
++        ns=canonical_json([ctx.project_instance_id,profile['client_namespace'],STOP])
++        record=db.execute('SELECT namespace,key,request_digest,operation_id,body FROM management_receipts').fetchone()
++        fp=digest(dict(owner_id=receipt['owner_id'],start_id=start,action=STOP,key=receipt['operation_key']))
++        c.require(record==(ns,receipt['operation_key'],fp,receipt['operation_id'],canonical_json(receipt))
++                  and db.execute('SELECT body FROM control_events').fetchone()[0]==canonical_json(receipt),'STOP_RECEIPT_OR_CONTROL_CHANGED')
++    finally:db.close()
++    config=StandardConfig(canonical_json(ext['standard_config']));config.verify()
++    c.require(plan['runtime_binding']==config.value() and plan['expires_at']<=time.time(),'PARENT_RUNTIME_OR_EXPIRY_CHANGED')
++    reg=read_private(ctx,m._path('tensile-registration.json'))
++    c.require(reg==plan['registration'] and reg['context_digest']==ctx.context_digest
++              and (reg['project_id'],reg['project_instance_id'])==(ctx.project_id,ctx.project_instance_id),'PARENT_REGISTRATION_CHANGED')
++    c.require(validate_input(Path(plan['engineering']),reg)==plan['input_manifest'][0],'PARENT_INPUT_CHANGED')
++    view=dict(plan=plan,scope_digest=digest(scope(plan)),af_project=str(c.local(project)),project_id=ctx.project_id,project_instance_id=ctx.project_instance_id)
++    c.require(c.identity(view)==expected,'PARENT_IDENTITY_CHANGED')
++    eng=Path(plan['engineering']);c.require({p.name for p in eng.iterdir()}=={plan['job_name']+'.inp','scratch'} and not list((eng/'scratch').iterdir()),'OUTPUT_OR_SOLVER_INTENT_FOUND')
++    # Exactly one original native startup, no unexplained later intent.
++    c.require([p.name for p in m.private.iterdir() if p.is_dir() and p.name.startswith('start_')]==[start],'EXTRA_OWNER_START_OR_UNKNOWN')
++    for p in Path(ctx.root).rglob('*'):
++        c.local(p)
++        c.require(not p.name.endswith('.intent.json'),'SOLVER_INTENT_FOUND')
++    if review_reference.get('schema')=='execution-window-stop-reference-v1':
++        from window_closure import qualification as machine_qualification
++        review=machine_qualification(review_reference,receipt,expected,ready,created,m)
++    else:review=qualification(review_reference,receipt,expected,ready,created,review_kind=review_kind)
++    proof=dict(start_id=start,owner_id=receipt['owner_id'],receipt=receipt,process=ready['process'],transport_pid=created['transport_pid'],
++               files={str(p.relative_to(c.local(project))):c.sha(p) for p in sorted([base/n for n in
++                    ('intent.json','created.json','ready.json','stopped.json','claimed.json','host.json')]+[m._path('lifecycle-current.json'),Path(ctx.root)/'owner.json'])},counts=counts,retained_exit_review=review)
++    return dict(identity=c.identity(view),lifecycle='ORDERLY_STOP_RECORDED',proof=proof),m

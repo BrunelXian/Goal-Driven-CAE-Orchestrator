@@ -1,0 +1,423 @@
+--- a/src/af/abqjobpilot/cross_boot_terminal.py
++++ b/src/af/abqjobpilot/cross_boot_terminal.py
+@@ -0,0 +1,260 @@
++"""Explicit capability-bound unclean host-restart terminal; never a stop receipt.
++
++No process control, Plan, Grant or ledger mutation. Same-account trusted local
++operator scope; reference files are provenance, not cryptographic human signatures.
++"""
++import ctypes,hashlib,hmac,json,os,sqlite3,time,sys
++from pathlib import Path
++from .execution.models import require,digest,canonical_json,ExecutionError
++from .service_discovery import read_document
++from .local_credentials import read_private,private_value,host_binding
++
++SCHEMA='af-cross-boot-terminal-v1'
++ACTION='RECORD_HOST_RESTART_TERMINATED_UNCLEANLY'
++STATE='HOST_RESTART_TERMINATED_UNCLEANLY'
++NAME='cross-boot-terminal.json'
++INTENT='cross-boot-terminal-intent.json'
++
++def sha(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++def boot_observation():
++    """Kernel boot FILETIME and machine binding; not wallclock-minus-uptime."""
++    class Times(ctypes.Structure):
++        _fields_=[('BootTime',ctypes.c_longlong),('CurrentTime',ctypes.c_longlong),('TimeZoneBias',ctypes.c_longlong),
++                  ('CurrentTimeZoneId',ctypes.c_ulong),('Reserved',ctypes.c_ulong),('BootTimeBias',ctypes.c_ulonglong),('SleepTimeBias',ctypes.c_ulonglong)]
++    value=Times();returned=ctypes.c_ulong()
++    api=ctypes.WinDLL('ntdll');api.NtQuerySystemInformation.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_ulong,ctypes.c_void_p]
++    require(api.NtQuerySystemInformation(3,ctypes.byref(value),ctypes.sizeof(value),ctypes.byref(returned))==0,
++            'BOOT_IDENTITY_UNKNOWN','Kernel boot time unavailable')
++    require(0<value.BootTime<value.CurrentTime,'BOOT_IDENTITY_UNKNOWN','Invalid kernel boot boundary')
++    import subprocess
++    command="$ErrorActionPreference='Stop';Import-Module CimCmdlets; $b=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().ToFileTimeUtc(); $e=Get-WinEvent -FilterHashtable @{LogName='System';ProviderName='Microsoft-Windows-Kernel-General';Id=12} -MaxEvents 1; $x=[xml]$e.ToXml(); $s=($x.Event.EventData.Data|Where-Object {$_.Name -eq 'StartTime'}).'#text'; @{cim=[string]$b;start=[string]([DateTime]::Parse($s).ToUniversalTime().ToFileTimeUtc());record=[string]$e.RecordId;provider=$e.ProviderName;event_id=$e.Id}|ConvertTo-Json -Compress"
++    result=subprocess.run([r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe','-NoProfile','-NonInteractive','-Command',command],capture_output=True,text=True,timeout=20)
++    require(result.returncode==0,'BOOT_IDENTITY_UNKNOWN','Independent CIM/Event12 boot observation unavailable')
++    corroboration=json.loads(result.stdout)
++    require(corroboration['provider']=='Microsoft-Windows-Kernel-General' and corroboration['event_id']==12
++            and int(corroboration['cim'])==int(corroboration['start']) and abs(int(corroboration['cim'])-value.BootTime)<10000000,
++            'BOOT_IDENTITY_UNKNOWN','Kernel, CIM and event boot boundaries disagree')
++    return dict(source='Kernel+CIM+Kernel-General-12',boot_time_100ns=int(corroboration['cim']),host_binding=host_binding(),event_record=corroboration['record'])
++
++def process_after_boot(identity,boot):
++    """A current PID may be reused; no original exit code can be inferred."""
++    from ctypes import wintypes as w
++    require(set(identity)>={'pid','creation_time_100ns','image_path'} and 0<identity['creation_time_100ns']<boot['boot_time_100ns'],
++            'PROCESS_NOT_PRIOR_BOOT','Original process must precede kernel boot')
++    api=ctypes.WinDLL('kernel32',use_last_error=True)
++    api.OpenProcess.argtypes=[w.DWORD,w.BOOL,w.DWORD];api.OpenProcess.restype=w.HANDLE
++    api.CloseHandle.argtypes=[w.HANDLE];api.GetProcessTimes.argtypes=[w.HANDLE]+[ctypes.POINTER(w.FILETIME)]*4
++    api.QueryFullProcessImageNameW.argtypes=[w.HANDLE,w.DWORD,w.LPWSTR,ctypes.POINTER(w.DWORD)]
++    handle=api.OpenProcess(0x1000,False,identity['pid'])
++    if not handle:
++        require(ctypes.get_last_error()==87,'PROCESS_IDENTITY_UNKNOWN','Cannot inspect original numeric PID')
++        return 'ABSENT_AFTER_CONFIRMED_HOST_BOOT'
++    try:
++        times=[w.FILETIME() for _ in range(4)]
++        require(api.GetProcessTimes(handle,*[ctypes.byref(v) for v in times]),'PROCESS_IDENTITY_UNKNOWN','Cannot read creation time')
++        created=(times[0].dwHighDateTime<<32)|times[0].dwLowDateTime
++        size=w.DWORD(32768);image=ctypes.create_unicode_buffer(size.value)
++        require(api.QueryFullProcessImageNameW(handle,0,image,ctypes.byref(size)),'PROCESS_IDENTITY_UNKNOWN','Cannot read reused PID image')
++        require(created>=boot['boot_time_100ns'] and created!=identity['creation_time_100ns'],
++                'PROCESS_IDENTITY_UNKNOWN','PID cannot be resolved to a distinct current-boot process')
++        return 'PID_REUSED_BY_DISTINCT_CURRENT_BOOT_PROCESS'
++    finally:api.CloseHandle(handle)
++
++def reference(item):
++    require(type(item) is dict and set(item)=={'path','sha256'},'EXACT_EVIDENCE_REFERENCE_REQUIRED','Reference path and digest required')
++    from .execution.paths import local_path,no_reparse
++    path=local_path(item['path']);no_reparse(path)
++    require(path.is_absolute() and sha(path)==item['sha256'],'EVIDENCE_CHANGED','Evidence reference bytes changed')
++    return item
++
++def no_replacement(manager,identities,*,boot=None):
++    """Check supported Python Owner startup path, not hostile same-user code."""
++    import subprocess
++    command="$ErrorActionPreference='Stop';Import-Module CimCmdlets; @(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\"|Select-Object ProcessId,ExecutablePath,CommandLine)|ConvertTo-Json -Compress"
++    result=subprocess.run([r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe','-NoProfile','-NonInteractive','-Command',command],capture_output=True,text=True,timeout=20)
++    require(result.returncode==0,'PROCESS_INVENTORY_UNKNOWN','Supported Owner process inventory unavailable')
++    values=json.loads(result.stdout or '[]');values=values if isinstance(values,list) else [values]
++    images={str(Path(v['image_path'])).casefold() for v in identities[:2]}
++    targets={str(Path(manager.context.root)).casefold(),str(Path(manager.context.test_root)).casefold()}
++    shell=ctypes.WinDLL('shell32');shell.CommandLineToArgvW.argtypes=[ctypes.c_wchar_p,ctypes.POINTER(ctypes.c_int)];shell.CommandLineToArgvW.restype=ctypes.POINTER(ctypes.c_wchar_p)
++    kernel=ctypes.WinDLL('kernel32');kernel.LocalFree.argtypes=[ctypes.c_void_p]
++    from .execution.ownership import current_process_identity
++    own=current_process_identity()
++    def arguments(text):
++        n=ctypes.c_int();pointer=shell.CommandLineToArgvW(text,ctypes.byref(n))
++        require(bool(pointer),'PROCESS_INVENTORY_UNKNOWN','Cannot parse supported process command line')
++        try:return [pointer[i] for i in range(n.value)]
++        finally:kernel.LocalFree(pointer)
++    own_rows=[r for r in values if r['ProcessId']==own['pid']]
++    require(len(own_rows)==1 and own_rows[0].get('CommandLine'),'COLLECTOR_IDENTITY_UNKNOWN','Collector command line unavailable')
++    own_args=arguments(own_rows[0]['CommandLine'])
++    from .execution.process_handles import ProcessReference
++    from .execution.tensile_catalog import GD_ROOT
++    archive=str(Path(GD_ROOT)/'cross_boot_archive.py')
++    for row in values:
++        require(row.get('ExecutablePath') and row.get('CommandLine'),'PROCESS_INVENTORY_UNKNOWN','Python process image/command line unreadable')
++        if row['ProcessId']==own['pid']:
++            require(str(Path(row['ExecutablePath'])).casefold()==str(Path(own['image_path'])).casefold(),'COLLECTOR_IDENTITY_UNKNOWN','Collector image mismatch')
++            continue
++        if str(Path(row['ExecutablePath'])).casefold() not in images:continue
++        args=arguments(row['CommandLine'])
++        if (row['ProcessId']==own['parent_pid'] and args[1:]==own_args[1:] and archive in args
++                and str(Path(args[0])).casefold()==str(Path(row['ExecutablePath'])).casefold()==str(Path(sys.executable)).casefold()
++                and str(Path(own_args[0])).casefold()==str(Path(own['image_path'])).casefold()):
++            # Windows venv launcher is a transport for this exact archive CLI.
++            # Never exempt a merely similar command or an arbitrary parent PID.
++            boundary=boot if boot is not None else boot_observation()
++            with_ref=ProcessReference(row['ProcessId'])
++            try:
++                identity=with_ref.identity
++                require(str(Path(identity['image_path'])).casefold()==str(Path(row['ExecutablePath'])).casefold()
++                        and boundary['boot_time_100ns']<=identity['creation_time_100ns']<=own['creation_time_100ns']
++                        and with_ref.exit_evidence() is None,'COLLECTOR_IDENTITY_UNKNOWN','Collector transport identity unavailable')
++            finally:with_ref.close()
++            continue
++        linked=any(a=='--project' and i+1<len(args) and str(Path(args[i+1])).casefold() in targets for i,a in enumerate(args))
++        linked=linked or any(a=='--start-id' and i+1<len(args) and args[i+1]==manager._current()['start_id'] for i,a in enumerate(args))
++        require(not linked,'REPLACEMENT_OWNER_UNKNOWN','Another process uses the exact supported instance/start path')
++    return 'SUPPORTED_NATIVE_PYTHON_START_PATH_CHECKED_NOT_HOSTILE_SAME_USER_ISOLATION'
++
++def snapshot(manager,identities,*,historical_boot=None):
++    """Authoritative read-only empty instance state, current reservation and boot."""
++    ctx=manager.context;profile=manager._profile();current=manager._current()
++    require(current is not None,'START_ID_REQUIRED','No original lifecycle reservation')
++    start=current['start_id'];base=manager._path(start)
++    require(not (base/'stopped.json').exists(),'NORMAL_STOP_PRESENT','Unclean terminal cannot replace normal stop')
++    ready=read_document(base/'ready.json');created=read_document(base/'created.json');intent=read_document(base/'intent.json')
++    owner=read_document(Path(ctx.root)/'owner.json')
++    connection=read_private(ctx,manager._path('connection.json'))
++    require(current==intent and current['context_digest']==ctx.context_digest and current['profile_digest']==digest(profile)
++            and ready['start_id']==created['start_id']==start and ready['owner_id']==owner['owner_id']
++            and ready['process']==owner['process'],'LIFECYCLE_IDENTITY_CHANGED','Original ready/owner/start identity mismatch')
++    require(connection['endpoint']==owner and connection['credential']==profile['credential'],
++            'CONNECTION_IDENTITY_CHANGED','Native original connection/endpoint differs')
++    require(len(identities) in (2,3) and len({v['pid'] for v in identities})==len(identities)
++            and all(identities[0][k]==ready['process'][k] for k in identities[0])
++            and identities[1]['pid']==created['transport_pid']==ready['process']['parent_pid'],
++            'TRACKED_IDENTITY_CHANGED','Original worker/transport provenance required')
++    if len(identities)==3:require(Path(identities[2]['image_path']).name.lower()=='conhost.exe','TRACKED_IDENTITY_CHANGED','Third tracked member is not conhost')
++    boot=historical_boot if historical_boot is not None else boot_observation()
++    require(boot['host_binding']==host_binding() and all(0<v['creation_time_100ns']<boot['boot_time_100ns'] for v in identities),
++            'BOOT_IDENTITY_UNKNOWN','Original identities and authenticated host boot boundary differ')
++    replacement='SUPPORTED_NATIVE_PYTHON_START_PATH_CHECKED_NOT_HOSTILE_SAME_USER_ISOLATION'
++    if historical_boot is None:
++        for value in identities:process_after_boot(value,boot)
++        replacement=no_replacement(manager,identities,boot=boot)
++    require(current['recorded_at']*10000000+116444736000000000<boot['boot_time_100ns'],
++            'START_NOT_PRIOR_BOOT','Startup reservation not before host boot')
++    require([p.name for p in manager.private.iterdir() if p.is_dir() and p.name.startswith('start_')]==[start],
++            'EXTRA_START_UNKNOWN','Extra startup reservation cannot be silently closed')
++    from .execution.lifecycle import require_idle
++    db=sqlite3.connect(Path(ctx.root).joinpath('execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:
++        db.execute('BEGIN')
++        names=('plans','grants','runs','receipts','consumption','events','management_receipts','control_events','management_grants','management_consumption','reconciliations','observations','validations')
++        counts={n:db.execute('SELECT count(*) FROM '+n).fetchone()[0] for n in names}
++        require(counts=={n:int(n=='plans') for n in names},'EXECUTION_OR_MANAGEMENT_UNKNOWN','Nonempty execution or management state')
++        plan=json.loads(db.execute('SELECT body FROM plans').fetchone()[0]);unsigned=dict(plan)
++        require(unsigned.pop('plan_digest')==digest(unsigned),'PLAN_CHANGED','Original Plan digest mismatch')
++        extension=profile['standard_extension'];require_idle(db,standard_binding=extension['binding'])
++        require(plan['plan_id']==extension['binding']['plan_id'] and plan['plan_digest']==extension['binding']['plan_digest']
++                and (historical_boot is not None or plan['expires_at']<=time.time()),'PLAN_CHANGED','Original exact expired Plan required')
++        meta=dict(db.execute('SELECT key,value FROM meta'))
++        require(db.execute('SELECT state,owner_id FROM dispatch_gate WHERE id=1').fetchone()==('PAUSED',owner['owner_id'])
++                and meta['supervisor_started']=='1' and meta['authority_instance']==profile['authority_instance'],'OWNER_STATE_CHANGED','Expected prior started PAUSED Owner')
++        from .execution.product_standard import scope
++        scope_digest=digest(scope(plan))
++    finally:db.close()
++    engineering=Path(plan['engineering'])
++    require({p.name for p in engineering.iterdir()}=={plan['job_name']+'.inp','scratch'} and not list((engineering/'scratch').iterdir()),
++            'OUTPUT_OR_START_INTENT_FOUND','Unexpected solver output or intent')
++    require(not any(p.name.endswith('.intent.json') for p in Path(ctx.root).rglob('*')),'START_INTENT_FOUND','Execution intent found')
++    paths=[base/n for n in ('intent.json','created.json','ready.json','claimed.json','host.json')]+[manager._path('lifecycle-current.json'),manager._path('connection.json'),Path(ctx.root)/'owner.json',Path(ctx.root)/'execution.sqlite3']
++    return dict(project_id=ctx.project_id,project_instance_id=ctx.project_instance_id,context_digest=ctx.context_digest,
++        owner_id=owner['owner_id'],start_id=start,plan_id=plan['plan_id'],plan_digest=plan['plan_digest'],scope_digest=scope_digest,
++        boot=boot,identities=identities,counts=counts,files={str(p):sha(p) for p in paths},
++        process_state='ORIGINAL_IDENTITIES_PRECEDE_CONFIRMED_BOOT',replacement_scope=replacement,exit_codes='UNKNOWN',normal_stop=False,execution_authorized=False)
++
++def proposal(manager,identities,evidence_references,operation_id,*,check_scientific_guard=True,historical_boot=None):
++    require(type(operation_id) is str and len(operation_id)==32 and all(c in '0123456789abcdef' for c in operation_id),'EXACT_OPERATION_REQUIRED','32 hex operation ID required')
++    require(evidence_references and all(reference(v) for v in evidence_references),'EVIDENCE_REQUIRED','Original tracked identity and independent reconciliation references required')
++    view=snapshot(manager,identities,historical_boot=historical_boot)
++    review=read_document(evidence_references[0]['path'])
++    require(review['schema']=='cross-boot-independent-review-v1' and review['unresolved_native_operation'] is False
++            and review['scope']=='KNOWN_BOUND_SOURCES_RECONCILED' and review['process_identities']==identities
++            and all(review[k]==view[k] for k in ('project_id','project_instance_id','owner_id','start_id','plan_id')),
++            'INDEPENDENT_RECONCILIATION_REQUIRED','Exact independent known-source reconciliation required')
++    require(review['known_operator_journals'],'INDEPENDENT_RECONCILIATION_REQUIRED','Known helper sources required')
++    for journal in review['known_operator_journals']:
++        root=Path(journal['root'])
++        require(root.is_absolute() and root.is_dir() and journal['request_exists'] is False,'PENDING_STOP_UNKNOWN','Unknown helper state')
++        actual={str(p.relative_to(root)):sha(p) for p in root.rglob('*') if p.is_file()}
++        require(len(actual)<=128 and actual==journal['files'],'PENDING_STOP_UNKNOWN','Helper journal changed after reconciliation')
++    guards=review['scientific_commit_guard']
++    require(type(guards) is dict and guards and any(Path(p).name=='workflow.sqlite' for p in guards),
++            'SCIENTIFIC_STATE_GUARD_REQUIRED','Exact original scientific state hashes required')
++    if check_scientific_guard:
++        for path,pin in guards.items():reference(dict(path=path,sha256=pin))
++    view['independent_review_digest']=evidence_references[0]['sha256']
++    view['scientific_state_at_commit']=guards
++    return dict(schema=SCHEMA,action=ACTION,operation_id=operation_id,state=STATE,scope=view,evidence_references=evidence_references,
++                implementation={str(Path(__file__).resolve()):sha(Path(__file__)),str(Path(__file__).with_name('service_lifecycle.py').resolve()):sha(Path(__file__).with_name('service_lifecycle.py')),
++                                str(Path(__file__).parent/'execution/tensile_catalog.py'):sha(Path(__file__).parent/'execution/tensile_catalog.py')},
++                target_path=str(manager._path(view['start_id']+'/'+NAME)),execution_authorized=False,budget_changed=False)
++
++def _mac(token,value):
++    return hmac.new(token.encode(),canonical_json(value).encode(),hashlib.sha256).hexdigest()
++
++def read_terminal(manager):
++    current=manager._current()
++    if not current:return None
++    path=manager._path(current['start_id']+'/'+NAME)
++    if not path.exists():return None
++    token=manager._operator();value=read_private(manager.context,path)
++    require(set(value)=={'record','operator_mac'} and hmac.compare_digest(value['operator_mac'],_mac(token,value['record'])),
++            'TERMINAL_IDENTITY_CHANGED','Native capability-bound terminal seal mismatch')
++    record=value['record'];p=record['proposal'];view=p['scope']
++    require(p['schema']==SCHEMA and p['action']==ACTION and p['state']==STATE and p['execution_authorized'] is False
++            and p['budget_changed'] is False and p['target_path']==str(path) and view['start_id']==current['start_id']
++            and record['proposal_digest']==digest(p),'TERMINAL_IDENTITY_CHANGED','Terminal proposal identity mismatch')
++    for ref in p['evidence_references']+[record['authorization_reference']]:reference(ref)
++    actual=proposal(manager,view['identities'],p['evidence_references'],p['operation_id'],check_scientific_guard=False,historical_boot=view['boot'])
++    require(actual==p,'TERMINAL_STATE_CHANGED','Native historical state, known journals or boot changed')
++    intent=read_private(manager.context,manager._path(current['start_id']+'/'+INTENT))
++    require(intent['proposal_digest']==record['proposal_digest'] and intent['operation_id']==p['operation_id']
++            and intent['authorization_reference']==record['authorization_reference'],'TERMINAL_INTENT_CHANGED','Original terminal intent differs')
++    return dict(state=STATE,normal_stop=False,exit_codes='UNKNOWN',path=str(path),sha256=sha(path),record=record)
++
++def commit(manager,p,proposal_digest,authorization_reference):
++    """Explicit trusted-local capability invocation after separate exact approval."""
++    require(digest(p)==proposal_digest,'PROPOSAL_CHANGED','Exact proposal digest required')
++    reference(authorization_reference)
++    approval=read_document(authorization_reference['path'])
++    require(approval['schema']=='cross-boot-exact-authorization-reference-v1' and approval['action']==ACTION
++            and approval['proposal_digest']==proposal_digest and approval['operation_id']==p['operation_id']
++            and approval['new_execution_authorized'] is False and approval['budget_change_authorized'] is False
++            and type(approval['expires_at']) is int and time.time()<approval['expires_at']<=time.time()+600,
++            'EXACT_AUTHORIZATION_REQUIRED','Exact bounded archival authorization reference required; native capability still mandatory')
++    from .execution.ownership import LocalOwnerLock
++    from .service_lifecycle import write_new
++    token=manager._operator();lease=LocalOwnerLock(manager.context)
++    try:
++        prior=read_terminal(manager)
++        if prior:
++            require(prior['record']['proposal_digest']==proposal_digest and prior['record']['authorization_reference']==authorization_reference,
++                    'IDEMPOTENCY_CONFLICT','Another terminal scope already committed')
++            return dict(replayed=True,terminal=prior)
++        actual=proposal(manager,p['scope']['identities'],p['evidence_references'],p['operation_id'])
++        require(actual==p,'PROPOSAL_CHANGED','Native state changed after review')
++        path=manager._path(p['scope']['start_id']+'/'+INTENT)
++        require(not path.exists(),'TERMINAL_INTENT_UNKNOWN','Existing intent permits read-only reconciliation only')
++        write_new(path,private_value(manager.context,dict(proposal_digest=proposal_digest,operation_id=p['operation_id'],authorization_reference=authorization_reference)))
++        manager._checkpoint('cross_boot_intent_persisted')
++        require(proposal(manager,p['scope']['identities'],p['evidence_references'],p['operation_id'])==p,'TERMINAL_STATE_CHANGED','State changed before terminal publication')
++        record=dict(proposal=p,proposal_digest=proposal_digest,authorization_reference=authorization_reference,recorded_at=int(time.time()),
++                    source='explicit_lifecycle_operator_capability',statement='Unclean host-restart termination; no orderly stop or process exit code')
++        write_new(Path(p['target_path']),private_value(manager.context,dict(record=record,operator_mac=_mac(token,record))))
++        return dict(replayed=False,terminal=read_terminal(manager))
++    finally:lease.close()
+--- a/src/af/abqjobpilot/service_lifecycle.py
++++ b/src/af/abqjobpilot/service_lifecycle.py
+@@ -143,6 +143,10 @@
+             try:
+                 current=self._current()
+                 if self._stopped(current):return {'state':'NOT_RUNNING','reason':'ORDERLY_STOP_RECORDED'}
++                from .cross_boot_terminal import read_terminal
++                abnormal=read_terminal(self)
++                if abnormal:return {'state':'TERMINATED_UNCLEANLY','reason':abnormal['state'],'start_id':current['start_id'],
++                                    'normal_stop':False,'exit_codes':'UNKNOWN','terminal_sha256':abnormal['sha256']}
+                 if current:return {'state':'BLOCKED','reason':'START_UNCONFIRMED','start_id':current['start_id']}
+                 if not (self.project/'owner.json').exists() and not self._path('connection.json').exists():
+                     self._profile()
+@@ -155,6 +159,14 @@
+ 
+     def _checkpoint(self, name):
+         """Private test injection seam; no configuration or IPC can select it."""
++
++    def cross_boot_proposal(self, identities, evidence_references, operation_id):
++        from .cross_boot_terminal import proposal
++        return proposal(self,identities,evidence_references,operation_id)
++
++    def record_cross_boot_terminal(self, proposal, *, proposal_digest, authorization_reference):
++        from .cross_boot_terminal import commit
++        return commit(self,proposal,proposal_digest,authorization_reference)
+ 
+     def start(self, *, operator_file=None, wait_seconds=8):
+         require(type(wait_seconds) in (int,float) and 0<=wait_seconds<=10,'INVALID_REQUEST','Bounded startup wait required')
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilecrossboot1.dist-info/METADATA
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilecrossboot1.dist-info/METADATA
+@@ -0,0 +1,3 @@
++Metadata-Version: 2.1
++Name: abqjobpilot-gdcae-internal
++Version: 0.0.0+tensilecrossboot1
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilecrossboot1.dist-info/WHEEL
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensilecrossboot1.dist-info/WHEEL
+@@ -0,0 +1,4 @@
++Wheel-Version: 1.0
++Generator: bounded-pre-ready-recovery
++Root-Is-Purelib: true
++Tag: py3-none-any
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/METADATA
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/METADATA
+@@ -1,3 +0,0 @@
+-Metadata-Version: 2.1
+-Name: abqjobpilot-gdcae-internal
+-Version: 0.0.0+tensileusability1
+--- a/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/WHEEL
++++ b/src/af/abqjobpilot_gdcae_internal-0.0.0+tensileusability1.dist-info/WHEEL
+@@ -1,4 +0,0 @@
+-Wheel-Version: 1.0
+-Generator: bounded-pre-ready-recovery
+-Root-Is-Purelib: true
+-Tag: py3-none-any
+--- a/src/gd/cross_boot_archive.py
++++ b/src/gd/cross_boot_archive.py
+@@ -0,0 +1,38 @@
++"""Exact original AF incident archive. Never starts/stops/executes or changes GD DB."""
++import argparse,json,sys
++from pathlib import Path
++sys.path[:0]=[str(Path(__file__).resolve().parent),str(Path(__file__).resolve().parent/'runtime')]
++import continuation as c
++from r3_bridge import trusted_af
++
++def main():
++    p=argparse.ArgumentParser();p.add_argument('action',choices=('proposal','check','commit','reconcile'))
++    for n in ('project','package-pin','python-exe'):p.add_argument('--'+n,required=True)
++    p.add_argument('--identities');p.add_argument('--review');p.add_argument('--review-sha256');p.add_argument('--operation-id')
++    p.add_argument('--proposal');p.add_argument('--proposal-digest');p.add_argument('--authorization');p.add_argument('--authorization-sha256')
++    a=p.parse_args()
++    from main import verify
++    verify(Path(__file__).parent,a);trusted_af()
++    from abqjobpilot.service_lifecycle import ServiceLifecycleManager
++    from abqjobpilot.cross_boot_terminal import read_terminal,INTENT
++    m=ServiceLifecycleManager(c.local(a.project))
++    if a.action=='proposal':
++        identities=json.loads(c.local(a.identities).read_bytes())
++        value=m.cross_boot_proposal(identities,[dict(path=a.review,sha256=a.review_sha256)],a.operation_id)
++        result=dict(proposal=value,proposal_digest=c.pin(value),status='UNAPPROVED_PROPOSAL_ONLY')
++    elif a.action=='check':
++        value=json.loads(c.local(a.proposal).read_bytes());value=value.get('proposal',value)
++        c.require(c.pin(value)==a.proposal_digest,'PROPOSAL_CHANGED')
++        fresh=m.cross_boot_proposal(value['scope']['identities'],value['evidence_references'],value['operation_id'])
++        c.require(fresh==value,'PROPOSAL_CHANGED');result=dict(status='EXACT_READONLY_CHECK',proposal_digest=a.proposal_digest,execution_authorized=False)
++    elif a.action=='commit':
++        value=json.loads(c.local(a.proposal).read_bytes());value=value.get('proposal',value)
++        result=m.record_cross_boot_terminal(value,proposal_digest=a.proposal_digest,
++            authorization_reference=dict(path=a.authorization,sha256=a.authorization_sha256))
++    else:
++        terminal=read_terminal(m);current=m._current()
++        result=dict(terminal=terminal,intent_exists=bool(current and m._path(current['start_id']+'/'+INTENT).exists()),
++            instruction='READ_ONLY_RECONCILIATION_NO_AUTOMATIC_RETRY')
++    print(json.dumps(result,sort_keys=True))
++
++if __name__=='__main__':main()
+--- a/src/gd/operator_entry.py
++++ b/src/gd/operator_entry.py
+@@ -46,7 +46,7 @@
+ 
+ 
+ def check_qualification(value):
+-    if isinstance(value,dict) and value.get('schema')=='execution-window-stop-reference-v1':
++    if isinstance(value,dict) and value.get('schema') in ('execution-window-stop-reference-v1','af-cross-boot-terminal-reference-v1'):
+         require(set(value)=={'schema','path','sha256'},'EXACT_WINDOW_STOP_REFERENCE_REQUIRED')
+         check_decision_reference(dict(path=value['path'],sha256=value['sha256']))
+         return value
+--- a/src/gd/plugin.json
++++ b/src/gd/plugin.json
+@@ -1,6 +1,6 @@
+ {
+   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+   "name": "gdcae-tensile-v1",
+-  "version": "0.1.0-tensile.10",
++  "version": "0.1.0-tensile.11",
+   "description": "Tensile bar research preparation, bounded synthetic feedback rehearsal and read-only ODB evidence review."
+ }--- a/src/gd/window_history.py
++++ b/src/gd/window_history.py
+@@ -12,7 +12,9 @@
+     trusted_af()
+     from abqjobpilot.service_lifecycle import ServiceLifecycleManager
+     m=ServiceLifecycleManager(c.local(project))
+-    if m._current():return stopped_window(project,expected,reference,review_kind='B')
++    if m._current():
++        if reference.get('schema')=='af-cross-boot-terminal-reference-v1':return cross_boot_window(m,expected,reference)
++        return stopped_window(project,expected,reference,review_kind='B')
+     from abqjobpilot.execution.models import canonical_json,digest
+     from abqjobpilot.execution.product_standard import ProductStandardControl,scope
+     from abqjobpilot.execution.standard_contract import StandardConfig
+@@ -43,6 +45,31 @@
+     c.require({p.name for p in eng.iterdir()}=={plan['job_name']+'.inp','scratch'} and not list((eng/'scratch').iterdir()),'ANCESTOR_OUTPUT_UNKNOWN')
+     c.require(not any(p.name.startswith('start_') or p.name.endswith('.intent.json') for p in Path(ctx.test_root).rglob('*')),'ANCESTOR_START_INTENT')
+     return dict(identity=expected,lifecycle='NEVER_STARTED',counts=counts),m
++
++def cross_boot_window(manager,expected,reference):
++    """Only AF's sealed authoritative abnormal terminal qualifies this branch."""
++    from abqjobpilot.cross_boot_terminal import read_terminal,STATE,no_replacement
++    from abqjobpilot.execution.models import canonical_json,digest
++    from abqjobpilot.execution.standard_contract import StandardConfig
++    from abqjobpilot.execution.product_standard import scope
++    from abqjobpilot.execution.tensile_profile import validate_input
++    from abqjobpilot.local_credentials import read_private
++    c.require(set(reference)=={'schema','path','sha256'},'EXACT_NATIVE_TERMINAL_REFERENCE_REQUIRED')
++    native=read_terminal(manager)
++    c.require(native and native['path']==reference['path'] and native['sha256']==reference['sha256']
++              and native['state']==STATE and native['normal_stop'] is False,'NATIVE_CROSS_BOOT_TERMINAL_REQUIRED')
++    no_replacement(manager,native['record']['proposal']['scope']['identities'])
++    ctx=manager.context;profile=manager._profile();ext=profile['standard_extension']
++    db=sqlite3.connect((Path(ctx.root)/'execution.sqlite3').as_uri()+'?mode=ro',uri=True)
++    try:plan=json.loads(db.execute('SELECT body FROM plans').fetchone()[0])
++    finally:db.close()
++    config=StandardConfig(canonical_json(ext['standard_config']));config.verify()
++    c.require(plan['runtime_binding']==config.value(),'PARENT_RUNTIME_CHANGED')
++    reg=read_private(ctx,manager._path('tensile-registration.json'))
++    c.require(reg==plan['registration'] and validate_input(Path(plan['engineering']),reg)==plan['input_manifest'][0],'PARENT_INPUT_CHANGED')
++    view=dict(plan=plan,scope_digest=digest(scope(plan)),af_project=str(Path(ctx.root).parent),project_id=ctx.project_id,project_instance_id=ctx.project_instance_id)
++    c.require(c.identity(view)==expected,'PARENT_IDENTITY_CHANGED')
++    return dict(identity=expected,lifecycle=STATE,normal_stop=False,exit_codes='UNKNOWN',native_terminal=reference,proof=native['record']),manager
+ 
+ def original_process_exited(identity):
+     """Retained exit is primary evidence. A reused PID identifies another process.

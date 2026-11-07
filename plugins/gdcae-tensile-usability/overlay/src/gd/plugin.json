@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gdcae-tensile-v1",
+  "version": "0.1.0-tensile.10",
+  "description": "Tensile bar research preparation, bounded synthetic feedback rehearsal and read-only ODB evidence review."
+}
