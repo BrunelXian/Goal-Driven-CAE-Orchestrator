@@ -9,6 +9,17 @@ description: 在 Windows 引导研究用户按需选择独立 CPython 运行时�
 
 1. 若有用户保管的本版本绑定摘要，先按下述方式核对发行清单和 launcher，再由当前安装的 launcher 执行 doctor。旧版回执、错误 pin、被拒绝的权限或不匹配的文件均停止并报告，禁止修补缓存、降级校验或自动重试。
 2. 无已验证的绑定时，将[双方案表格](../../references/runtime-options.md)原样以中文 Markdown 呈现并停下。选择“暂不配置”直接返回科研讨论。不可代选。此步骤不需 Python 或网络。
+以下为可直接显示的完整文案（无需工具读取文件）：
+
+**检测结果：** 当前设备未发现经 GD-CAE 验证可用的 Python 运行环境，因此曲线分析和 ResearchProject 的计算/持久化功能暂不能启动。基础科研讨论与模型审查可以继续使用。
+
+| 配置方式 | 适合谁 | 会发生什么 |
+|---|---|---|
+| **方法一（推荐）：GD-CAE 自动配置独立运行环境** | 希望快速开始、不想管理 Python 的用户 | 经你确认后，从 GD-CAE 主仓库的固定 GitHub Pre-release 获取已核对 Python 官方签名及摘要的 CPython，校验 SHA-256，在 GD-CAE 私有目录中隔离安装；不修改系统 Python、注册表或 PATH。 |
+| **方法二：使用自行管理的 Python 3.12+ 环境** | 已有科研环境、希望长期自主维护的用户 | 你提供 python.exe 的绝对路径，GD-CAE 核验实际版本、64 位架构和必要依赖后绑定，不升级或安装包。当前支持 Windows x64 CPython 3.12.10。 |
+
+**下一步：** 回复“1”或“2”。也可以回复“暂不配置”，继续使用无需 Python 的基础功能。
+
 3. 从 Host 确认当前安装根与 0.2.0-preview.6。要求用户通过独立发行记录取得 package-manifest.json 的 SHA-256；不可使用安装目录自报的摘要作为信任来源。用 PowerShell Get-FileHash 核对清单，再根据清单的 files 核对要执行的 scripts/runtime.ps1 或 scripts/launch.ps1。摘要不符或缺少独立来源即停止。
 4. 用户选 1：以当前安装的 scripts/runtime.ps1 执行 `-Action plan -Choice managed -ManifestSha256 <独立摘要>`。用中文显示实际来源 URL、字节数、SHA-256、目标绝对路径及写入范围（私有暂存、版本化运行时和用户绑定回执）；说明会验证、执行固定解释器并绑定，不改系统注册表或 PATH。单独询问是否确认这些下载、写入及执行。回复“1”本身不足以授权。仅在确认后按原计划执行同一脚本 `-Action install -Choice managed -ConfirmDownload -ManifestSha256 <同一摘要>`，记录真实退出码。若 Host 要求审批，遵循其审批流程。权限拒绝则停止。
 5. 用户选 2：请用户提供其信任的 python.exe 的本地绝对路径，说明将运行该解释器验证版本、x64、隔离模式和标准库并写入该版本的本地绑定回执。取得用户同意后由已验证的 launcher 执行 `-Action bind -PythonExe <绝对路径> -ManifestSha256 <独立摘要>`。当前支持列表只有 3.12.10。不扫描系统寻找其他解释器，不使用 pip。
