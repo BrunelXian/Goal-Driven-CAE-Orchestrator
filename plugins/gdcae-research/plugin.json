@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "description": "Discuss research goals and review Sanity Models without Python. Use an optional verified Windows runtime for research agreements and curve analysis.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [],
+        "category": "Productivity",
+        "composerIcon": "./assets/mesh.png",
+        "displayName": "CAE Agent Research Preview",
+        "logo": "./assets/mesh.png",
+        "longDescription": "Discuss goals, review Sanity Models and plan research without Python. For deterministic curve comparison and project records, choose a verified private CPython runtime or bind a supported user-managed Windows x64 interpreter. Setup asks before downloading. No solver dispatch.",
+        "shortDescription": "Plan CAE and review models"
+      },
+      "onboardingSkill": "./skills/setup/SKILL.md",
+      "requires_local_executor": true
+    }
+  },
+  "license": "Apache-2.0",
+  "name": "gdcae-research",
+  "version": "0.2.0-preview.6"
+}
