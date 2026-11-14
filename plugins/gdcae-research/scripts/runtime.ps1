@@ -19,7 +19,7 @@ try {
     if ($ManifestSha256 -notmatch '^[0-9a-fA-F]{64}$' -or
         (Get-FileHash -LiteralPath $manifestFile -Algorithm SHA256).Hash -ne $ManifestSha256) { throw 'PACKAGE_MANIFEST_MISMATCH' }
     $manifest=Get-Content -LiteralPath $manifestFile -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($manifest.version -ne '0.2.0-preview.6') { throw 'PACKAGE_VERSION_MISMATCH' }
+    if ($manifest.version -ne '0.2.0-preview.8') { throw 'PACKAGE_VERSION_MISMATCH' }
     foreach ($entry in $manifest.files.PSObject.Properties) {
         if ($entry.Name -eq 'plugin.json') { continue } # The driver checks D01 semantics before activation.
         $file=Join-Path $plugin $entry.Name
@@ -35,7 +35,7 @@ try {
     if ($Action -eq 'plan') { $plan | ConvertTo-Json; exit 0 }
     if (!$ConfirmDownload) { throw 'DOWNLOAD_CONFIRMATION_REQUIRED' }
     if (Test-Path -LiteralPath $target) { throw 'RUNTIME_ALREADY_EXISTS' }
-    $receipt=Join-Path $env:LOCALAPPDATA 'GDCAE\gdcae-research\0.2.0-preview.6\binding.json'
+    $receipt=Join-Path $env:LOCALAPPDATA 'GDCAE\gdcae-research\0.2.0-preview.8\binding.json'
     Assert-LocalTreePath $receipt
     if (Test-Path -LiteralPath $receipt) { throw 'BINDING_ALREADY_EXISTS' }
     $drive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($target))

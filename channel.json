@@ -1,0 +1,9 @@
+{
+  "change": "auto-update",
+  "impact": "restart-rebind-no-migration",
+  "manifest_sha256": "097e520e53dd2c55cfbd3036df70d2dbba313cf3b7572029e75bc52da0acbe8a",
+  "product": "gdcae-research",
+  "schema": 1,
+  "version": "0.2.0-preview.8",
+  "zip_sha256": "5339f4e95b201e02b6a7a667a78749a2a7e1fbf3f6de4f9f770771dc57b80cd1"
+}

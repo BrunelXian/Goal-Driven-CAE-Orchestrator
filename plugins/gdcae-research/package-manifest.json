@@ -4,23 +4,28 @@
     "LICENSE": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
     "assets/mesh.png": "a6b3911c3b4858afd120f000fd32710e0ee3ce994e4dd751fac684decb35544d",
     "core/sp_history.py": "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535",
-    "plugin.json": "f86ee2662aa1f19e19589ce23f6053b7dfc81fdb7ae15727851953c4114f9b50",
+    "hooks/hooks.json": "f33a5917847ea3e6a10cf928154dc872c594c3f72c5f8f2b5a7d03d851163c80",
+    "plugin.json": "628ec80b86ed1e7fee8a8d17bd60aec90fc20544c251054e13ed2d779872952f",
+    "references/project-main.md": "7c972a991dffaf7b7170f53e099c819da30a6c0854a70d04396e0bcf9fb16823",
     "references/research-agreement.md": "d586fbd9dd5ee6b7825240258e3a10ffd968c2af09c08b7d7b280d7c40b6f018",
     "references/runtime-options.md": "a6a38b72427f8bfa40ee24fd096bf971d5f1d9268661b5e0e0e8317f6d19a4d3",
     "references/sanity-model-protocol.md": "ef60788b9704c0e9d5c96c1cb97e7ab16f6ffaaf88000998245c78494c4775fd",
-    "runtime/agreement-core.zip": "5c56e6ab967adb0c61de9a0ae6bb646ab3e20238901800a256c9ecf154458741",
+    "references/update.md": "52785f4d6a1ac35e9828855537dc84d1e0e3cb75a5b3ecb4090d65392254c9c0",
+    "runtime/agreement-core.zip": "d23bcff002cf6eef7957cc8fa1f07d5b696f97cce57ca3f386809d01c5f8eef3",
     "runtime/cpython-windows.json": "2a71fe264bafda5547e762d77004495229ed20b995d9e449acdd608791719ebf",
-    "scripts/agreement_main.py": "9106efd58577f22d90a31463399a1d4e6dfd1a2bc222a933709ac2b0eebc77f5",
-    "scripts/launch.ps1": "730362fd2ea0b09d9fab1b9c5d2b1416170d11992593655921d9a2fa264a3c4c",
-    "scripts/main.py": "bbea34477eeb274776a5828e6ffef739a582004c0338008f9965ba24f425e691",
+    "scripts/agreement_main.py": "978ae71ed345677003a7f9bd8431c886643a44ce95a51f82800e12146e874abf",
+    "scripts/launch.ps1": "4d07b1580f672d641b3a5c7c6c4f546292d6bb9892b5150e5ea7bf876d493579",
+    "scripts/main-handoff.ps1": "816fb4963fed1e458c93204b1e77e8f227ec18a39bf8d4fc7feef58425ac715e",
+    "scripts/main.py": "cba2f77ba1d6c0b477c15d94fc999a75dc5f14510abceec6e75805717893f81d",
     "scripts/runtime-checks.ps1": "884573e6c172c6b16c740e0710a1f1b3df041e3009ab2f015ec109868458ca2a",
-    "scripts/runtime.ps1": "43203b1f9e835a8c33695b89f759418783558b6f6f1af20b89747cc00cb91632",
-    "skills/research/SKILL.md": "25f56dcd7f70dfe2abbcf32a229477b73d3404503d7c93a48b01d3ee2fdcd6fb",
-    "skills/setup/SKILL.md": "d99b38ed95f638de208a7bf2d7a2941f41d4ac0d603d158b6b44489fe2bf4cd4"
+    "scripts/runtime.ps1": "18f6aef0d8ecf1e019fec259eba04dab61503a72eab40b465e5cc626d693a7e8",
+    "scripts/update.ps1": "49b7789c0d29d8609ade0e27a1e4969e8799142e32dd480a083b889582d4f7f2",
+    "skills/research/SKILL.md": "648a3a2795030a83c3c0cf97a8bf8f4623a2a375321927cf88dac3ead6ed1086",
+    "skills/setup/SKILL.md": "e3e91f8af05a2d4d9f3ce979683ae508a7e8f3d420e070be63499ecf791f604a"
   },
   "metadata_sha256": {
-    ".codex-plugin/plugin.json": "41a0b576a503b68ff992f333c4a70bbd6a722a6a4a25e09db93ebad2053849fd",
-    "plugin.json": "c24878e144940def1e7417ff64ada4b637802ee252d63852d335802695f9faf6"
+    ".codex-plugin/plugin.json": "282039c0f2be69453736c59b8612e4161692995975fa9bd73863d9a5ea16bd2f",
+    "plugin.json": "59209a9c70e64008071e5bfccf398cd1e3f8910b172d56161dd2513f0d8ca2d6"
   },
-  "version": "0.2.0-preview.6"
+  "version": "0.2.0-preview.8"
 }

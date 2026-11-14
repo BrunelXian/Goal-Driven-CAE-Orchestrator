@@ -11,14 +11,15 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.6"
+VERSION = "0.2.0-preview.8"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
 FILES = {"plugin.json", "skills/research/SKILL.md", "scripts/main.py",
-         "scripts/launch.ps1", "core/sp_history.py", "references/sanity-model-protocol.md",
+         "scripts/launch.ps1", "core/sp_history.py", "references/sanity-model-protocol.md", "scripts/main-handoff.ps1", "references/project-main.md",
          "scripts/agreement_main.py", "runtime/agreement-core.zip","references/research-agreement.md",
          "LICENSE", "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
-         "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md"}
+         "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md",
+         "scripts/update.ps1", "hooks/hooks.json", "references/update.md"}
 COMPAT = ".codex-plugin/plugin.json"
 
 def require(condition, error):
@@ -191,7 +192,7 @@ def guard(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['preflight','bind','doctor','main','agreement'])
-    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint'])
+    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference'])
     parser.add_argument('--input-file', type=Path)
     parser.add_argument('--selector')
     parser.add_argument('--agreement-root', type=Path)

@@ -5,6 +5,10 @@ description: "Discuss research goals, review Sanity Models and plan CAE work wit
 
 # GD-CAE Research Preview
 
+进入或恢复本插件会话时先处理[版本检查](../../references/update.md)。Hook 未提供本次结果时从实际安装位置执行只读 check。离线、拒绝或暂不更新均继续当前科研任务。
+
+收到明确的新科研任务、已移交的 Main 首轮或基准资格问题时，执行[项目 Main 与模型资格流程](../../references/project-main.md)。已移交的 Main 首先展示问题表，再评估模型资格；安装对话负责一次性交接。
+
 基础模式：直接用中文讨论研究目标、假设和证据缺口，按[Sanity Model 协议](../../references/sanity-model-protocol.md)审查模型，解释 Model Contract 或拟定下一步。该模式无需 Python、绑定、Shell 或数据库，不调用 hint，不生成数值验证或持久化记录。
 
 Core 模式：用户要求实际曲线计算、科研项目读取或写入时才需要已验证的本版本绑定。若无绑定，显示[中文双方案](../../references/runtime-options.md)并等待选择，按[setup](../setup/SKILL.md)完成用户同意与核验。取消后继续基础模式。对 Core 拒绝如实报告。以下指令仅适用于 Core 模式。

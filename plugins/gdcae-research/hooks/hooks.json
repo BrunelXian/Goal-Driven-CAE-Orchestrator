@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -File \"${PLUGIN_ROOT}/scripts/update.ps1\" -Action hook",
+            "timeout": 10,
+            "statusMessage": "检查 GD-CAE Preview 版本"
+          }
+        ]
+      }
+    ]
+  }
+}
