@@ -3,6 +3,7 @@
 
 # Preserve release identities when the repository is checked out on Windows.
 plugins/gdcae-research/** text eol=lf
+plugins/gdcae-research/assets/*.png -text !eol
 # The imported Windows driver is pinned as exact release bytes, including its line endings.
 plugins/gdcae-research/scripts/main.py -text !eol
 product/research-preview/** text eol=lf

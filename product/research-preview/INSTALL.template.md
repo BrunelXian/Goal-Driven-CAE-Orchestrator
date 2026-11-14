@@ -2,9 +2,9 @@
 
 安装后，使用缓存中 `references/research-agreement.md` 的命令访问新建的科研约定项目。仅历史 SP 对比需要外部 SMALL-PUNCH 项目；科研约定操作需要用户自己的工程合同与新的显式项目目录。
 
-版本 `0.2.0-preview.4`。本介质含本地 Marketplace、Main Skill、SP 历史分析组件和经摘要绑定的科研约定 Core 源码子集。请保留解压后的 INSTALL-MEDIA 目录，供宿主定位本地 Marketplace。
+版本 `0.2.0-preview.6`。本介质含本地 Marketplace、Main Skill、SP 历史分析组件和经摘要绑定的科研约定 Core 源码子集。请保留解压后的 INSTALL-MEDIA 目录，供宿主定位本地 Marketplace。
 
-**先决条件**为支持本地 Marketplace 的 Codex 桌面客户端及其 CLI、PowerShell 和操作者已核验的 Windows CPython 3.12.10。分析仅需标准库。SP 历史比较另需具备读取权限的完整项目，包括 Sanity 和 run_014 公共 INP、CSV、来源、状态摘要及盲协议所指的访问策略元数据。外部 SP 项目只读，报告输出使用其外部的独立目录。
+**先决条件**为支持本地 Marketplace 的 Codex 桌面客户端及其 CLI、PowerShell。科研讨论、Sanity Model 审查和规划无需 Python。曲线计算及项目持久化才需要受控解释器；选择 setup 获取两种方案。方法一在单独确认后从固定 GitHub Pre-release 下载并校验 CPython 3.12.10。方法二按下文绑定自备解释器。SP 历史比较另需具备读取权限的完整项目，包括 Sanity 和 run_014 公共 INP、CSV、来源、状态摘要及盲协议所指的访问策略元数据。外部 SP 项目只读，报告输出使用其外部的独立目录。
 
 1. 将 ZIP 的 SHA256 与发布者独立提供的值核对。在本地持久目录解压。PowerShell 切换到其中的 INSTALL-MEDIA 目录，运行以下命令。在本机 CLI 支持 `plugin add` 时，安装结果会返回安装缓存目录。
 
@@ -29,7 +29,7 @@ $selectedPython = Read-Host 'Absolute path of your verified CPython 3.12.10 exec
 & $launcher -Action bind -PythonExe $selectedPython -ManifestSha256 $manifestPin
 ```
 
-绑定文件位于本机用户 LocalAppData 下的 `GDCAE\gdcae-research\0.2.0-preview.4\binding.json`，含本机安装路径及运行文件指纹，应仅在本机保存。启动器每次先核对操作者保存的回执、解释器、基础可执行文件、已加载的 Python DLL 及适用的 venv 配置。Python 使用隔离模式、禁用 site 加载和字节码写入。已有绑定拒绝覆盖。若迁移安装或更新解释器，应由操作者保留旧回执及文件，再按新安装重新核验和绑定。
+绑定文件位于本机用户 LocalAppData 下的 `GDCAE\gdcae-research\0.2.0-preview.6\binding.json`，含本机安装路径及运行文件指纹，应仅在本机保存。启动器每次先核对操作者保存的回执、解释器、基础可执行文件、已加载的 Python DLL 及适用的 venv 配置。Python 使用隔离模式、禁用 site 加载和字节码写入。已有绑定拒绝覆盖。若迁移安装或更新解释器，应由操作者保留旧回执及文件，再按新安装重新核验和绑定。
 
 3. 用已保存的绑定 SHA256 运行 doctor。客户端提供 `gdcae-research:research` 后，在桌面选择该 Skill，提供绑定 SHA256、外部项目绝对路径和新输出目录。需要时重新打开客户端再检查技能目录。使用自然语言询问“run_014 的终点力接近历史 Sanity，能否接受新材料表，下一步最值得验证什么？”
 

@@ -12,13 +12,15 @@ PRODUCT = Path(__file__).resolve().parents[1]
 REPO = PRODUCT.parents[1]
 ID = "gdcae-research"
 PLUGIN = REPO / "plugins" / ID
-VERSION = "0.2.0-preview.4"
+VERSION = "0.2.0-preview.6"
 PREFIX = f"GDCAE-Research-Preview-{VERSION}/"
 INNER = f"GDCAE-Install-{VERSION}.zip"
 PLUGIN_DIR = f"INSTALL-MEDIA/plugins/{ID}/"
 PAYLOAD = ("plugin.json", "scripts/launch.ps1", "scripts/main.py", "skills/research/SKILL.md",
            "core/sp_history.py", "references/sanity-model-protocol.md",
-           "scripts/agreement_main.py", "references/research-agreement.md")
+           "scripts/agreement_main.py", "references/research-agreement.md",
+           "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
+           "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md")
 CORE_FILES = ("__init__.py", "contracts/__init__.py", "contracts/research_contracts.py",
               "research/__init__.py", "research/project.py", "research/research_agreement.py")
 CASE = ("CASE.md", "Sanity.csv", "run_014.csv", "difference.csv", "force-displacement.png",
@@ -71,17 +73,32 @@ def entries(data, allowed):
 def sums(files):
     return "".join(f"{digest(data)}  {name}\n" for name, data in sorted(files.items())).encode()
 
-def materials():
+def plugin_files():
     payload = {name: public_bytes(PLUGIN, name) for name in PAYLOAD}
+    payload["LICENSE"] = public_bytes(REPO, "LICENSE").replace(b"\r\n", b"\n")
     payload["runtime/agreement-core.zip"] = archive({"aegiscae/"+name:
         public_bytes(REPO/"src/aegiscae",name).replace(b"\r\n",b"\n") for name in CORE_FILES})
     require(digest(payload["core/sp_history.py"]) == CORE_SHA, "historical analysis component changed")
     meta = json.loads(payload["plugin.json"])
     require((meta["name"], meta["version"]) == (ID, VERSION), "plugin identity")
+    # The portable metadata may be reserialized. The legacy path may contain
+    # only this complete projection. Unknown keys or changed values fail closed.
+    compatibility = {key: meta[key] for key in ("name", "version", "description", "license")}
+    compatibility.update(skills="./skills/", interface=meta["extensions"]["com.openai"]["interface"])
+    documents = {"plugin.json": meta, ".codex-plugin/plugin.json": compatibility}
+    metadata_hashes = {name: digest(json.dumps(doc, ensure_ascii=True, allow_nan=False,
+                       sort_keys=True, separators=(",", ":")).encode("ascii"))
+                       for name, doc in documents.items()}
     package = encoded({"version": VERSION, "component": "sp-history-1.0.0",
+                       "metadata_sha256": metadata_hashes,
                        "files": {k: digest(v) for k,v in payload.items()}})
+    payload["package-manifest.json"] = package
+    return payload
+
+def materials():
+    payload = plugin_files()
+    package = payload["package-manifest.json"]
     inner = {PLUGIN_DIR + k: v for k,v in payload.items()}
-    inner[PLUGIN_DIR + "package-manifest.json"] = package
     inner["INSTALL-MEDIA/.agents/plugins/marketplace.json"] = public_bytes(PRODUCT, "marketplace.json")
     inner["INSTALL-MEDIA/INSTALL.md"] = render(public_bytes(PRODUCT, "INSTALL.template.md").decode(),
                                                "{{MANIFEST_SHA256}}", digest(package))
@@ -131,6 +148,19 @@ if __name__ == "__main__":
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--build", type=Path, metavar="FRESH_DIRECTORY")
     action.add_argument("--verify", type=Path, metavar="OUTER_ZIP")
+    action.add_argument("--public-zip", type=Path, metavar="FRESH_ZIP",
+                        help="Build the standalone graphical-import candidate")
     args = parser.parse_args()
-    report = build(args.build.resolve()) if args.build else verify(args.verify.read_bytes())
+    if args.public_zip:
+        dest = args.public_zip.resolve()
+        require(dest.suffix.lower() == ".zip" and not dest.is_relative_to(REPO), "external ZIP required")
+        payload = plugin_files()
+        data = archive(payload)
+        require(entries(data, payload) == payload, "standalone verification failed")
+        with dest.open("xb") as stream:
+            stream.write(data)
+        report = {"version": VERSION, "sha256": digest(data),
+                  "manifest_sha256": digest(payload["package-manifest.json"])}
+    else:
+        report = build(args.build.resolve()) if args.build else verify(args.verify.read_bytes())
     print(json.dumps(report, indent=2))

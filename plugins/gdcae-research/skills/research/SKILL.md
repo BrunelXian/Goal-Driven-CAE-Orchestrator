@@ -1,9 +1,13 @@
 ---
 name: research
-description: "View, propose and explicitly confirm versioned research agreements, or compare the public SMALL-PUNCH Sanity and run_014 inputs and force–displacement histories."
+description: "Discuss research goals, review Sanity Models and plan CAE work without Python; use the verified Core for deterministic curve analysis and ResearchProject records."
 ---
 
 # GD-CAE Research Preview
+
+基础模式：直接用中文讨论研究目标、假设和证据缺口，按[Sanity Model 协议](../../references/sanity-model-protocol.md)审查模型，解释 Model Contract 或拟定下一步。该模式无需 Python、绑定、Shell 或数据库，不调用 hint，不生成数值验证或持久化记录。
+
+Core 模式：用户要求实际曲线计算、科研项目读取或写入时才需要已验证的本版本绑定。若无绑定，显示[中文双方案](../../references/runtime-options.md)并等待选择，按[setup](../setup/SKILL.md)完成用户同意与核验。取消后继续基础模式。对 Core 拒绝如实报告。以下指令仅适用于 Core 模式。
 
 For a research agreement, use the same launcher and the [installed agreement commands](../../references/research-agreement.md). Ask which explicit ResearchProject the researcher means. Read `overview`, `detail`, `diff` or `hint` and show the returned Markdown. Never infer confirmation from a query or proposal. Confirm only the exact reviewed digest after an explicit researcher decision. In significant research replies, obtain a fresh hint for that project. For the SP comparison with an associated agreement pass its absolute `-AgreementRoot` to `main`. Preserve the version identity of earlier messages.
 
