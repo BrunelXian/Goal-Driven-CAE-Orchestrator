@@ -1,11 +1,11 @@
 ---
 name: research
-description: "Discuss research goals, review Sanity Models and plan CAE work without Python; use the verified Core for deterministic curve analysis and ResearchProject records."
+description: 仅接续回执已核实的唯一 Research Main：研究约定、模型资格、任务卡及受控分析。新研究需求或未核实 Main 属于 setup。正文无法加载时只交付 T01/T02 草稿与交接阻断，不给通用反求步骤。
 ---
 
 # GD-CAE Research Preview
 
-介绍、能力和科研任务共用[意图分流与科研流程](../../references/project-main.md)。已有具体任务时直接给问题表、模型资格和下一步。已进入 Main 的用户直接接续当前研究；只有用户主动要求时才重新展示介绍。已有项目的具体读写请求继续按下文处理。
+先核实当前会话身份。未确认交接、首次任务或原 Setup 线程走立项首屏，到交接即停止。只有已交接的唯一 Main 能进入下方科研操作。Main 核实旧回执后可直接接续已登记任务。
 
 <!-- embed:project-main/onboarding -->
 
@@ -15,15 +15,15 @@ description: "Discuss research goals, review Sanity Models and plan CAE work wit
 
 基础模式：直接用中文讨论研究目标、假设和证据缺口，按[Sanity Model 协议](../../references/sanity-model-protocol.md)审查模型，解释 Model Contract 或拟定下一步。该模式无需 Python、绑定、Shell 或数据库，不调用 hint，不生成数值验证或持久化记录。
 
-Core 模式：用户要求实际曲线计算、科研项目读取或写入时才需要已验证的本版本绑定。若无绑定，显示[中文双方案](../../references/runtime-options.md)并等待选择，按[setup](../setup/SKILL.md)完成用户同意与核验。取消后继续基础模式。对 Core 拒绝如实报告。以下指令仅适用于 Core 模式。
+Core 模式：用户要求实际曲线计算、科研项目读取或写入时才需要已验证的本版本绑定。若无绑定，显示[中文双方案](../../references/runtime-options.md)并等待选择，按[运行时绑定步骤](../../references/runtime-options.md)完成用户同意与核验。取消后继续基础模式。对 Core 拒绝如实报告。以下指令仅适用于 Core 模式。
 
-For a research agreement, use the same launcher and the [installed agreement commands](../../references/research-agreement.md). Ask which explicit ResearchProject the researcher means. Read `overview`, `detail`, `diff` or `hint` and show the returned Markdown. Never infer confirmation from a query or proposal. Confirm only the exact reviewed digest after an explicit researcher decision. In significant research replies, obtain a fresh hint for that project. For the SP comparison with an associated agreement pass its absolute `-AgreementRoot` to `main`. Preserve the version identity of earlier messages.
+For all main and agreement operations pass -HostId and -DesktopProjectId from the verified Desktop handoff. For a research agreement, use the same launcher and the [installed agreement commands](../../references/research-agreement.md). Ask which explicit ResearchProject the researcher means. Read `overview`, `detail`, `diff` or `hint` and show the returned Markdown. Never infer confirmation from a query or proposal. Confirm only the exact reviewed digest after an explicit researcher decision. In significant research replies, obtain a fresh hint for that project. For the SP comparison with an associated agreement pass its absolute `-AgreementRoot` to `main`. Preserve the version identity of earlier messages.
 
 For questions about model qualification, variables or scientific acceptance, consult the bundled [Sanity Model protocol](../../references/sanity-model-protocol.md). Distinguish its research guidance from this release's read-only historical comparison. Installation and research agreement confer no solver authority.
 
 Use the installed copy of this skill for the adapted SMALL-PUNCH case on Windows. Obtain the operator's absolute external project root, a fresh output directory outside the project, and the binding SHA256 saved at installation. The parent of the output directory must already exist.
 
-From this SKILL file resolve the plugin directory containing plugin.json. Run its scripts/launch.ps1 with `-Action doctor -BindingSha256 <receipt SHA256>`. After success, invoke the same launcher with `-Action main -BindingSha256 <receipt SHA256> -ProjectRoot <external root> -OutputDirectory <fresh output>`. The receipt identifies an explicitly selected CPython 3.12.10 and this installation. If it is missing, follow the installation guide. On any refusal, report the error and stop.
+From this SKILL file resolve the plugin directory containing plugin.json. Run its scripts/launch.ps1 with `-Action doctor -BindingSha256 <receipt SHA256>`. After success, invoke the same launcher with `-Action main -HostId <verified host> -DesktopProjectId <verified desktop project> -BindingSha256 <receipt SHA256> -ProjectRoot <external root> -OutputDirectory <fresh output>`. The receipt identifies an explicitly selected CPython 3.12.10 and this installation. If it is missing, follow the installation guide. On any refusal, report the error and stop.
 
 The verified adapter first reads project instructions, blind protocol and policy metadata. It reads only the exact file list defined by the bundled core module. Keep all results outside the external project. Use the original external project supplied by the operator. Never execute project scripts, open ODB binaries, follow private links or submit jobs.
 

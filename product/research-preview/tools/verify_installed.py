@@ -26,10 +26,13 @@ def verify(installed, manifest_pin, project, out):
             raise ValueError(name)
     out.mkdir()
     shell = shutil.which("pwsh") or shutil.which("powershell")
+    import runpy
+    caller_args, env = runpy.run_path(str(Path(__file__).with_name("test_main_fixture.py")))["configure"](
+        installed, manifest_pin, dict(os.environ, LOCALAPPDATA=str(out/"local-config")), shell)
     checks = []
     def invoke(label, args, *, error=None, plugin=installed, config=out/"local-config"):
         proc = subprocess.run([shell, "-NoProfile", "-NonInteractive", "-File", str(plugin/"scripts/launch.ps1"),
-                               *map(str,args)], env={**os.environ, "LOCALAPPDATA":str(config)},capture_output=True,text=True)
+                               *map(str,args)], env={**env, "LOCALAPPDATA":str(config)},capture_output=True,text=True)
         output = proc.stdout + proc.stderr
         if error:
             if proc.returncode != 2 or error not in output:raise AssertionError((label, output))
@@ -43,7 +46,7 @@ def verify(installed, manifest_pin, project, out):
     doctor=["-Action","doctor","-BindingSha256",pin]
     invoke("doctor",doctor)
     def main(src,dst):
-        return ["-Action","main","-BindingSha256",pin,"-ProjectRoot",src,"-OutputDirectory",dst]
+        return [*caller_args,"-Action","main","-BindingSha256",pin,"-ProjectRoot",src,"-OutputDirectory",dst]
     result=out/"positive"
     invoke("installed historical comparison",main(project,result))
     expected=Path(__file__).resolve().parents[1]/"release/case/difference.csv"

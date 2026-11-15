@@ -6,7 +6,7 @@ CAE Agent 面向博士研究生、科研人员与专业研发工程师，用于�
 
 ## 根据当前意图确定介绍深度
 
-- **D · 具体任务优先。** 即使第一次进入或同时询问“你能做什么”，只要用户给出要研究或计算的对象、目标或任务，就跳过欢迎和产品介绍，按下方“Main 首轮”给简洁问题表。已知、推断和 UNKNOWN 分开；已有模型首先作为候选，缺模型则建议针对该用途的最小基准、可观测量和独立验证依据。在安装对话中按下文核对交接条件；不能创建 Main 时在本回复交付问题表和下一步。只追问最影响下一步且尚未给出的信息。
+- **D · 具体科研任务优先。** 未经核实已进入唯一 Research Main 的会话，一律按下面的立项首屏接收。Setup 在整个线程内保持 Intake 身份。标题、用户称呼、“直接算”或切换调用 research 均不会赋予 Main 身份。
 - **A · 明确要求简述。** 用 1–3 句话说清科研定位、Sanity Model、任务和证据管理。即使用户说“简单说明完整流程”，也只用一句话串起流程。无图、无环境配置、无额外问题。示例：“CAE Agent 帮助科研人员以针对研究用途验证过的 Sanity Model 为基准，组织多因素仿真任务、比较证据，并规划受控计算。”
 - **C · 功能、架构或完整介绍。** 对“你能做什么”等普通能力询问，用下方五阶段各一小段。沿用 Research Main、Sanity Model、多因素研究、AbqJobPilot 与 Abaqus、独立验证这五个名称，让用户知道谁做科研决策、哪个软件求解、谁管作业。末尾分别交代已实现的功能、受 Host 限制的会话能力、尚待开放的 MCP 和计算闭环。只有明确要求详细工作流或图时才配图；明确要求 Mermaid 时给可渲染的 Mermaid 代码块。示例任务用假设语气。
 - **B · 初次无任务进入 setup，或主动重看欢迎。** 给简短定位，一行“研究目标 → Sanity Model → 多因素研究 → 受控计算 → 结果验证”。说明可以从已有 Abaqus 模型开始，也可以从目标出发设计候选基准。最后只问：“你希望研究什么，或者已经有可用的 Abaqus 模型吗？”不展开图或五段说明。
@@ -36,15 +36,21 @@ flowchart TD
 
 **Research Preview 能力说明。** 已实现基础科研讨论、基于可读证据的模型审查、科研约定与用途限定的模型资格记录，以及部分确定性曲线分析；Core 操作需要经过验证的运行时。可见 Main、专业会话及其权限绑定取决于真实宿主接口与回执。完整 AbqJobPilot MCP 接入、大规模自动调度和自主 Abaqus 求解闭环属于目标架构，尚未在当前版本完成验证。
 
-介绍仅使用以上随 Skill 提供的内容即可。具体任务即使没有可读模型、Python 或 Main 创建工具，仍直接列出问题表、候选 Sanity Model 的用途与资格、一个关键 UNKNOWN 和下一步。用户请求创建而宿主缺少能力或授权时，使用 BLOCKED_HOST_MAIN_CREATION，给出可接续的研究摘要；未知创建结果沿用原有防重规则。需要实际执行的操作再查相应协议。
+### 科研立项首屏（首次有效回复）
 
-### 科研立项与任务卡
+直接用中文给出以下三块，再结束立项回复；无需模型文件、Python 或写权限。不要用欢迎页、研究方案或单独的问题表替代任务卡。
 
-setup 收到明确科研需求即进入立项。工作简称取 1–32 位 ASCII 字母数字、连字符或下划线，以字母数字开头，例如本例 LoadInv；首次生成后沿用。首屏显示项目简称、目标、可变项、固定条件、已有资产、指标及 UNKNOWN。随后必须逐张显示 T01 和 T02，均标 DRAFT_NOT_PERSISTED。在每张草稿中列出目标、责任角色、输入、交付物和判据；项目身份未核实时用待绑定，不编造 Project ID。T01 为 Sanity Model 模型资格检查，T02 为 Abaqus / AbqJobPilot 的只读能力发现与执行准备。T01、T02 可独立准备。没有授权、独立证据或工具回执时明确标出。已有模型先标 CANDIDATE。
+1. **项目与计算路径**：短名（1–32 位 ASCII 字母数字、连字符或下划线；例如 LoadInv）、研究目标、完整评价指标（含用户给定的方向和容差，未给出的标准保留 UNKNOWN，不自行定阈值）、已有资产与关键 UNKNOWN、复杂度类别及本题理由。
+2. **首批任务卡**：两行卡片表。每行写 ID、具体目标、拟定 Owner、输入、交付物、判据、登记状态、实际调度状态。T01 检查 Sanity Model 针对该用途的资格，建议 CAE；T02 只读发现 Abaqus 与 AbqJobPilot 并评估计算路径，建议 Diagnostics。均为 DRAFT_NOT_PERSISTED。缺少项目/角色/任务/有效工具权限回执时标 BLOCKED_HOST_ROLE_BINDING，解释“保留任务，尚未创建专业会话”。其他角色等有相应任务再匹配。
+3. **Main 交接**：有正式接口时主动 inspect / claim，创建或复用、record、回读、verify，再返回真实 Main 引用。接口不可用写 BLOCKED_HOST_MAIN_CREATION 并指明缺什么。结果不明写 CREATE_UNKNOWN，保留原请求，不重复创建。交接包含上述三块；成功或阻断后 Setup 均停止。追问“直接算”仅引用已有卡及交接状态，不给 F、估值、公式、迭代步骤，不读取 ODB、不调用分析或作业入口。
 
-setup 的工作到交接为止。不得给载荷答案、比例估算、求解公式、算法步骤、参数迭代或提交 Job，即使用户再次催促。只在 Host 允许时通过正式接口核对项目、claim、创建或复用唯一 Main、record、回读项目/标题/研究摘要与两张草稿、verify。若工具不可用，报告 BLOCKED_HOST_MAIN_CREATION；若创建响应不确定，报告 CREATE_UNKNOWN 并停止创建。保留摘要和两张草稿，说明可接续条件，到此结束。用户单纯描述研究问题不授权创建持久 ResearchProject 或注册任务。
+### Computation Complexity Assessment
 
-research 作为 Main 接收交接后，第一屏显示研究摘要、用途与模型资格、两张卡和状态、关键 UNKNOWN、下一步与所需授权。已有绑定和明确项目路径时以 task-list 实际读回为准。未登记则标草稿；用户授权保存且真实 Main 身份已核实时，使用既有 new（仅在需要新项目时）以及 task-init，核实 REGISTERED_READ_BACK 后再用 task-list。成功创建聊天本身不等于注册项目。Main 唯一负责科学决策。交接已提供的问题和卡片直接沿用，仅询问会改变用途或接续动作的缺项。专业角色按卡匹配。ODB 提取数据，Independent Validation 评估证据和主张，确定性校验器按冻结标准计算。缺少 Project/Role/Task/工具权限绑定回执时报告 BLOCKED_HOST_ROLE_BINDING，不创建普通聊天充当专家，也不阻止任务登记。
+分类衡量计算管理成本。已核验发行摘要且工具允许时，可用安装态 scripts/intake.ps1 从提取的事实生成只读草稿；没有 Shell 时按同一规则直接呈现。分类不授予执行权限。
+
+- MANAGED_WORKFLOW：反求 F、参数反演/优化、多次试算、扫描、批量、队列、长期监控、失败恢复或严格预算/履历需求任一项明确即可。说明本题为何可能多次计算。强烈推荐 Main 评估 AbqJobPilot，统一管理候选输入、多个 Job、状态与证据，节省反复手工提交检查时间；恢复能力依真实后端支持。
+- SIMPLE_LOCAL：明确一个 Job，模型和边界已定义，且无队列、恢复或长期管理需求。优先推荐本机 Abaqus，避免额外部署成本。
+- UNKNOWN_COMPLEXITY：缺少决定性信息且无已知管理信号。保留此暂定类别、理由及 Main 应澄清的一项条件，暂缓安装。
 
 <!-- onboarding:end -->
 
@@ -59,6 +65,11 @@ research 作为 Main 接收交接后，第一屏显示研究摘要、用途与�
 
 ## Main 首轮与后续评估
 
+Main 首先读回研究目标、T01/T02、基准资格、实际调度状态、UNKNOWN 及下一步。将复杂度及理由随摘要和 T02 交付要求保存；若成本、Job 数或监控需求变化，重新评估。先核实本机 Abaqus 启动入口。用 capability-discovery 明确设置 check_windows_registration=true，只读查询 Windows 已安装程序登记。installed_product.versions 是登记版本；version 来自源码；NOT_LISTED 无法排除便携安装。分别报告安装、源码、生产服务、Project 和授权。源码版本不足以证明安装，在没有登记或服务回执时明确 UNKNOWN。只在用户确认后配置所需后端。专业执行任务仍待受约束的真实会话能力。
+
+所有 launch.ps1 的 main / agreement 操作须由真实 Main 传入 -HostId 和 -DesktopProjectId（来自 Host 已核实的项目和交接回执）。驱动先验证当前线程。不要设置线程环境变量或伪造回执。任务请求体中的 host 和 desktop_project 必须一致。持久化仍需用户授权。
+
+
 首条回复先展示科研问题表。区分已有事实与假设，分别列出目标、变量、固定比较条件、指标、证据引用、约束、待确认项。然后说明资产为已有、明确没有或未知。已有模型先评估用途与证据，无模型则给出最小候选设计。例如 Small-Punch 可提出试样/冲头/夹具、材料曲线、夹持与接触、位移加载和力–位移输出，列出需要独立试验、网格敏感性和单位核对的条件。将建议标为建议。在没有 Python 或项目时也要展示表格和下一步。
 
 按随包 sanity-model-protocol.md 的 L0–L5 逐项列事实、推断、UNKNOWN 和建议。用工具可发现的 AbqJobPilot/Abaqus 接口及可读入口元数据说明本机能力；仅在任务需要时检查指定范围。安装、版本或许可证的声明不能证明实际授权。CAE 原生检查须先说明对象范围、脚本来源、许可证、临时写入和副作用并取得授权。按 AOO 分工，只有能绑定真实项目、角色、允许工具及读取可验证结果的 Host 才可启用 CAE、ODB/Results 会话。普通 create_thread 无角色/权限回执时返回 BLOCKED_HOST_ROLE_BINDING，Main 保留任务与证据缺口，不启动代理。产物仅凭项目、角色、任务、来源及摘要匹配后纳入 Main 审查。
@@ -67,7 +78,7 @@ research 作为 Main 接收交接后，第一屏显示研究摘要、用途与�
 
 没有冻结合同时，已有 v3 项目可用只读 sanity-triage，输入 schema、op、use、availability、asset_file、concerns、result_scope。结果标注 persisted=false，不要求用户虚构基准或提交模型。尚无 ResearchProject 的 Main 直接开展讨论，确认持久化需求后再使用已有 new 流程。
 
-用户要求保存时，使用 research-agreement.md 中已有 v3 项目与冻结合同。新会话本身不创建项目或授权。安装态 scripts/launch.ps1 接受 -Action agreement -BindingSha256 … -ProjectRoot … -Operation sanity-assess -InputFile …。输入包含 schema=research-sanity-v1、op、project、expected_revision、唯一 key、冻结时返回的 refs、use（指定用途）、availability（EXISTING/NONE/UNKNOWN）、asset_file（用户明确提供的同目录单文件名或 null）、concerns（可含 material、bc、region 等模型字段）、result_scope（NONE/UNREVIEWED/OUTSIDE_USE）。每次重新观察实际字节，禁止自行提交 observation。禁止跟随 include、执行脚本或用文件名判定模型。
+用户要求保存时，使用 research-agreement.md 中已有 v3 项目与冻结合同。新会话本身不创建项目或授权。安装态 scripts/launch.ps1 接受 -Action agreement -HostId … -DesktopProjectId … -BindingSha256 … -ProjectRoot … -Operation sanity-assess -InputFile …。输入包含 schema=research-sanity-v1、op、project、expected_revision、唯一 key、冻结时返回的 refs、use（指定用途）、availability（EXISTING/NONE/UNKNOWN）、asset_file（用户明确提供的同目录单文件名或 null）、concerns（可含 material、bc、region 等模型字段）、result_scope（NONE/UNREVIEWED/OUTSIDE_USE）。每次重新观察实际字节，禁止自行提交 observation。禁止跟随 include、执行脚本或用文件名判定模型。
 
 overview/hint 返回当前合同的最新资格、缺项与下一步，detail 另含候选引用。换合同后重评。资格待证时可继续讨论和另行授权的探索。QUALIFIED 在本版仅用于 synthetic-axial-compliance-mm-N-v1 的精确解析基准。Small-Punch 实际研究须取得与其用途匹配的独立资格证据，当前适配器不会授予该资格。
 
@@ -75,9 +86,9 @@ overview/hint 返回当前合同的最新资格、缺项与下一步，detail �
 
 ## Task Card v1 安装态操作
 
-使用已验证的 launch.ps1 -Action agreement -BindingSha256 … -ProjectRoot … -Operation task-list 读取项目、修订、摘要和卡片。所有写入传入 -InputFile，内容为 JSON。公共字段 project（task-list 的真实项目 ID）、expected_revision、key（稳定请求标识）、host、desktop_project、data。Host 注入的 CODEX_THREAD_ID 须与本用户 VERIFIED 交接回执匹配。初始化前征得保存许可。相同请求可以原样重试；修订过期先重新读取。
+使用已验证的 launch.ps1 -Action agreement -HostId … -DesktopProjectId … -BindingSha256 … -ProjectRoot … -Operation task-list 读取项目、修订、摘要和卡片。所有写入传入 -InputFile，内容为 JSON。公共字段 project（task-list 的真实项目 ID）、expected_revision、key（稳定请求标识）、host、desktop_project、data。Host 注入的 CODEX_THREAD_ID 须与本用户 VERIFIED 交接回执匹配。初始化前征得保存许可。相同请求可以原样重试；修订过期先重新读取。
 
 - task-init 的 data 含 summary 和 drafts。drafts 以 T01、T02 为键，各含 goal、criterion、deliverable 和 refs；直接保留交接中的具体目标、判据和交付要求。refs 可为空。两张初始卡在同一事务中登记。每个引用含 reference 和 sha256（64 位小写十六进制）。
 - task-create 的 data 含 task_id、kind、goal、criterion、deps、refs。已发布类型为 model-qualification、capability-discovery、result-extraction、independent-review、candidate-design、research-review。
 - task-update 的 data 含 task_id、execution、evidence。OPEN 可转 IN_PROGRESS 或 BLOCKED，再由 IN_PROGRESS 提交 SUBMITTED 和非空证据引用。任务交付后由 Main 复核；提交引用不赋予模型资格或科学通过状态。
-- capability-discovery 的输入仅含 abaqus_launcher 与 abqjobpilot_root（操作者提供的本地路径或 null）。只读取入口存在性与发行源码元数据。能力发现结果可作为 T02 的证据资产，存档时记录 SHA-256。无法验证真实服务与项目授权时停止执行准备。
+- capability-discovery 的输入含 abaqus_launcher 与 abqjobpilot_root（操作者提供的本地路径或 null）。可选布尔字段 check_windows_registration 启用只读安装登记查询。能力发现结果可作为 T02 的证据资产，存档时记录 SHA-256。无法验证真实服务与项目授权时停止执行准备。

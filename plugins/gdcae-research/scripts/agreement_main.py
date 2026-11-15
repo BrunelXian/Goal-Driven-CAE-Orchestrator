@@ -54,12 +54,23 @@ def query(root,mode="hint",selector=None):
     result=research_agreement.view(project.open_agreement_project(root),mode,selector)
     return {**result, "markdown":markdown(result,mode)}
 
-def run(args,plugin,checked):
+def check_owner(root, owner):
+    from aegiscae.research.project import open_agreement_project
+    from aegiscae.contracts.research_contracts import require
+    state = {}
+    with open_agreement_project(root)._snapshot(agreement_state=state):
+        bound = state.get("task_hub", {}).get("main")
+        require(bound is None or bound == owner, "MAIN_PROJECT_MISMATCH")
+
+
+def run(args,plugin,checked,owner):
     from aegiscae.research import project, research_agreement
     from aegiscae.contracts.research_contracts import strict_json, ContractBundle, require
     root=checked(args.project_root)
     require(not root.is_relative_to(plugin), "PROJECT_OUTSIDE_INSTALLATION_REQUIRED")
     op=args.operation
+    if op != "new":
+        check_owner(root, owner)
     read=op in ("overview","detail","diff","hint","task-list")
     require(not args.output and not args.agreement_root and (not args.selector or op in ("detail","diff"))
             and ((read and not args.input_file) or (not read and args.input_file)), "INVALID_AGREEMENT_ARGUMENTS")
@@ -80,6 +91,8 @@ def run(args,plugin,checked):
         project.open_agreement_project(root)
         return discover(body)
     if op in ("task-init", "task-create", "task-update"):
+        require(body.get("desktop_project") == args.desktop_project_id and body.get("host") == args.host_id,
+                "MAIN_PROJECT_MISMATCH")
         from aegiscae.research.task_cards import record
         return record(project.open_agreement_project(root, write=True), body, op)
     handle=project.open_agreement_project(root,write=op != "sanity-triage")

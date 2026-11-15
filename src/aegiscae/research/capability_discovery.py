@@ -1,6 +1,7 @@
 """Read explicit local distribution metadata without importing or contacting the backend."""
 import ast
 import hashlib
+import sys
 from pathlib import Path
 
 from aegiscae.contracts.research_contracts import require
@@ -22,12 +23,50 @@ def source(path):
     return ast.parse(content), hashlib.sha256(content).hexdigest()
 
 
+def windows_installation():
+    """Read only the Windows uninstall inventory; absence cannot rule out a portable copy."""
+    if sys.platform != "win32":
+        return {"status": "REGISTRY_UNAVAILABLE", "versions": []}
+    import winreg
+    versions = set()
+    found, incomplete = False, False
+    for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
+            try:
+                with winreg.OpenKey(hive, r"Software\Microsoft\Windows\CurrentVersion\Uninstall",
+                                    0, winreg.KEY_READ | view) as parent:
+                    for index in range(winreg.QueryInfoKey(parent)[0]):
+                        try:
+                            with winreg.OpenKey(parent, winreg.EnumKey(parent, index), 0,
+                                                winreg.KEY_READ | view) as entry:
+                                name = winreg.QueryValueEx(entry, "DisplayName")[0]
+                                if not isinstance(name, str) or name.strip().casefold() != "abqjobpilot":
+                                    continue
+                                found = True
+                                version = winreg.QueryValueEx(entry, "DisplayVersion")[0]
+                                if isinstance(version, str) and 0 < len(version) <= 64:
+                                    versions.add(version)
+                        except FileNotFoundError:
+                            continue
+                        except OSError:
+                            incomplete = True
+            except FileNotFoundError:
+                continue
+            except OSError:
+                incomplete = True
+    status = "REGISTERED" if found else ("REGISTRY_INCOMPLETE" if incomplete else "NOT_LISTED")
+    return {"status": status, "versions": sorted(versions)}
+
+
 def discover(spec):
-    require(isinstance(spec, dict) and set(spec) == {"abaqus_launcher", "abqjobpilot_root"},
+    require(isinstance(spec, dict) and set(spec) - {"check_windows_registration"} == {"abaqus_launcher", "abqjobpilot_root"}
+            and type(spec.get("check_windows_registration", False)) is bool,
             "EXPLICIT_DISCOVERY_SCOPE_REQUIRED")
     result = dict(abaqus="UNKNOWN", abqjobpilot="UNKNOWN", version=None, public_tools=[],
                   metadata_sha256={}, service="BLOCKED_INTERFACE_UNVERIFIED", project="UNVERIFIED",
                   authorization="NOT_GRANTED", execution_authorized=False)
+    result["installed_product"] = (windows_installation() if spec.get("check_windows_registration")
+                                   else {"status": "NOT_CHECKED", "versions": []})
     try:
         if spec["abaqus_launcher"] is not None:
             launcher = local(spec["abaqus_launcher"])

@@ -11,12 +11,12 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.16"
+VERSION = "0.2.0-preview.17"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
 FILES = {"plugin.json", "skills/research/SKILL.md", "scripts/main.py",
          "scripts/launch.ps1", "core/sp_history.py", "references/sanity-model-protocol.md", "scripts/main-handoff.ps1", "references/project-main.md",
-         "scripts/agreement_main.py", "runtime/agreement-core.zip","references/research-agreement.md",
+         "scripts/intake.ps1", "scripts/agreement_main.py", "runtime/agreement-core.zip","references/research-agreement.md",
          "LICENSE", "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
          "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md",
          "scripts/update.ps1", "hooks/hooks.json", "references/update.md"}
@@ -196,6 +196,8 @@ def main():
     parser.add_argument('action', choices=['preflight','bind','doctor','main','agreement'])
     parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference','task-list','task-init','task-create','task-update','capability-discovery'])
     parser.add_argument('--input-file', type=Path)
+    parser.add_argument('--host-id')
+    parser.add_argument('--desktop-project-id')
     parser.add_argument('--selector')
     parser.add_argument('--agreement-root', type=Path)
     parser.add_argument('--project-root', type=Path)
@@ -223,12 +225,17 @@ def main():
         sys.path.insert(0,str(plugin/"scripts"))
         import agreement_main
         agreement_main.load_core(plugin)
+        from aegiscae.research.task_cards import main_identity
+        require(args.host_id and args.desktop_project_id, "VERIFIED_RESEARCH_MAIN_REQUIRED")
+        owner = main_identity(args.host_id, args.desktop_project_id)
         if args.action == 'agreement':
             require(args.project_root and args.operation, "PROJECT_AND_OPERATION_REQUIRED")
-            result = agreement_main.run(args,plugin,checked)
+            result = agreement_main.run(args,plugin,checked,owner)
             print(json.dumps(result,ensure_ascii=True,indent=2))
             return 0
         require(not args.operation and not args.selector and not args.input_file, "INVALID_MAIN_ARGUMENTS")
+        if args.agreement_root:
+            agreement_main.check_owner(checked(args.agreement_root), owner)
         hint = agreement_main.query(checked(args.agreement_root)) if args.agreement_root else {
             "status":"NO_RESEARCH_PROJECT_ATTACHED","markdown":"未关联 ResearchProject。可用 agreement overview 查询已有科研约定。"}
         if args.project_root is None or args.output is None:

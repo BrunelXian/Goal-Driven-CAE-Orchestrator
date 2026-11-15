@@ -59,6 +59,8 @@ def check(archive, stored, work, pin, project_previous):
     req = work / "new.json"
     req.write_text(json.dumps({"name": "Metadata smoke", "schema": "research-agreement-project-v3"}))
     core_args = ["-Action", "agreement", "-BindingSha256", bound["binding_sha256"], "-ProjectRoot", project]
+    caller_args, env = runpy.run_path(str(Path(__file__).resolve().parents[2] / "product/research-preview/tools/test_main_fixture.py"))["configure"](plugin, pin, env, shell[0])
+    core_args += caller_args
     new = launch(*core_args, "-Operation", "new", "-InputFile", str(req))
     overview = launch(*core_args, "-Operation", "overview")
     assert new["research_project_id"] == overview["project"]
@@ -103,6 +105,9 @@ def check(archive, stored, work, pin, project_previous):
     for name in ("hooks/hooks.json", "scripts/main.py", "scripts/launch.ps1", "skills/research/SKILL.md",
                  "scripts/update.ps1", "runtime/agreement-core.zip"):
         refuse(name, name, originals[name] + b" ", "PACKAGE_IDENTITY_MISMATCH:" + name)
+    if "scripts/intake.ps1" in originals:
+        for name in ("scripts/intake.ps1", "skills/setup/SKILL.md"):
+            refuse(name, name, originals[name] + b" ", "PACKAGE_IDENTITY_MISMATCH:" + name)
     refuse("extra executable", "extra.ps1", b"# fixture", "PACKAGE_FILESET_MISMATCH")
     refuse("manifest edit", "package-manifest.json", originals["package-manifest.json"] + b" ", "PACKAGE_MANIFEST_MISMATCH")
     verify(plugin, pin)

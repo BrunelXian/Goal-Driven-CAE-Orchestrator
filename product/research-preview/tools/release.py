@@ -12,13 +12,13 @@ PRODUCT = Path(__file__).resolve().parents[1]
 REPO = PRODUCT.parents[1]
 ID = "gdcae-research"
 PLUGIN = REPO / "plugins" / ID
-VERSION = "0.2.0-preview.16"
+VERSION = "0.2.0-preview.17"
 PREFIX = f"GDCAE-Research-Preview-{VERSION}/"
 INNER = f"GDCAE-Install-{VERSION}.zip"
 PLUGIN_DIR = f"INSTALL-MEDIA/plugins/{ID}/"
 PAYLOAD = ("plugin.json", "scripts/launch.ps1", "scripts/main.py", "skills/research/SKILL.md",
            "core/sp_history.py", "references/sanity-model-protocol.md", "scripts/main-handoff.ps1", "references/project-main.md",
-           "scripts/agreement_main.py", "references/research-agreement.md",
+           "scripts/intake.ps1", "scripts/agreement_main.py", "references/research-agreement.md",
            "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
            "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md",
            "scripts/update.ps1", "hooks/hooks.json", "references/update.md")

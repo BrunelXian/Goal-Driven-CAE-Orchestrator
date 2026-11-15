@@ -21,6 +21,8 @@ def verify(plugin, pin, out):
     project = out / "research"
     env = dict(os.environ, LOCALAPPDATA=str(out / "settings"))
     env.pop("PYTHONPATH", None)
+    import runpy
+    flags_main, env = runpy.run_path(str(Path(__file__).resolve().parents[2] / "product/research-preview/tools/test_main_fixture.py"))["configure"](plugin, pin, env, shell)
     results = {}
 
     def call(label, flags, expected=None):
@@ -35,7 +37,7 @@ def verify(plugin, pin, out):
 
     binding = call("bind", ["-Action","bind","-ManifestSha256",pin,"-PythonExe",sys.executable])["binding_sha256"]
     def agreement(label, op, data=None, expected=None):
-        flags = ["-Action","agreement","-BindingSha256",binding,"-Operation",op,"-ProjectRoot",project]
+        flags = [*flags_main,"-Action","agreement","-BindingSha256",binding,"-Operation",op,"-ProjectRoot",project]
         if data is not None:
             path = out / (label + "-input.json")
             path.write_bytes(canonical_json(data))

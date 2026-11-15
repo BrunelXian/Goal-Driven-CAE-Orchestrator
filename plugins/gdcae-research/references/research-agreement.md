@@ -1,9 +1,9 @@
 # 安装态科研约定
 
-安装并绑定解释器后，所有操作都经同一 Main 的 `scripts/launch.ps1`。从安装回执取得启动器路径与绑定 SHA256，明确选择仓库和插件缓存之外的科研项目绝对路径。每次查询重新打开项目。响应含可直接显示的 Markdown 以及同源结构化字段。
+安装并绑定解释器后，所有操作都经同一 Main 的 `scripts/launch.ps1`。从安装回执取得启动器路径与绑定 SHA256，明确选择仓库和插件缓存之外的科研项目绝对路径。由 Main 从正式交接回执取得 HostId 和 DesktopProjectId，线程身份由宿主注入。每次查询重新打开项目。响应含可直接显示的 Markdown 以及同源结构化字段。
 
 ```powershell
-$common = @{Action='agreement'; BindingSha256=$receipt; ProjectRoot=$workspace}
+$common = @{Action='agreement'; BindingSha256=$receipt; ProjectRoot=$workspace; HostId=$verifiedHost; DesktopProjectId=$verifiedDesktopProject}
 & $launcher @common -Operation new -InputFile $newJson
 & $launcher @common -Operation freeze -InputFile $bundleJson
 & $launcher @common -Operation propose -InputFile $proposalJson
