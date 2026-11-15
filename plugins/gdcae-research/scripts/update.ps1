@@ -1,9 +1,9 @@
 ﻿[CmdletBinding()]
 param(
-    [ValidateSet('hook','check','skill-check','offer','install','identity','pin-current','verify')][string]$Action='check',
+    [ValidateSet('hook','check','skill-check','offer','install','identity','pin-current','verify','handoff-identity')][string]$Action='check',
     [string]$TargetVersion, [string]$ManifestPin, [switch]$ConfirmUpdate,
     [string]$ChannelBase64, [string]$ChannelBlobSha,
-    [string]$FromCommit, [string]$TargetCommit, [string]$ZipPin
+    [string]$InstalledRoot, [string]$FromCommit, [string]$TargetCommit, [string]$ZipPin
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -203,7 +203,7 @@ function Verify-Installation($homePath,$version,$commit,$manifest) {
     Review-Package (Join-Path $ms[0].root "plugins\$product") $manifest $version
     Review-Package (Join-Path $homePath "plugins\cache\$market\$product\$version") $manifest $version
 }
-function Get-ConnectorCalls {
+function Get-ConnectorCalls([switch]$ForHandoff) {
     # Read structured events from the invoking Host thread, never from caller JSON.
     $tid=$env:CODEX_THREAD_ID
     if ($tid -notmatch '^[0-9a-fA-F-]{36}$'){throw 'HOST_THREAD_REQUIRED'}
@@ -229,6 +229,9 @@ function Get-ConnectorCalls {
             $calls=@($turn.items | Where-Object {$_.type -ceq 'mcpToolCall' -and $_.server -ceq 'codex_apps' -and $_.tool -cin 'github.fetch','github.fetch_file'})
             if (!$calls.Count){continue}
             $age=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()-[long]$turn.startedAt
+            if ($ForHandoff -and $age -ge 0 -and $age -le 1800 -and $turn.status -cnotin 'completed','inProgress'){
+                throw 'CONNECTOR_TURN_UNCONFIRMED'
+            }
             if ($turn.status -cnotin 'completed','inProgress' -or $age -lt 0 -or $age -gt 1800){throw 'CONNECTOR_PROOF_EXPIRED'}
             return $calls
         }
@@ -392,6 +395,101 @@ function Install-Offer($offer) {
         zip_sha256=$ZipPin;release_zip_bytes_verified=$false;staged_head=$commit;staged_channel_blob=$offer.channel_blob}
 }
 
+function Read-PublisherReceipt($calls, [string]$version) {
+    $null=PreviewNumber $version
+    $commit=Read-Commit 'heads/main'
+    $path="product/research-preview/publisher-receipts/$version.json"
+    $hits=@($calls | Where-Object {$_.tool -ceq 'github.fetch_file' -and $_.status -ceq 'completed' -and
+        $_.arguments.repository_full_name -ceq $repo -and $_.arguments.ref -ceq $commit -and
+        $_.arguments.path -ceq $path -and $_.arguments.encoding -ceq 'base64'})
+    if ($hits.Count -ne 1){throw 'PUBLISHER_RECEIPT_MISSING'}
+    $entry=$hits[0].result.structuredContent
+    if ($entry.encoding -cne 'base64' -or $entry.content.Length -gt 4096){throw 'PUBLISHER_RECEIPT_FORMAT'}
+    $bytes=[Convert]::FromBase64String($entry.content)
+    $prefix=[Text.Encoding]::ASCII.GetBytes("blob "+$bytes.Length+[char]0)
+    $sha=[Security.Cryptography.SHA1]::Create()
+    try {$blob=([BitConverter]::ToString($sha.ComputeHash([byte[]]($prefix+$bytes)))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
+    if ($entry.sha -cne $blob){throw 'PUBLISHER_BLOB_MISMATCH'}
+    $raw=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)
+    $r=$raw|ConvertFrom-Json
+    $keys=@('schema','repository','channel','product','plugin_id','release_id','version','source_commit','zip_sha256','manifest_sha256')
+    if ((Compare-Object -CaseSensitive $keys @($r.PSObject.Properties.Name)) -or $r.schema -ne 1 -or
+        $r.product -cne $product -or $r.channel -cne 'plugin-creator-private' -or $r.repository -cne $repo -or
+        $r.version -cne $version -or $r.plugin_id -cne 'plugins_6af978c244ec8191ba521a0eb8bb949d' -or
+        $r.release_id -cnotmatch '^pluginrel_[0-9a-f]{32}$' -or $r.source_commit -cnotmatch '^[0-9a-f]{40}$' -or
+        $r.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$' -or $r.zip_sha256 -cnotmatch '^[0-9a-f]{64}$'){throw 'PUBLISHER_IDENTITY_MISMATCH'}
+    # Publisher files contain only flat ASCII identifiers; reject duplicate keys and JSON escapes.
+    if ($raw.Contains('\') -or [regex]::Matches($raw,'"[a-z_0-9]+"\s*:').Count -ne $keys.Count){throw 'PUBLISHER_RECEIPT_FORMAT'}
+    return @{receipt=$r;commit=$commit;blob=$blob}
+}
+function Read-PrivateInstall($receipt,$folder,$marketName) {
+    $si=[Diagnostics.ProcessStartInfo]::new()
+    $si.FileName=(Get-Command codex.exe -CommandType Application|Select-Object -First 1).Source
+    $si.Arguments='app-server --stdio';$si.UseShellExecute=$false;$si.CreateNoWindow=$true
+    $si.RedirectStandardInput=$true;$si.RedirectStandardOutput=$true;$si.RedirectStandardError=$true
+    $si.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
+    $p=[Diagnostics.Process]::Start($si)
+    try {
+        $p.BeginErrorReadLine()
+        $null=Invoke-PinRpc $p 1 initialize @{clientInfo=@{name='gdcae-handoff';version='1'};capabilities=@{}}
+        Send-RpcLine $p '{"method":"initialized","params":{}}'
+        $detail=(Invoke-PinRpc $p 2 'plugin/read' @{remoteMarketplaceName=$marketName;pluginName=$receipt.plugin_id}).plugin
+        $body=(Invoke-PinRpc $p 3 'plugin/skill/read' @{remoteMarketplaceName=$marketName;remotePluginId=$receipt.plugin_id;skillName='setup'}).contents
+        Assert-PrivateInstall $detail $body $receipt $folder $marketName
+    } finally {if (!$p.HasExited){$p.Kill()};$p.Dispose()}
+}
+function Assert-PrivateInstall($detail,$body,$receipt,$folder,$marketName) {
+    $s=$detail.summary
+    if ($detail.marketplaceName -cne $marketName -or $s.source.type -cne 'remote' -or
+        $s.remotePluginId -cne $receipt.plugin_id -or $s.id -cne "$product@$marketName" -or
+        $s.name -cne $product -or !$s.installed -or !$s.enabled -or $s.localVersion -cne $receipt.version){throw 'HOST_INSTALL_IDENTITY_MISMATCH'}
+    $path=Join-Path $folder 'skills/setup/SKILL.md'
+    $skills=@($detail.skills | Where-Object {$_.name -ceq 'setup' -and $_.enabled})
+    if ($skills.Count -ne 1 -or !$body -or $body.Length -gt 1048576){throw 'HOST_INSTALLED_SKILL_UNVERIFIED'}
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try {$hash=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($body))).Replace('-','')}finally{$sha.Dispose()}
+    if ((Get-FileHash -LiteralPath $path).Hash -ne $hash){throw 'HOST_INSTALLED_SKILL_UNVERIFIED'}
+}
+function Test-HandoffFiles($folder,$version,$pin) {
+    # Do not load any package code here. Pin the manifest before using its file map.
+    $manifest=Join-Path $folder 'package-manifest.json'
+    if ((Get-FileHash -LiteralPath $manifest).Hash -ne $pin){throw 'PACKAGE_MANIFEST_MISMATCH'}
+    $m=Get-Content -Raw -Encoding UTF8 -LiteralPath $manifest | ConvertFrom-Json
+    if ($m.version -cne $version){throw 'PACKAGE_IDENTITY'}
+    foreach ($name in 'package-manifest.json','scripts/main-handoff.ps1','scripts/runtime-checks.ps1','skills/setup/SKILL.md'){
+        $item=Get-Item -Force -LiteralPath (Join-Path $folder $name)
+        while ($item){
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'UNSAFE_TREE'}
+            if ($item -is [IO.FileInfo]){$item=$item.Directory}else{$item=$item.Parent}
+        }
+        if ($name -ne 'package-manifest.json' -and ((Get-FileHash -LiteralPath (Join-Path $folder $name)).Hash -ne $m.files.$name)){throw 'PACKAGE_BYTES'}
+    }
+}
+function Get-HandoffIdentity($folder) {
+    $folder=(Get-Item -LiteralPath $folder).FullName
+    $meta=Get-Content -LiteralPath (Join-Path $folder 'plugin.json') -Encoding UTF8 -Raw | ConvertFrom-Json
+    $version=$meta.version
+    $null=PreviewNumber $version
+    if ($meta.name -cne $product){throw 'PACKAGE_IDENTITY'}
+    $cache=Join-Path (Get-HostHome) 'plugins/cache'
+    $marketName=(Get-Item -LiteralPath $folder).Parent.Parent.Name
+    if ($folder -ne [IO.Path]::GetFullPath((Join-Path $cache "$marketName/$product/$version"))){throw 'HOST_INSTALL_LOCATION_MISMATCH'}
+    $connectorCalls=@(Get-ConnectorCalls -ForHandoff)
+    if ($marketName -ceq $market){
+        $ref=(Invoke-MarketplacePin (Get-HostHome)).ref
+        if ($ref -cnotmatch '^[0-9a-f]{40}$'){throw 'PIN_MISMATCH'}
+        $manifest=Get-ReleaseManifestPin $version $ref
+        Verify-Installation (Get-HostHome) $version $ref $manifest
+        return @{status='VERIFIED_RELEASE_IDENTITY';channel='git-marketplace';version=$version;commit=$ref;manifest_sha256=$manifest}
+    }
+    if ($marketName -cnotin 'created-by-me-remote','shared-with-me','shared-with-me-remote'){throw 'UNSUPPORTED_INSTALL_SOURCE'}
+    $proof=Read-PublisherReceipt $connectorCalls $version
+    Read-PrivateInstall $proof.receipt $folder $marketName
+    Test-HandoffFiles $folder $version $proof.receipt.manifest_sha256
+    return @{status='VERIFIED_RELEASE_IDENTITY';channel=$proof.receipt.channel;version=$version;release_id=$proof.receipt.release_id;
+        plugin_id=$proof.receipt.plugin_id;receipt_commit=$proof.commit;receipt_blob=$proof.blob;manifest_sha256=$proof.receipt.manifest_sha256}
+}
+
 function Get-StateDirectory {
     $base=if($env:PLUGIN_DATA -and !$operation){$env:PLUGIN_DATA}else{$env:LOCALAPPDATA}
     if (!$base -or $base -notmatch '^[A-Za-z]:[\\/]' -or $base -match '(^|[\\/])\.\.([\\/]|$)'){throw 'LOCAL_STATE_UNAVAILABLE'}
@@ -444,6 +542,19 @@ function Write-CheckCache($file,$offer,$checked) {
     }finally{if ([IO.File]::Exists($tmp)){[IO.File]::Delete($tmp)}}
 }
 
+if ($Action -eq 'handoff-identity'){
+    try {
+        if ($PSBoundParameters.Keys | Where-Object {$_ -notin 'Action','InstalledRoot'}){throw 'INVALID_IDENTITY_ARGUMENTS'}
+        $folder=if ($InstalledRoot){$InstalledRoot}else{$root}
+        Get-HandoffIdentity $folder | ConvertTo-Json -Compress
+        exit 0
+    }catch{
+        $reason=$_.Exception.Message
+        if ($reason -cnotmatch '^[A-Z_]{3,64}$'){$reason='HOST_OR_PROOF_UNAVAILABLE'}
+        @{status='RELEASE_IDENTITY_UNAVAILABLE';reason=$reason}|ConvertTo-Json -Compress
+        exit 2
+    }
+}
 $mode=@{hook='SESSIONSTART_AUTO_CHECK';'skill-check'='FIRST_SKILL_USE_CHECK';check='MANUAL_CHECK';install='CONFIRMED_INSTALL';
     'pin-current'='CONFIRMED_MIGRATION';verify='INSTALLED_READBACK';identity='INSTALLED_IDENTITY';offer='VERIFIED_OFFER'}[$Action]
 # Connector provenance comes from the Host tool event. Its bytes are for display only:

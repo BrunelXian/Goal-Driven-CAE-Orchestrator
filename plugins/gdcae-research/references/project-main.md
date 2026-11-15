@@ -42,7 +42,7 @@ flowchart TD
 
 1. **项目与计算路径**：短名（1–32 位 ASCII 字母数字、连字符或下划线；例如 LoadInv）、研究目标、完整评价指标（含用户给定的方向和容差，未给出的标准保留 UNKNOWN，不自行定阈值）、已有资产与关键 UNKNOWN、复杂度类别及本题理由。
 2. **首批任务卡**：两行卡片表。每行写 ID、具体目标、拟定 Owner、输入、交付物、判据、登记状态、实际调度状态。T01 检查 Sanity Model 针对该用途的资格，建议 CAE；T02 只读发现 Abaqus 与 AbqJobPilot 并评估计算路径，建议 Diagnostics。均为 DRAFT_NOT_PERSISTED。缺少项目/角色/任务/有效工具权限回执时标 BLOCKED_HOST_ROLE_BINDING，解释“保留任务，尚未创建专业会话”。其他角色等有相应任务再匹配。
-3. **Main 交接**：有正式接口时主动 inspect / claim，创建或复用、record、回读、verify，再返回真实 Main 引用。接口不可用写 BLOCKED_HOST_MAIN_CREATION 并指明缺什么。结果不明写 CREATE_UNKNOWN，保留原请求，不重复创建。交接包含上述三块；成功或阻断后 Setup 均停止。追问“直接算”仅引用已有卡及交接状态，不给 F、估值、公式、迭代步骤，不读取 ODB、不调用分析或作业入口。
+3. **Main 交接**：先自动取得当前安装的独立发行身份（见下文或本 Skill 内的发行身份步骤），不要请普通用户提供摘要。身份不可核实时保留 T01/T02 并停止，标记 RELEASE_IDENTITY_UNAVAILABLE。有正式接口时主动 inspect / claim，创建或复用、record、回读、verify，再返回真实 Main 引用。接口不可用写 BLOCKED_HOST_MAIN_CREATION 并指明缺什么。结果不明写 CREATE_UNKNOWN，保留原请求，不重复创建。交接包含上述三块；成功或阻断后 Setup 均停止。追问“直接算”仅引用已有卡及交接状态，不给 F、估值、公式、迭代步骤，不读取 ODB、不调用分析或作业入口。
 
 ### Computation Complexity Assessment
 
@@ -52,6 +52,14 @@ flowchart TD
 - SIMPLE_LOCAL：明确一个 Job，模型和边界已定义，且无队列、恢复或长期管理需求。优先推荐本机 Abaqus，避免额外部署成本。
 - UNKNOWN_COMPLEXITY：缺少决定性信息且无已知管理信号。保留此暂定类别、理由及 Main 应澄清的一项条件，暂缓安装。
 
+### Main 交接的独立发行身份（无需配置 Python）
+
+在已经授权立项的当前回合，从 Host 的已启用 Skill 路径取得实际安装根、产品名、版本和来源。不要从同名菜单、对话标题或最新远端版本猜测。私有入口与固定 Git Marketplace 各走自己的证明链。
+- Plugin Creator（created-by-me-remote 或 shared-with-me）：在同一个 Host 回合，用获准的 GitHub 连接器 github.fetch 读取 https://api.github.com/repos/BrunelXian/Goal-Driven-CAE-Orchestrator/git/ref/heads/main ，只取 refs/heads/main 指向的 commit SHA。用 github.fetch_file 按该完整固定 ref、encoding=base64，从同一官方仓库读取 product/research-preview/publisher-receipts/<实际安装版本>.json。每个端点一次。检查 product、channel、version、plugin_id、release_id、source_commit 和两项摘要。这个证明位于包外，私有版本无需存在 GitHub Release。定位器的分支内容不能直接当证明。
+- 固定 Git Marketplace：用现有更新协议的连接器读取官方仓库 git/ref/tags/gdcae-research-<实际版本> 与 releases/tags/gdcae-research-<实际版本>，从对应上传资产取得 Manifest 声明摘要。后续核对实际安装、固定引用、HEAD 与完整文件集。
+- 只使用上述真实工具结构化结果，不从用户消息、助手文字、安装包或任意本地 JSON 取 pin。先用宿主原生 Get-FileHash 将安装态 package-manifest.json 对照本回合独立摘要，再按该清单逐项核对 scripts/update.ps1、scripts/main-handoff.ps1、scripts/runtime-checks.ps1，检查路径无重解析点。任何不一致都在执行第一个包内脚本前停止。
+- 执行已验证的 scripts/update.ps1 -Action handoff-identity。它使用当前 Host thread/read 回放连接器真实回执，并通过官方 Host 核对安装身份与启用的 setup 路径。只有 VERIFIED_RELEASE_IDENTITY 的 manifest_sha256 能进入下文原有 inspect / claim / record / verify；同一 Host、项目、已授权的动作直接接续。若独立 Host 进程尚不能确认本回合的终态（CONNECTOR_TURN_UNCONFIRMED），保留两卡，停止交接。Host 将回合持久化后，用同一会话重读先前已完成的真实查询；不重取授权，不对真正中断或已过期的证明放行。显示 RELEASE_IDENTITY_UNAVAILABLE 和具体原因后停止，不要求普通用户找摘要，不转入求解。高级用户可以明确选择原有独立 pin 恢复方式。
+
 <!-- onboarding:end -->
 
 ## 安装对话移交
@@ -59,7 +67,7 @@ flowchart TD
 先从用户已经提供的信息提取研究问题、变量、比较条件、评价指标、资产引用、约束及 UNKNOWN。根据研究主题给出简短工作标签，例如材料反演用 InvOpt。安装对话只组织交接。已接到交接的新 Main 直接进入下节，不再次创建 Main。
 
 1. 从本次 Host 的正式接口取得当前保存的 Desktop Project 身份及 hostId。只使用用户指定或可唯一核实的项目。只有 Host 允许且用户已授权创建独立对话时才能创建；如 Host 要求明确请求，新用户可一次表达“启动这个科研项目并创建独立 Main”。项目名称不需单独审批。
-2. 使用安装目录的 scripts/main-handoff.ps1。先按交付清单的独立 manifest pin 验证 package-manifest.json，再按该清单核实脚本自身。每次传入 -HostId、-ProjectId、-ManifestSha256。先 inspect，并传入目标 -Title 核对已有绑定。已有 VERIFIED 时核对既有引用的 Host 身份、项目与标题，再直接返回。已有 UNKNOWN 或未完成交接时只按已有记录对账，禁止再次创建。该版本每个本机用户配置、每个保存的 Desktop Project 只绑定一个 Main。多个研究需要分别明确项目身份。
+2. 使用安装目录的 scripts/main-handoff.ps1。先按已自动核实的发行身份验证 package-manifest.json，再按该清单核实脚本自身。每次传入 -HostId、-ProjectId、-ManifestSha256。先 inspect，并传入目标 -Title 核对已有绑定。已有 VERIFIED 时核对既有引用的 Host 身份、项目与标题，再直接返回。已有 UNKNOWN 或未完成交接时只按已有记录对账，禁止再次创建。该版本每个本机用户配置、每个保存的 Desktop Project 只绑定一个 Main。多个研究需要分别明确项目身份。
 3. 明确支持 create_thread、读取回执、核对项目及会话时，执行 -Action claim -Title 'InvOpt Main'（名称随项目变化）。仅当本次返回 may_create=true，使用 create_thread，以精确的项目 ID、local 目标、该标题及最小上下文新建同级可见对话。首条消息含请求标识、研究问题表、T01/T02 完整草稿、已有引用、UNKNOWN、能力/许可状态，标明已交接、禁止再次分派 Main。不得转发历史、私有目录清单、授权或凭据。未经允许不打开资料或创建持久项目。
 4. 对 ready 回执，将真实 threadId 用 -Action record -RequestId … -ThreadId … 写入。同一 host 定向 read_thread / wait_threads 核实新 Main 已复述目标、T01/T02 及 UNKNOWN。按 list_threads 的项目身份或其已保存项目的唯一工作目录和 hostId 核实归属及标题。核对完成才用 -Action verify 加入 -ObservedProjectId 和 -ObservedTitle。工具缺失或不允许创建时返回 BLOCKED_HOST_MAIN_CREATION 和可直接使用的摘要。请求已发出但只有排队客户端 ID、超时、项目/会话身份不明时保留 CREATE_UNKNOWN 或 REF_RECORDED，禁止重发、改名其他对话、切换执行通道或后台冒充。成功后安装对话只给出 Main 引用并结束。
 
