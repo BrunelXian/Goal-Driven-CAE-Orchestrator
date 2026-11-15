@@ -25,6 +25,10 @@ def markdown(view, mode):
     lines = [f"科研约定 · {view['project']} · {('v'+str(v)) if v else '尚无生效版本'} · {view['status']}",
              f"关键 UNKNOWN · {show(view['unknowns'])}",
              "使用 overview 查看当前约定，使用 detail 查询全文与证据。"]
+    sanity = view.get("sanity")
+    if sanity:
+        lines.extend([f"基准资格 · {sanity['status']} · {show(sanity['use'])} · v{sanity['baseline_version']}",
+                      f"模型 UNKNOWN · {show(sanity['unknowns'])}", f"下一步 · {show(sanity['recommendation'])}"])
     if mode=="hint":
         return "\n".join(lines)
     lines.append(f"本记录 {view['agreement']}，当前生效记录 {view['current']}。科研确认不授予求解权限。")
@@ -68,7 +72,20 @@ def run(args,plugin,checked):
         require(set(body)=={"name","schema"} and body["schema"]=="research-agreement-project-v3","EXPLICIT_OPT_IN_REQUIRED")
         created=project.create_research_project(root,body["name"],research_agreements=True)
         return {**created.inspect(),"current_hint":query(root)}
-    handle=project.open_agreement_project(root,write=True)
+    handle=project.open_agreement_project(root,write=op != "sanity-triage")
+    if op in ("sanity-triage", "sanity-assess", "sanity-reference"):
+        from aegiscae.research.sanity import assess, observe
+        require(body.get("schema") == "research-sanity-v1" and body.get("op") == op, "INVALID_SANITY_REQUEST")
+        if op in ("sanity-triage", "sanity-assess"):
+            require("asset_file" in body and "observation" not in body, "EXPLICIT_ASSET_FIELD_REQUIRED")
+            asset = body.pop("asset_file")
+            body["observation"] = observe(path.parent,asset) if asset is not None else None
+        if op == "sanity-triage":
+            require(set(body) == {"schema","op","use","availability","observation","concerns","result_scope"},
+                    "INVALID_TRIAGE_REQUEST")
+            return dict(assess(None, dict(body, project=handle.research_project_id, expected_revision=None,
+                                          key=None, refs=None)), persisted=False)
+        return research_agreement.record_change(handle,body)
     if op=="freeze":
         require(set(body)=={"bundle","expected_revision","key"},"INVALID_FREEZE_REQUEST")
         bundle=ContractBundle.from_dict(body["bundle"])

@@ -15,7 +15,8 @@ LABELS = dict(question="研究问题", stage_goal="阶段目标", variables="变
               comparison="比较条件", criteria="判据", evidence="证据引用", claim="允许的主张",
               limits="适用范围", unknowns="关键 UNKNOWN", revision_triggers="修订条件")
 def empty_state():
-    return {"versions": {}, "active": None, "confirmed": {}, "keys": {}, "attributions": {}}
+    return {"versions": {}, "active": None, "confirmed": {}, "keys": {}, "attributions": {},
+            "assessments": {}, "last_assessment": None, "sanity_links": {}}
 
 def text_field(value):
     require(type(value) is str and 0 < len(value.strip()) <= 512 and value.isprintable(), "INVALID_AGREEMENT_TEXT")
@@ -43,6 +44,9 @@ def validate_terms(terms, bundle):
 
 def apply_agreement(state, request, bundle, revision):
     """Used identically before writing and during strict audit replay."""
+    if isinstance(request, dict) and request.get("schema") == "research-sanity-v1":
+        from aegiscae.research.sanity import apply_event
+        return apply_event(state, request, bundle, revision)
     common = {"schema","project","expected_revision","key","op"}
     fields = {"propose":{"base","refs","terms","reason","impact","standing"},
               "confirm":{"proposal","decision"}, "attribute":{"agreement","kind","identity","sha256"}}
@@ -136,6 +140,13 @@ def view(project, mode="overview", selector=None):
         result = {"project":meta["research_project_id"], "project_revision":meta["project_revision"],
                   "agreement":record,"current":active,"version":version and version["version"],"status":status,
                   "unknowns":version["terms"]["unknowns"] if version else ["UNKNOWN"],"execution_authorized":False}
+        assessment = state["assessments"].get(state["last_assessment"])
+        if assessment and bundles and assessment["contract_refs"]["bundle"] == bundles[-1][1] and (
+                selector is None or (version and assessment["contract_refs"] == version["refs"] and record == active)):
+            result["sanity"] = assessment
+        if mode == "detail":
+            result["sanity_references"] = {name: link for name, link in state["sanity_links"].items()
+                if state["attributions"]["candidate/"+name]["agreement"] == record}
         if mode == "detail" and version:
             result["record"] = version
             result["confirmation_revision"] = state["confirmed"].get(record)
