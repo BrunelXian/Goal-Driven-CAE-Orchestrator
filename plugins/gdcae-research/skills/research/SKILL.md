@@ -5,7 +5,7 @@ description: "Discuss research goals, review Sanity Models and plan CAE work wit
 
 # GD-CAE Research Preview
 
-首次调用本 Skill，若本会话没有可信的 SessionStart 检查回执，先通过 Host 的正常命令工具运行本安装目录的 `scripts/update.ps1 -Action skill-check`，再处理科研问题。自行从此 SKILL.md 上溯两级定位脚本，遵循 Host 审批。只按[版本检查](../../references/update.md)解释实际回执；拒绝或工具不可用时继续科研并标注未检查。无需用户手工执行。 若脚本回执为 HOST_NETWORK_RESTRICTED，按上述版本检查指引使用已授权的只读 GitHub 连接器，校验官方频道后继续。
+本会话首次调用时，先按[版本检查与确认](../../references/update.md)使用已授权 GitHub 连接器和本安装的 PowerShell 升级器核对官方频道。未授权、离线或工具受限时继续下面的科研流程。
 
 收到明确的新科研任务、已移交的 Main 首轮或基准资格问题时，执行[项目 Main 与模型资格流程](../../references/project-main.md)。已移交的 Main 首先展示问题表，再评估模型资格；安装对话负责一次性交接。
 
