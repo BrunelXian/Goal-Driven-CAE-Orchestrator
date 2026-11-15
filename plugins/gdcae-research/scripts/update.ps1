@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
-    [ValidateSet('hook','check','install')][string]$Action='check',
-    [string]$TargetVersion, [string]$ManifestPin, [switch]$ConfirmUpdate
+    [ValidateSet('hook','check','skill-check','install')][string]$Action='check',
+    [string]$TargetVersion, [string]$ManifestPin, [switch]$ConfirmUpdate,
+    [string]$ChannelBase64, [string]$ChannelBlobSha
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -19,14 +20,34 @@ function PreviewNumber([string]$v) {
     return [int]$Matches[1]
 }
 function Get-OfficialJson([string]$suffix) {
+    if ($env:CODEX_SANDBOX_NETWORK_DISABLED -in '1','true'){throw 'HOST_NETWORK_RESTRICTED'}
     $request=[Net.HttpWebRequest]::Create("https://api.github.com/repos/$repo/$suffix")
     $request.UserAgent='GDCAE-Research-Update/1'
     $request.AllowAutoRedirect=$false
-    $request.Timeout=3500
-    $request.ReadWriteTimeout=3500
-    $response=$request.GetResponse()
+    $request.Timeout=5500
+    $request.ReadWriteTimeout=5500
+    try {$response=$request.GetResponse()} catch [Net.WebException] {
+        $ex=$_.Exception
+        $http=if($ex.Response){[int]$ex.Response.StatusCode}else{0}
+        $limited=$ex.Response -and ($ex.Response.Headers['X-RateLimit-Remaining'] -eq '0' -or $ex.Response.Headers['Retry-After'])
+        if ($ex.Response){$ex.Response.Dispose()}
+        if ($http){$script:httpStatus=$http}
+        if ($http -eq 407){throw 'PROXY_AUTH_REQUIRED'}
+        if ($http -eq 429 -or ($http -eq 403 -and $limited)){throw 'GITHUB_RATE_LIMIT'}
+        if ($http -ge 500){throw 'GITHUB_API_UNAVAILABLE'}
+        if ($http){throw 'HTTP_ERROR'}
+        switch ([string]$ex.Status) {
+            'NameResolutionFailure' {throw 'DNS_FAILURE'}
+            'ProxyNameResolutionFailure' {throw 'PROXY_DNS_FAILURE'}
+            'SecureChannelFailure' {throw 'TLS_FAILURE'}
+            'TrustFailure' {throw 'TLS_TRUST_FAILURE'}
+            'Timeout' {throw 'NETWORK_TIMEOUT'}
+        }
+        if ($request.Proxy -and !$request.Proxy.IsBypassed($request.RequestUri) -and $ex.Status -eq 'ConnectFailure'){throw 'PROXY_CONNECT_FAILURE'}
+        throw 'NETWORK_CONNECTION_FAILURE'
+    }
     try {
-        if ([int]$response.StatusCode -ne 200) {throw 'HTTP_STATUS'}
+        if ([int]$response.StatusCode -ne 200) {$script:httpStatus=[int]$response.StatusCode;throw 'HTTP_ERROR'}
         $stream=$response.GetResponseStream()
         $bytes=New-Object byte[] 65537
         $count=0
@@ -36,18 +57,28 @@ function Get-OfficialJson([string]$suffix) {
             $count+=$n
         }
         if ($count -ge $bytes.Length){throw 'METADATA_SIZE'}
-        return ([Text.Encoding]::UTF8.GetString($bytes,0,$count) | ConvertFrom-Json)
+        try {return ([Text.UTF8Encoding]::new($false,$true).GetString($bytes,0,$count) | ConvertFrom-Json)}
+        catch {throw 'METADATA_FORMAT_ERROR'}
     } finally {$response.Dispose()}
 }
-function Get-Offer {
-    $entry=Get-OfficialJson "contents/channel.json?ref=$branch"
+function ConvertTo-Offer($entry) {
     if ($entry.type -cne 'file' -or $entry.path -cne 'channel.json' -or $entry.encoding -cne 'base64' -or $entry.size -gt 2048){throw 'CHANNEL_IDENTITY'}
-    $value=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($entry.content)) | ConvertFrom-Json
+    $data=[Convert]::FromBase64String($entry.content)
+    $header=[Text.Encoding]::ASCII.GetBytes("blob "+$data.Length+[char]0)
+    $alg=[Security.Cryptography.SHA1]::Create()
+    try {$blob=([BitConverter]::ToString($alg.ComputeHash([byte[]]($header+$data)))).Replace('-','').ToLowerInvariant()} finally {$alg.Dispose()}
+    if ($entry.size -ne $data.Length -or $entry.sha -cne $blob){throw 'METADATA_INTEGRITY_ERROR'}
+    $value=[Text.UTF8Encoding]::new($false,$true).GetString($data) | ConvertFrom-Json
     $null=PreviewNumber $value.version
     if ($value.schema -ne 1 -or $value.product -cne $product -or $value.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$' -or
         $value.zip_sha256 -cnotmatch '^[0-9a-f]{64}$' -or $value.impact -cne 'restart-rebind-no-migration' -or
         $value.change -cnotin 'project-main','auto-update','preview-fixes'){throw 'INVALID_CHANNEL'}
     return $value
+}
+function Get-Offer {
+    $entry=Get-OfficialJson "contents/channel.json?ref=$branch"
+    try {return ConvertTo-Offer $entry}
+    catch {if ($_.Exception.Message -eq 'METADATA_INTEGRITY_ERROR'){throw};throw 'METADATA_FORMAT_ERROR'}
 }
 function Compare-Offer($offer,[string]$current) {
     $n=PreviewNumber $current
@@ -60,8 +91,15 @@ function Compare-Offer($offer,[string]$current) {
 }
 function Invoke-CodexJson([string[]]$arguments) {
     $exe=(Get-Command codex.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-    $out=& $exe @arguments
-    if ($LASTEXITCODE -ne 0){throw 'HOST_COMMAND_FAILED'}
+    $oldPreference=$ErrorActionPreference
+    try {$ErrorActionPreference='Continue'; $out=@(& $exe @arguments 2>&1); $rc=$LASTEXITCODE}
+    finally {$ErrorActionPreference=$oldPreference}
+    if ($rc -ne 0){
+        $script:hostExit=$rc
+        if (($out -join ' ') -match 'permission denied|access (is )?denied|os error 5\b|拒绝访问|blocked by policy'){throw 'BLOCKED_HOST_UPDATE_PERMISSION'}
+        throw 'HOST_COMMAND_FAILED'
+    }
+    $out=@($out | Where-Object {$_ -isnot [Management.Automation.ErrorRecord]})
     return (($out -join [Environment]::NewLine) | ConvertFrom-Json)
 }
 function Review-Package([string]$folder,[string]$pin,[string]$version) {
@@ -158,6 +196,7 @@ function Install-Offer($offer) {
     if ($observed.version -cne $TargetVersion){throw 'HOST_VERSION_MISMATCH'}
     return @{status='INSTALLED_RESTART_REQUIRED';version=$observed.version;enabled=$true;manifest_sha256=$ManifestPin}
     } catch {
+        if ($_.Exception.Message -eq 'BLOCKED_HOST_UPDATE_PERMISSION'){throw}
         # Restore only the previously installed, byte-verified version using Codex.
         # If the failed command never replaced the working version, leave it alone.
         try {
@@ -173,44 +212,143 @@ function Install-Offer($offer) {
     }
 }
 
+function Get-StateDirectory {
+    $base=if($env:PLUGIN_DATA){$env:PLUGIN_DATA}else{$env:LOCALAPPDATA}
+    if (!$base -or $base -notmatch '^[A-Za-z]:[\\/]' -or $base -match '(^|[\\/])\.\.([\\/]|$)'){throw 'LOCAL_STATE_UNAVAILABLE'}
+    $dir=if ($env:PLUGIN_DATA){Join-Path $base 'gdcae-update'}else{Join-Path $base 'GDCAE\plugin-updates'}
+    $dir=[IO.Path]::GetFullPath($dir)
+    for ($p=$dir;$p;$p=[IO.Path]::GetDirectoryName($p)){
+        if ($p -eq $root -or ((Test-Path -LiteralPath $p) -and ((Get-Item -LiteralPath $p -Force).Attributes -band [IO.FileAttributes]::ReparsePoint))){throw 'LOCAL_STATE_UNSAFE'}
+    }
+    [void][IO.Directory]::CreateDirectory($dir)
+    return $dir
+}
+function Read-CheckCache($file) {
+    if (![IO.File]::Exists($file)){return $null}
+    $info=Get-Item -LiteralPath $file -Force
+    if ($info.Length -gt 8192 -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'CACHE_INVALID'}
+    $v=Get-Content -Raw -Encoding UTF8 -LiteralPath $file | ConvertFrom-Json
+    if ($v.schema -ne 2 -or $v.product -cne $product -or $v.channel -cne $branch -or $v.version -cne $local){return $null}
+    $now=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    if ($v.checked -gt $now -or $v.expires -le $now){return $null}
+    if ($v.kind -ceq 'restricted'){
+        if ($env:CODEX_SANDBOX_NETWORK_DISABLED -notin '1','true' -or $v.expires -ne $v.checked+180){return $null}
+        return [ordered]@{status='CHECK_UNAVAILABLE';reason='HOST_NETWORK_RESTRICTED';current=$local;
+            checked_utc_epoch=$v.checked;expires_utc_epoch=$v.expires}
+    }
+    if ($v.kind -cne 'offer' -or $v.expires -ne $v.checked+3600){return $null}
+    if ($v.offer.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$' -or $v.offer.change -cnotin 'auto-update','project-main','preview-fixes'){throw 'CACHE_INVALID'}
+    $result=Compare-Offer $v.offer $local
+    $result.checked_utc_epoch=$v.checked
+    $result.expires_utc_epoch=$v.expires
+    return $result
+}
+function Write-CheckCache($file,$offer,$checked) {
+    $v=@{schema=2;product=$product;channel=$branch;version=$local;checked=$checked}
+    if ($null -eq $offer){$v.kind='restricted';$v.expires=$checked+180}
+    else {$v.kind='offer';$v.expires=$checked+3600;$v.offer=@{version=$offer.version;manifest_sha256=$offer.manifest_sha256;change=$offer.change}}
+    $tmp=Join-Path ([IO.Path]::GetDirectoryName($file)) ([guid]::NewGuid().ToString('N')+'.tmp')
+    try {
+        [IO.File]::WriteAllText($tmp,($v | ConvertTo-Json -Compress -Depth 3))
+        if ([IO.File]::Exists($file)){
+            $backup=$tmp+'.bak'
+            [IO.File]::Replace($tmp,$file,$backup)
+            [IO.File]::Delete($backup)
+        }else{[IO.File]::Move($tmp,$file)}
+    }finally{if ([IO.File]::Exists($tmp)){[IO.File]::Delete($tmp)}}
+}
+
+$mode=@{hook='SESSIONSTART_AUTO_CHECK';'skill-check'='FIRST_SKILL_USE_CHECK';check='MANUAL_CHECK';install='CONFIRMED_INSTALL'}[$Action]
+# Connector provenance comes from the Host tool event. Its bytes are for display only:
+# never persist these inputs, perform an install, or replace the release verification path.
+if ($PSBoundParameters.ContainsKey('ChannelBase64') -or $PSBoundParameters.ContainsKey('ChannelBlobSha')) {
+    $rc=0
+    try {
+        if ($Action -ne 'skill-check' -or $ConfirmUpdate -or $TargetVersion -or $ManifestPin){$rc=2;throw 'DISCOVERY_ONLY'}
+        if ($ChannelBase64.Length -gt 2732 -or $ChannelBase64 -cnotmatch '^[A-Za-z0-9+/]+={0,2}$' -or
+            $ChannelBlobSha -cnotmatch '^[0-9a-f]{40}$'){throw 'METADATA_FORMAT_ERROR'}
+        $bytes=[Convert]::FromBase64String($ChannelBase64)
+        $offer=ConvertTo-Offer ([pscustomobject]@{type='file';path='channel.json';encoding='base64';size=$bytes.Length;
+            content=$ChannelBase64;sha=$ChannelBlobSha})
+        $result=Compare-Offer $offer $local
+        $result.zip_sha256=$offer.zip_sha256
+        $result.channel_blob_sha=$ChannelBlobSha
+    } catch {
+        $reason=if ($_.Exception.Message -in 'DISCOVERY_ONLY','METADATA_INTEGRITY_ERROR'){$_.Exception.Message}else{'METADATA_FORMAT_ERROR'}
+        $result=@{status='CHECK_UNAVAILABLE';current=$local;reason=$reason}
+    }
+    $result.mode=$mode
+    $result.source='CONNECTOR_INPUT'
+    $result.cache='NOT_STORED'
+    $result.exit_code=$rc
+    $result | ConvertTo-Json -Compress
+    exit $rc
+}
 $liveWrite=$false
 $lock=$null
+$result=$null
+$httpStatus=$null
+$hostExit=$null
+$cacheState='MISS'
+$store=if($env:PLUGIN_DATA){'PLUGIN_DATA'}else{'LOCALAPPDATA'}
 try {
-    $state=Join-Path $env:LOCALAPPDATA 'GDCAE\plugin-updates'
-    [void][IO.Directory]::CreateDirectory($state)
-    $lock=[IO.File]::Open((Join-Path $state 'channel.lock'),'OpenOrCreate','ReadWrite','None')
-    $cache=Join-Path $state 'check.json'
-    if ($Action -ne 'install' -and (Test-Path -LiteralPath $cache) -and
-        ((Get-Item -LiteralPath $cache).LastWriteTimeUtc -ge [DateTime]::UtcNow.AddHours(-1) -and (Get-Item -LiteralPath $cache).LastWriteTimeUtc -le [DateTime]::UtcNow)){
-        $saved=Get-Content -LiteralPath $cache -Raw -Encoding UTF8 | ConvertFrom-Json
-        $result=$null
-        if ($saved.current -ceq $local -and $saved.status -ceq 'OFFLINE_OR_UNAVAILABLE'){
-            $result=@{status='OFFLINE_OR_UNAVAILABLE';current=$local}
-        }elseif ($saved.current -ceq $local -and $saved.available -cmatch '^0\.2\.0-preview\.[1-9][0-9]{0,5}$' -and
-            $saved.manifest_sha256 -cmatch '^[0-9a-f]{64}$' -and $saved.change -cin 'project-main','auto-update','preview-fixes'){
-            $result=Compare-Offer ([pscustomobject]@{version=$saved.available;manifest_sha256=$saved.manifest_sha256;change=$saved.change}) $local
+    try {
+        $state=Get-StateDirectory
+        $guard=Join-Path $state 'channel.lock'
+        $file=Join-Path $state 'check-v2.json'
+        foreach($path in @($guard,$file)){
+            if ((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'LOCAL_STATE_UNSAFE'}
         }
-    }else{$result=$null}
-    if (!$result -or $Action -eq 'install'){
-        try {$offer=Get-Offer;$result=Compare-Offer $offer $local}
-        catch {if($Action -eq 'install'){throw};$result=@{status='OFFLINE_OR_UNAVAILABLE';current=$local}}
+        $lock=[IO.File]::Open($guard,'OpenOrCreate','ReadWrite','None')
+    } catch {
+        $cacheState='LOCAL_STATE_UNWRITABLE'
+        for($cause=$_.Exception;$cause;$cause=$cause.InnerException){
+            if (($cause.HResult -band 65535) -in 32,33){$cacheState='BUSY'}
+        }
+        if($Action -eq 'install'){throw $cacheState}
+        if($cacheState -eq 'BUSY'){$result=@{status='BUSY';current=$local}}
+    }
+    if ($lock -and $Action -ne 'install'){
+        try {$result=Read-CheckCache $file;if ($result){$cacheState='HIT'}}
+        catch {$cacheState='CORRUPT_OR_UNREADABLE'}
+    }
+    if (!$result){
+        $offer=Get-Offer
         if ($Action -eq 'install'){$result=Install-Offer $offer}
         else {
-            $cached=@{};foreach($k in $result.Keys){$cached[$k]=$result[$k]}
-            if ($result.status -ne 'OFFLINE_OR_UNAVAILABLE'){$cached.change=$offer.change}
-            [IO.File]::WriteAllText($cache,($cached | ConvertTo-Json -Compress))
+            $result=Compare-Offer $offer $local
+            $checked=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            $result.checked_utc_epoch=$checked
+            $result.expires_utc_epoch=$checked+3600
+            if ($lock){
+                try {Write-CheckCache $file $offer $checked
+                    $cacheState=if ($cacheState -eq 'CORRUPT_OR_UNREADABLE'){'REPAIRED'}else{'STORED'}
+                }catch{$cacheState='LOCAL_STATE_UNWRITABLE'}
+            }
         }
     }
-} catch [IO.IOException] {
-    $result=@{status=if($liveWrite){'UNKNOWN_AFTER_HOST_WRITE'}else{'BUSY'}}
 } catch {
     $code=$_.Exception.Message
-    if ($code -cnotmatch '^[A-Z_]{3,60}$'){$code='UPDATE_UNAVAILABLE'}
-    $result=@{status=if($liveWrite){'UNKNOWN_AFTER_HOST_WRITE'}else{'BLOCKED'};reason=$code}
+    if ($code -cnotmatch '^[A-Z_]{3,60}$'){$code='UNCLASSIFIED_FAILURE'}
+    $status=if ($code -eq 'BLOCKED_HOST_UPDATE_PERMISSION'){$code}elseif($liveWrite){'UNKNOWN_AFTER_HOST_WRITE'}elseif($Action -eq 'install'){'BLOCKED'}else{'CHECK_UNAVAILABLE'}
+    $result=@{status=$status;reason=$code;current=$local}
+    if ($code -ceq 'HOST_NETWORK_RESTRICTED' -and $lock -and $Action -ne 'install'){
+        $checked=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        try {
+            Write-CheckCache $file $null $checked
+            $result.checked_utc_epoch=$checked;$result.expires_utc_epoch=$checked+180;$cacheState='STORED'
+        }catch{$cacheState='LOCAL_STATE_UNWRITABLE'}
+    }
+    if ($httpStatus){$result.http_status=$httpStatus}
+    if ($null -ne $hostExit){$result.host_exit_code=$hostExit}
 } finally {if ($lock){$lock.Dispose()}}
+$result.mode=$mode
+$result.cache=$cacheState
+$result.cache_store=$store
+$rc=0
+if ($Action -eq 'install' -and $result.status -notin 'INSTALLED_RESTART_REQUIRED','ALREADY_INSTALLED'){$rc=2}
+$result.exit_code=$rc
 if ($Action -eq 'hook') {
-    if ($result.status -eq 'AVAILABLE'){
-        @{hookSpecificOutput=@{hookEventName='SessionStart';additionalContext=('GD-CAE official channel data: '+($result | ConvertTo-Json -Compress))}} | ConvertTo-Json -Depth 4 -Compress
-    }else{'{}'}
+    @{hookSpecificOutput=@{hookEventName='SessionStart';additionalContext=('GD-CAE update receipt '+($result | ConvertTo-Json -Compress))}} | ConvertTo-Json -Depth 4 -Compress
 } else {$result | ConvertTo-Json -Compress}
-if ($Action -eq 'install' -and $result.status -notin 'INSTALLED_RESTART_REQUIRED','ALREADY_INSTALLED'){exit 2}
+exit $rc

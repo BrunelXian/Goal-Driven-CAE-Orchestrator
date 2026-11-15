@@ -11,7 +11,7 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.8"
+VERSION = "0.2.0-preview.10"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
 FILES = {"plugin.json", "skills/research/SKILL.md", "scripts/main.py",
@@ -64,7 +64,8 @@ def core_bytes(plugin, manifest_pin):
     if COMPAT in actual:
         compat = checked(plugin/COMPAT)
         require(compat.stat().st_size <= 65536 and
-                metadata_digest(compat.read_bytes()) == manifest["metadata_sha256"][COMPAT],
+                metadata_digest(compat.read_bytes()) in (manifest["metadata_sha256"][COMPAT],
+                                                         manifest["compat_with_hooks_sha256"]),
                 "HOST_METADATA_MISMATCH")
     for name in sorted(FILES):
         content = checked(plugin/name).read_bytes()
