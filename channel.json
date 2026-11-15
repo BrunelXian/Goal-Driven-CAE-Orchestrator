@@ -1,9 +1,9 @@
 {
   "change": "auto-update",
   "impact": "restart-rebind-no-migration",
-  "manifest_sha256": "9f9e148371142e18125ab264efed93e2cdd218e08597f13e5a8119441a3b8024",
+  "manifest_sha256": "6877078efd70f9effb8d7a420faef79931ad364baba725793573cb79feb7b478",
   "product": "gdcae-research",
   "schema": 1,
-  "version": "0.2.0-preview.10",
-  "zip_sha256": "0d48cd7dc91ef5370b13eeb9b6a58954d9a093f9c40fe82825d164bf5efdf9a2"
+  "version": "0.2.0-preview.11",
+  "zip_sha256": "bdc451a2cef94fcd101caf33690ba161a4efac0c4ae722233302978e78c277ab"
 }
