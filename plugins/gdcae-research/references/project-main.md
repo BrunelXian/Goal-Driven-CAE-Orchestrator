@@ -38,6 +38,14 @@ flowchart TD
 
 介绍仅使用以上随 Skill 提供的内容即可。具体任务即使没有可读模型、Python 或 Main 创建工具，仍直接列出问题表、候选 Sanity Model 的用途与资格、一个关键 UNKNOWN 和下一步。用户请求创建而宿主缺少能力或授权时，使用 BLOCKED_HOST_MAIN_CREATION，给出可接续的研究摘要；未知创建结果沿用原有防重规则。需要实际执行的操作再查相应协议。
 
+### 科研立项与任务卡
+
+setup 收到明确科研需求即进入立项。工作简称取 1–32 位 ASCII 字母数字、连字符或下划线，以字母数字开头，例如本例 LoadInv；首次生成后沿用。首屏显示项目简称、目标、可变项、固定条件、已有资产、指标及 UNKNOWN。随后必须逐张显示 T01 和 T02，均标 DRAFT_NOT_PERSISTED。在每张草稿中列出目标、责任角色、输入、交付物和判据；项目身份未核实时用待绑定，不编造 Project ID。T01 为 Sanity Model 模型资格检查，T02 为 Abaqus / AbqJobPilot 的只读能力发现与执行准备。T01、T02 可独立准备。没有授权、独立证据或工具回执时明确标出。已有模型先标 CANDIDATE。
+
+setup 的工作到交接为止。不得给载荷答案、比例估算、求解公式、算法步骤、参数迭代或提交 Job，即使用户再次催促。只在 Host 允许时通过正式接口核对项目、claim、创建或复用唯一 Main、record、回读项目/标题/研究摘要与两张草稿、verify。若工具不可用，报告 BLOCKED_HOST_MAIN_CREATION；若创建响应不确定，报告 CREATE_UNKNOWN 并停止创建。保留摘要和两张草稿，说明可接续条件，到此结束。用户单纯描述研究问题不授权创建持久 ResearchProject 或注册任务。
+
+research 作为 Main 接收交接后，第一屏显示研究摘要、用途与模型资格、两张卡和状态、关键 UNKNOWN、下一步与所需授权。已有绑定和明确项目路径时以 task-list 实际读回为准。未登记则标草稿；用户授权保存且真实 Main 身份已核实时，使用既有 new（仅在需要新项目时）以及 task-init，核实 REGISTERED_READ_BACK 后再用 task-list。成功创建聊天本身不等于注册项目。Main 唯一负责科学决策。交接已提供的问题和卡片直接沿用，仅询问会改变用途或接续动作的缺项。专业角色按卡匹配。ODB 提取数据，Independent Validation 评估证据和主张，确定性校验器按冻结标准计算。缺少 Project/Role/Task/工具权限绑定回执时报告 BLOCKED_HOST_ROLE_BINDING，不创建普通聊天充当专家，也不阻止任务登记。
+
 <!-- onboarding:end -->
 
 ## 安装对话移交
@@ -45,9 +53,9 @@ flowchart TD
 先从用户已经提供的信息提取研究问题、变量、比较条件、评价指标、资产引用、约束及 UNKNOWN。根据研究主题给出简短工作标签，例如材料反演用 InvOpt。安装对话只组织交接。已接到交接的新 Main 直接进入下节，不再次创建 Main。
 
 1. 从本次 Host 的正式接口取得当前保存的 Desktop Project 身份及 hostId。只使用用户指定或可唯一核实的项目。只有 Host 允许且用户已授权创建独立对话时才能创建；如 Host 要求明确请求，新用户可一次表达“启动这个科研项目并创建独立 Main”。项目名称不需单独审批。
-2. 使用安装目录的 scripts/main-handoff.ps1。先按交付清单的独立 manifest pin 验证 package-manifest.json，再按该清单核实脚本自身。每次传入 -HostId、-ProjectId、-ManifestSha256。先 inspect。已有 VERIFIED 时核对既有引用的 Host 身份、项目与标题，再直接返回。已有 UNKNOWN 或未完成交接时只按已有记录对账，禁止再次创建。该版本每个本机用户配置、每个保存的 Desktop Project 只绑定一个 Main。多个研究需要分别明确项目身份。
-3. 明确支持 create_thread、读取回执、核对项目及会话时，执行 -Action claim -Title 'InvOpt Main'（名称随项目变化）。仅当本次返回 may_create=true，使用 create_thread，以精确的项目 ID、local 目标、该标题及最小上下文新建同级可见对话。首条消息含请求标识、研究问题表、已有引用、UNKNOWN、能力/许可状态，标明已交接、禁止再次分派 Main。不得转发历史、私有目录清单、授权或凭据。未经允许不打开资料或创建持久项目。
-4. 对 ready 回执，将真实 threadId 用 -Action record -RequestId … -ThreadId … 写入。同一 host 定向 read_thread / wait_threads 核实新 Main 已复述目标及 UNKNOWN。按 list_threads 的项目身份或其已保存项目的唯一工作目录和 hostId 核实归属及标题。核对完成才用 -Action verify 加入 -ObservedProjectId 和 -ObservedTitle。工具缺失或不允许创建时返回 BLOCKED_HOST_MAIN_CREATION 和可直接使用的摘要。请求已发出但只有排队客户端 ID、超时、项目/会话身份不明时保留 CREATE_UNKNOWN 或 REF_RECORDED，禁止重发、改名其他对话、切换执行通道或后台冒充。成功后安装对话只给出 Main 引用并结束。
+2. 使用安装目录的 scripts/main-handoff.ps1。先按交付清单的独立 manifest pin 验证 package-manifest.json，再按该清单核实脚本自身。每次传入 -HostId、-ProjectId、-ManifestSha256。先 inspect，并传入目标 -Title 核对已有绑定。已有 VERIFIED 时核对既有引用的 Host 身份、项目与标题，再直接返回。已有 UNKNOWN 或未完成交接时只按已有记录对账，禁止再次创建。该版本每个本机用户配置、每个保存的 Desktop Project 只绑定一个 Main。多个研究需要分别明确项目身份。
+3. 明确支持 create_thread、读取回执、核对项目及会话时，执行 -Action claim -Title 'InvOpt Main'（名称随项目变化）。仅当本次返回 may_create=true，使用 create_thread，以精确的项目 ID、local 目标、该标题及最小上下文新建同级可见对话。首条消息含请求标识、研究问题表、T01/T02 完整草稿、已有引用、UNKNOWN、能力/许可状态，标明已交接、禁止再次分派 Main。不得转发历史、私有目录清单、授权或凭据。未经允许不打开资料或创建持久项目。
+4. 对 ready 回执，将真实 threadId 用 -Action record -RequestId … -ThreadId … 写入。同一 host 定向 read_thread / wait_threads 核实新 Main 已复述目标、T01/T02 及 UNKNOWN。按 list_threads 的项目身份或其已保存项目的唯一工作目录和 hostId 核实归属及标题。核对完成才用 -Action verify 加入 -ObservedProjectId 和 -ObservedTitle。工具缺失或不允许创建时返回 BLOCKED_HOST_MAIN_CREATION 和可直接使用的摘要。请求已发出但只有排队客户端 ID、超时、项目/会话身份不明时保留 CREATE_UNKNOWN 或 REF_RECORDED，禁止重发、改名其他对话、切换执行通道或后台冒充。成功后安装对话只给出 Main 引用并结束。
 
 ## Main 首轮与后续评估
 
@@ -64,3 +72,12 @@ flowchart TD
 overview/hint 返回当前合同的最新资格、缺项与下一步，detail 另含候选引用。换合同后重评。资格待证时可继续讨论和另行授权的探索。QUALIFIED 在本版仅用于 synthetic-axial-compliance-mm-N-v1 的精确解析基准。Small-Punch 实际研究须取得与其用途匹配的独立资格证据，当前适配器不会授予该资格。
 
 候选按原 agreement 的 attribute 登记后，使用同一 launcher 的 sanity-reference。输入公共字段 schema、op、project、expected_revision、key、refs，另给 use、assessment（精确资格回执）、candidate（已登记候选身份）。返回绑定的基准版本及候选摘要；资格不传递给候选。
+
+## Task Card v1 安装态操作
+
+使用已验证的 launch.ps1 -Action agreement -BindingSha256 … -ProjectRoot … -Operation task-list 读取项目、修订、摘要和卡片。所有写入传入 -InputFile，内容为 JSON。公共字段 project（task-list 的真实项目 ID）、expected_revision、key（稳定请求标识）、host、desktop_project、data。Host 注入的 CODEX_THREAD_ID 须与本用户 VERIFIED 交接回执匹配。初始化前征得保存许可。相同请求可以原样重试；修订过期先重新读取。
+
+- task-init 的 data 含 summary 和 drafts。drafts 以 T01、T02 为键，各含 goal、criterion、deliverable 和 refs；直接保留交接中的具体目标、判据和交付要求。refs 可为空。两张初始卡在同一事务中登记。每个引用含 reference 和 sha256（64 位小写十六进制）。
+- task-create 的 data 含 task_id、kind、goal、criterion、deps、refs。已发布类型为 model-qualification、capability-discovery、result-extraction、independent-review、candidate-design、research-review。
+- task-update 的 data 含 task_id、execution、evidence。OPEN 可转 IN_PROGRESS 或 BLOCKED，再由 IN_PROGRESS 提交 SUBMITTED 和非空证据引用。任务交付后由 Main 复核；提交引用不赋予模型资格或科学通过状态。
+- capability-discovery 的输入仅含 abaqus_launcher 与 abqjobpilot_root（操作者提供的本地路径或 null）。只读取入口存在性与发行源码元数据。能力发现结果可作为 T02 的证据资产，存档时记录 SHA-256。无法验证真实服务与项目授权时停止执行准备。

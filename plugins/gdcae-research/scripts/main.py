@@ -11,7 +11,7 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.15"
+VERSION = "0.2.0-preview.16"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
 FILES = {"plugin.json", "skills/research/SKILL.md", "scripts/main.py",
@@ -194,7 +194,7 @@ def guard(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['preflight','bind','doctor','main','agreement'])
-    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference'])
+    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference','task-list','task-init','task-create','task-update','capability-discovery'])
     parser.add_argument('--input-file', type=Path)
     parser.add_argument('--selector')
     parser.add_argument('--agreement-root', type=Path)

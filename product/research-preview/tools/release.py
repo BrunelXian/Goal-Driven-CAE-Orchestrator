@@ -12,7 +12,7 @@ PRODUCT = Path(__file__).resolve().parents[1]
 REPO = PRODUCT.parents[1]
 ID = "gdcae-research"
 PLUGIN = REPO / "plugins" / ID
-VERSION = "0.2.0-preview.15"
+VERSION = "0.2.0-preview.16"
 PREFIX = f"GDCAE-Research-Preview-{VERSION}/"
 INNER = f"GDCAE-Install-{VERSION}.zip"
 PLUGIN_DIR = f"INSTALL-MEDIA/plugins/{ID}/"
@@ -23,7 +23,8 @@ PAYLOAD = ("plugin.json", "scripts/launch.ps1", "scripts/main.py", "skills/resea
            "scripts/runtime-checks.ps1", "runtime/cpython-windows.json", "references/runtime-options.md",
            "scripts/update.ps1", "hooks/hooks.json", "references/update.md")
 CORE_FILES = ("__init__.py", "contracts/__init__.py", "contracts/research_contracts.py",
-              "research/__init__.py", "research/project.py", "research/research_agreement.py", "research/sanity.py")
+              "research/__init__.py", "research/project.py", "research/research_agreement.py", "research/sanity.py",
+              "research/task_cards.py", "research/task_roles.py", "research/capability_discovery.py")
 CASE = ("CASE.md", "Sanity.csv", "run_014.csv", "difference.csv", "force-displacement.png",
         "rc3-evidence.json", "recompute.py")
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
@@ -85,9 +86,12 @@ def private_publisher_manifest(public_manifest):
     require(digest(original) == "d70ba01dbf56cd270cb6a6a835b5855f467b1065993b86665883337e04eb0f94",
             "private publisher manifest identity mismatch")
     reviewed = json.loads(original)
+    require(reviewed["version"] == "0.2.0-preview.15", "publisher source version")
+    reviewed["version"] = VERSION
+    private_manifest = encoded(reviewed)
     del reviewed["author"]["email"]
     require(reviewed == json.loads(public_manifest), "public plugin source disagrees with the approved identity")
-    return original
+    return private_manifest
 
 
 def plugin_files():

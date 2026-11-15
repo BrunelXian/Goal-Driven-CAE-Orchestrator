@@ -45,9 +45,11 @@ def reference(value):
     return value
 
 
-def load_roles(directory):
+def load_roles(directory, catalog=None):
+    """Explicit release-owned role catalog; unrelated project files are never discovered."""
     result = {}
-    for name, label in ROLES.items():
+    for name, label in (ROLES if catalog is None else catalog).items():
+        require(re.fullmatch(r"[a-z][a-z0-9-]{0,63}", name) and text(label), "ROLE_CATALOG_INVALID")
         path = Path(directory) / (name + '.toml')
         body = path.read_bytes()
         raw = tomllib.loads(body.decode())
@@ -96,9 +98,15 @@ def _fault(stage):
 
 
 class SessionHub:
-    def __init__(self, project, roles):
+    def __init__(self, project, roles, *, approved_role_digests=None):
         require(type(project) is projects.ResearchProject, 'INVALID_PROJECT')
-        require(set(roles) == set(ROLES), 'ROLE_CATALOG_INVALID')
+        if approved_role_digests is None:
+            require(set(roles) == set(ROLES), 'ROLE_CATALOG_INVALID')
+        else:
+            require(approved_role_digests == {k: v['definition_digest'] for k, v in roles.items()},
+                    'ROLE_BINDING_CHANGED')
+        require(roles and all(info['role_id'] == role and info['features'] == DENIED_FEATURES
+                              for role, info in roles.items()), 'ROLE_CATALOG_INVALID')
         self.project, self.roles = project, copy.deepcopy(roles)
 
     def _path(self):

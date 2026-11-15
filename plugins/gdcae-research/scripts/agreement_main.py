@@ -60,9 +60,12 @@ def run(args,plugin,checked):
     root=checked(args.project_root)
     require(not root.is_relative_to(plugin), "PROJECT_OUTSIDE_INSTALLATION_REQUIRED")
     op=args.operation
-    read=op in ("overview","detail","diff","hint")
+    read=op in ("overview","detail","diff","hint","task-list")
     require(not args.output and not args.agreement_root and (not args.selector or op in ("detail","diff"))
             and ((read and not args.input_file) or (not read and args.input_file)), "INVALID_AGREEMENT_ARGUMENTS")
+    if op == "task-list":
+        from aegiscae.research.task_cards import view
+        return view(project.open_agreement_project(root))
     if read:
         return query(root,op,args.selector)
     path=checked(args.input_file)
@@ -72,6 +75,13 @@ def run(args,plugin,checked):
         require(set(body)=={"name","schema"} and body["schema"]=="research-agreement-project-v3","EXPLICIT_OPT_IN_REQUIRED")
         created=project.create_research_project(root,body["name"],research_agreements=True)
         return {**created.inspect(),"current_hint":query(root)}
+    if op == "capability-discovery":
+        from aegiscae.research.capability_discovery import discover
+        project.open_agreement_project(root)
+        return discover(body)
+    if op in ("task-init", "task-create", "task-update"):
+        from aegiscae.research.task_cards import record
+        return record(project.open_agreement_project(root, write=True), body, op)
     handle=project.open_agreement_project(root,write=op != "sanity-triage")
     if op in ("sanity-triage", "sanity-assess", "sanity-reference"):
         from aegiscae.research.sanity import assess, observe

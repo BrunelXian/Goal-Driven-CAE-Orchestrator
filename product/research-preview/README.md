@@ -2,7 +2,9 @@
 
 插件的唯一维护源在 [plugins/gdcae-research](../../plugins/gdcae-research)。本目录持有本地 Marketplace 注册文件、安装指南模板、发行说明、已公开的历史小冲杆案例和标准库打包工具。运行环境为 Windows CPython 3.12.10。构建不需要配置 Codex、Abaqus 或外部小冲杆项目。
 
-科研约定逻辑的维护源位于 [Core](../../src/aegiscae/research/research_agreement.py)。打包器按六项明确源码清单生成 `runtime/agreement-core.zip`，与插件清单一同校验。运行时从安装缓存加载，用户的版本记录仅写入自选项目的 `research.sqlite3`。四种 Markdown 视图、输入字段及迟到结果的归属见[科研约定操作说明](../../plugins/gdcae-research/references/research-agreement.md)。
+科研约定逻辑的维护源位于 [Core](../../src/aegiscae/research/research_agreement.py)。打包器按 CORE_FILES 中的明确源码清单生成 `runtime/agreement-core.zip`，与插件清单一同校验。运行时从安装缓存加载，用户的版本记录仅写入自选项目的 `research.sqlite3`。四种 Markdown 视图、输入字段及迟到结果的归属见[科研约定操作说明](../../plugins/gdcae-research/references/research-agreement.md)。
+
+项目级任务记录、初始交接与动态角色的当前契约见[Research Intake & Task Cards v1](../../docs/architecture/RESEARCH_INTAKE_AGENTHUB.md)。Private Preview 构建使用已固定摘要的外部 .15 发行者元数据；在构建进程中将其路径传给 GDCAE_PREVIEW15_PUBLISHER_MANIFEST。源码中不保存私有发行者邮箱。
 
 从仓库根运行以下 PowerShell 命令。准备一个已核验的解释器和一个尚不存在的仓库外输出目录，父目录应已存在。
 

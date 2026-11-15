@@ -65,6 +65,7 @@ try {
         } else {
             $state=Get-Content -Raw -Encoding UTF8 -LiteralPath $file | ConvertFrom-Json
             if ($state.schema -cne 'gdcae-main-handoff-v1' -or $state.host_id -cne $HostId -or $state.project_id -cne $ProjectId -or $state.request_id -cne $key -or $state.state -notin 'CREATE_UNKNOWN','REF_RECORDED','VERIFIED') { throw 'HANDOFF_CONFLICT' }
+            if ($Title -and $state.title -cne $Title) { throw 'MAIN_TITLE_CONFLICT' }
             if ($Action -in 'record','verify') {
                 if ($RequestId -cne $key -or $ThreadId -cnotmatch '^[a-zA-Z0-9._:-]{1,160}$') { throw 'INVALID_RECEIPT' }
                 if ($state.thread_id -and $state.thread_id -cne $ThreadId) { throw 'MAIN_ALREADY_BOUND' }

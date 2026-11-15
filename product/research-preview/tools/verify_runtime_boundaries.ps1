@@ -4,7 +4,14 @@ $ErrorActionPreference='Stop'
 $spec=Get-Content (Join-Path $plugin 'runtime/cpython-windows.json') -Raw | ConvertFrom-Json
 function Denied($name,$expected,[scriptblock]$operation){
     $message=$null
-    try { & $operation } catch {$message=$_.Exception.Message}
+    try { & $operation } catch {
+        $message=$_.Exception.Message
+        $cause=$_.Exception
+        while ($null -ne $cause) {
+            if ($cause -is [Net.WebException]) { $message += " [" + $cause.Status + "]"; break }
+            $cause=$cause.InnerException
+        }
+    }
     if (!$message -or $message -notmatch $expected) {throw "FAILED $name $message"}
     [pscustomobject]@{case=$name; error=$message}
 }
@@ -28,6 +35,6 @@ foreach($case in 'path','duplicate','size','extra') {
 $localSpec=Get-Content (Join-Path $plugin 'runtime/cpython-windows.json') -Raw | ConvertFrom-Json
 foreach($case in 'missing','redirect','offline','short') {
     $localSpec.url=if($case -eq 'offline'){'http://127.0.0.1:1/unreachable'}else{"http://127.0.0.1:$FixturePort/$case"}
-    $rows+=Denied $case '404|refused|拒绝|UNEXPECTED_HTTP_RESPONSE|DOWNLOAD_SIZE_MISMATCH' {Receive-RuntimeArchive $localSpec "$work/$case.bin"}
+    $rows+=Denied $case '404|ConnectFailure|refused|拒绝|UNEXPECTED_HTTP_RESPONSE|DOWNLOAD_SIZE_MISMATCH' {Receive-RuntimeArchive $localSpec "$work/$case.bin"}
 }
 $rows | ConvertTo-Json

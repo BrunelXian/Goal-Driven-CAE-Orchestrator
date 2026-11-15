@@ -330,7 +330,13 @@ def _read_state(connection, root, agreement_state=None):
             revision_stamp = (event["at_utc"], event["transaction_id"])
         elif workflow_event:
             try:
-                if meta["schema_version"] == 3:
+                if meta["schema_version"] == 3 and event["workflow"].get("schema") == "research-task-v1":
+                    from aegiscae.research import task_cards
+                    _require(event["bundle_digest"] == latest_frozen_digest, "INTEGRITY_ERROR")
+                    task_cards.apply(agreement_state.setdefault("task_hub", task_cards.empty()),
+                                     event["workflow"], meta["research_project_id"], current_revision,
+                                     latest_frozen_digest)
+                elif meta["schema_version"] == 3:
                     parent = next((b for b in decoded if b[1] == latest_frozen_digest
                                    and b[2] <= current_revision), None)
                     _require(parent is not None and event["bundle_digest"] == parent[1], "INTEGRITY_ERROR")
