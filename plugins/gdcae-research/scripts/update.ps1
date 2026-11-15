@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [ValidateSet('hook','check','skill-check','install','identity','pin-current','verify')][string]$Action='check',
+    [ValidateSet('hook','check','skill-check','offer','install','identity','pin-current','verify')][string]$Action='check',
     [string]$TargetVersion, [string]$ManifestPin, [switch]$ConfirmUpdate,
     [string]$ChannelBase64, [string]$ChannelBlobSha,
     [string]$FromCommit, [string]$TargetCommit, [string]$ZipPin
@@ -113,7 +113,9 @@ function Review-Package([string]$folder,[string]$pin,[string]$version) {
     $expected=@($m.files.PSObject.Properties)
     $tree=@(Get-ChildItem -LiteralPath $folder -Recurse -Force)
     if (@($tree | Where-Object {$_.Attributes -band [IO.FileAttributes]::ReparsePoint}).Count){throw 'UNSAFE_TREE'}
-    if (@($tree | Where-Object {!$_.PSIsContainer}).Count -ne $expected.Count+1){throw 'PACKAGE_FILESET'}
+    $actualNames=@($tree | Where-Object {!$_.PSIsContainer} | ForEach-Object {$_.FullName.Substring($folder.TrimEnd('\','/').Length+1).Replace('\','/')})
+    $expectedNames=@('package-manifest.json')+@($expected | ForEach-Object Name)
+    if ($actualNames.Count -ne $expectedNames.Count -or (Compare-Object -CaseSensitive $expectedNames $actualNames)){throw 'PACKAGE_FILESET'}
     foreach ($f in $expected) {
         if ($f.Name -cnotmatch '^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*$' -or $f.Name.Split('/') -contains '..' -or $f.Name.Split('/') -contains '.' -or
             $f.Value -cnotmatch '^[0-9a-f]{64}$' -or (Get-FileHash -LiteralPath (Join-Path $folder $f.Name)).Hash -ne $f.Value){throw 'PACKAGE_BYTES'}
@@ -126,9 +128,9 @@ function Get-Installed {
     }
     return $rows[0]
 }
-function Read-Commit($tag) {
-    $ref=Get-OfficialJson "git/ref/tags/$tag"
-    if ($ref.object.type -cne 'commit' -or $ref.object.sha -cnotmatch '^[0-9a-f]{40}$'){throw 'TAG_NOT_PINNED'}
+function Read-Commit($refName) {
+    $ref=Read-ConnectorJson "git/ref/$refName"
+    if ($ref.ref -cne "refs/$refName" -or $ref.object.type -cne 'commit' -or $ref.object.sha -cnotmatch '^[0-9a-f]{40}$'){throw 'REF_IDENTITY'}
     return $ref.object.sha
 }
 
@@ -201,44 +203,82 @@ function Verify-Installation($homePath,$version,$commit,$manifest) {
     Review-Package (Join-Path $ms[0].root "plugins\$product") $manifest $version
     Review-Package (Join-Path $homePath "plugins\cache\$market\$product\$version") $manifest $version
 }
-function Test-ReleaseAsset($asset,$tag,$name,$pin) {
-    $url="https://github.com/$repo/releases/download/$tag/$name"
-    if ($asset.browser_download_url -cne $url -or $asset.size -lt 1 -or $asset.size -gt 16777216){throw 'RELEASE_ASSET_IDENTITY'}
-    for ($hop=0;$hop -lt 4;$hop++) {
-        $req=[Net.HttpWebRequest]::Create($url)
-        $req.UserAgent='GDCAE-Research-Update/1'
-        $req.AllowAutoRedirect=$false
-        $req.Timeout=15000
-        $req.ReadWriteTimeout=15000
-        $resp=$req.GetResponse()
-        try {
-            if ([int]$resp.StatusCode -in 301,302,303,307,308){
-                $next=[Uri]::new([Uri]$url,$resp.Headers['Location'])
-                if($next.Scheme -ne 'https' -or !$next.IsDefaultPort -or $next.UserInfo -or $next.Host -notin 'github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'){throw 'RELEASE_ASSET_REDIRECT'}
-                $url=$next.AbsoluteUri
-                continue
-            }
-            if ([int]$resp.StatusCode -ne 200){throw 'RELEASE_ASSET_HTTP'}
-            $buf=New-Object byte[] ($asset.size+1)
-            $n=0
-            $stream=$resp.GetResponseStream()
-            while($n -lt $buf.Length){$read=$stream.Read($buf,$n,$buf.Length-$n);if (!$read){break};$n+=$read}
-            $hash=[Security.Cryptography.SHA256]::Create()
-            try{$digest=[BitConverter]::ToString($hash.ComputeHash($buf,0,$n)).Replace('-','').ToLowerInvariant()}finally{$hash.Dispose()}
-            if ($n -ne $asset.size -or $digest -cne $pin){throw 'RELEASE_DIGEST_MISMATCH'}
-            return
-        }finally{$resp.Dispose()}
-    }
-    throw 'RELEASE_ASSET_REDIRECT'
+function Get-ConnectorCalls {
+    # Read structured events from the invoking Host thread, never from caller JSON.
+    $tid=$env:CODEX_THREAD_ID
+    if ($tid -notmatch '^[0-9a-fA-F-]{36}$'){throw 'HOST_THREAD_REQUIRED'}
+    $si=[Diagnostics.ProcessStartInfo]::new()
+    $si.FileName=(Get-Command codex.exe -CommandType Application|Select-Object -First 1).Source
+    $si.Arguments='app-server --stdio --disable plugins'
+    $si.UseShellExecute=$false
+    $si.CreateNoWindow=$true
+    $si.RedirectStandardInput=$true
+    $si.RedirectStandardOutput=$true
+    $si.RedirectStandardError=$true
+    $si.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
+    $p=[Diagnostics.Process]::Start($si)
+    try {
+        $p.BeginErrorReadLine()
+        $null=Invoke-PinRpc $p 1 initialize @{clientInfo=@{name='gdcae-update';version='1'};capabilities=@{experimentalApi=$true}}
+        Send-RpcLine $p '{"method":"initialized","params":{}}'
+        $r=Invoke-PinRpc $p 2 'thread/read' @{threadId=$tid;includeTurns=$true}
+        if ($r.thread.id -cne $tid){throw 'HOST_THREAD_MISMATCH'}
+        $turns=@($r.thread.turns)
+        [array]::Reverse($turns)
+        foreach ($turn in $turns){
+            $calls=@($turn.items | Where-Object {$_.type -ceq 'mcpToolCall' -and $_.server -ceq 'codex_apps' -and $_.tool -cin 'github.fetch','github.fetch_file'})
+            if (!$calls.Count){continue}
+            $age=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()-[long]$turn.startedAt
+            if ($turn.status -cnotin 'completed','inProgress' -or $age -lt 0 -or $age -gt 1800){throw 'CONNECTOR_PROOF_EXPIRED'}
+            return $calls
+        }
+        throw 'CONNECTOR_PROOF_MISSING'
+    } finally {if (!$p.HasExited){$p.Kill()};$p.Dispose()}
 }
-function Get-ReleaseManifestPin($version,$commit){
-    $tag="gdcae-research-$version"
-    if ((Read-Commit $tag) -cne $commit){throw 'BASELINE_TAG_MISMATCH'}
-    $release=Get-OfficialJson "releases/tags/$tag"
-    if ($release.tag_name -cne $tag -or $release.draft -or !$release.prerelease){throw 'RELEASE_IDENTITY'}
-    $asset=@($release.assets | Where-Object {$_.name -ceq 'package-manifest.json' -and $_.state -ceq 'uploaded'})
-    if ($asset.Count -ne 1 -or $asset[0].digest -cnotmatch '^sha256:([0-9a-f]{64})$'){throw 'RELEASE_DIGEST_MISMATCH'}
+function Read-ConnectorJson([string]$suffix) {
+    $url="https://api.github.com/repos/$repo/$suffix"
+    $hits=@($connectorCalls | Where-Object {$_.tool -ceq 'github.fetch' -and $_.status -ceq 'completed' -and $_.arguments.url -ceq $url})
+    if ($hits.Count -ne 1){throw 'CONNECTOR_PROOF_MISSING'}
+    return ($hits[0].result.structuredContent.content | ConvertFrom-Json)
+}
+function Get-ReleaseDigest($release,$tag,$name) {
+    $asset=@($release.assets | Where-Object name -CEQ $name)
+    if ($asset.Count -ne 1 -or $asset[0].state -cne 'uploaded' -or $asset[0].size -le 0 -or $asset[0].id -le 0 -or
+        $asset[0].browser_download_url -cne "https://github.com/$repo/releases/download/$tag/$name" -or
+        $asset[0].digest -cnotmatch '^sha256:([0-9a-f]{64})$'){throw 'RELEASE_DIGEST_MISMATCH'}
     return $Matches[1]
+}
+function Get-ReleasePins($version,$commit){
+    $null=PreviewNumber $version
+    $tag="gdcae-research-$version"
+    if ((Read-Commit "tags/$tag") -cne $commit){throw 'BASELINE_TAG_MISMATCH'}
+    $release=Read-ConnectorJson "releases/tags/$tag"
+    if ($release.tag_name -cne $tag -or $release.draft -ne $false -or $release.prerelease -ne $true -or
+        $release.html_url -cne "https://github.com/$repo/releases/tag/$tag"){throw 'RELEASE_IDENTITY'}
+    return @{manifest=(Get-ReleaseDigest $release $tag 'package-manifest.json');
+        zip=(Get-ReleaseDigest $release $tag "CAE-Agent-Research-Preview-${version}_PUBLIC_DIRECTORY.zip")}
+}
+function Get-ReleaseManifestPin($version,$commit){return (Get-ReleasePins $version $commit).manifest}
+function Get-ConnectorOffer {
+    $commit=Read-Commit "heads/$branch"
+    $files=@($connectorCalls | Where-Object {$_.tool -ceq 'github.fetch_file' -and $_.status -ceq 'completed' -and
+        $_.arguments.repository_full_name -ceq $repo -and $_.arguments.ref -ceq $commit -and
+        $_.arguments.path -ceq 'channel.json' -and $_.arguments.encoding -ceq 'base64'})
+    if ($files.Count -ne 1){throw 'CONNECTOR_CHANNEL_MISSING'}
+    $entry=$files[0].result.structuredContent
+    if ($entry.encoding -cne 'base64' -or $entry.content.Length -gt 3000){throw 'CHANNEL_IDENTITY'}
+    $offer=ConvertTo-Offer ([pscustomobject]@{type='file';path='channel.json';encoding=$entry.encoding;
+        content=$entry.content;sha=$entry.sha;size=[Convert]::FromBase64String($entry.content).Length})
+    $pins=Get-ReleasePins $offer.version $commit
+    if ($pins.manifest -cne $offer.manifest_sha256 -or $pins.zip -cne $offer.zip_sha256){throw 'RELEASE_DIGEST_MISMATCH'}
+    $offer | Add-Member -NotePropertyMembers @{target_commit=$commit;channel_blob=$entry.sha}
+    return $offer
+}
+function Assert-StagedRef($folder,$commit,$blob){
+    $head=& git.exe -C $folder rev-parse --verify HEAD
+    if ($LASTEXITCODE -ne 0 -or $head -cne $commit){throw 'STAGED_HEAD_MISMATCH'}
+    $object=& git.exe -C $folder rev-parse --verify HEAD:channel.json
+    if ($LASTEXITCODE -ne 0 -or $object -cne $blob){throw 'STAGED_CHANNEL_MISMATCH'}
 }
 function Pin-Current {
     if (!$ConfirmUpdate -or $TargetCommit -cnotmatch '^[0-9a-f]{40}$' -or $ManifestPin -cnotmatch '^[0-9a-f]{64}$'){throw 'CONFIRM_EXACT_OFFER'}
@@ -274,6 +314,7 @@ function Save-RecoveryPackage($folder,$pin,$version,$commit,$directory){
 function Install-Offer($offer) {
     if (!$ConfirmUpdate -or $TargetVersion -cne $offer.version -or $ManifestPin -cne $offer.manifest_sha256 -or
         $ZipPin -cne $offer.zip_sha256 -or $TargetCommit -cnotmatch '^[0-9a-f]{40}$' -or $FromCommit -cnotmatch '^[0-9a-f]{40}$'){throw 'CONFIRM_EXACT_OFFER'}
+    if ($offer.target_commit -cne $TargetCommit){throw 'CHANNEL_MOVED'}
     $hostHome=Get-HostHome
     $saved=Invoke-MarketplacePin $hostHome
     if ($saved.ref -cnotmatch '^[0-9a-f]{40}$'){throw 'MIGRATION_REQUIRED'}
@@ -295,17 +336,7 @@ function Install-Offer($offer) {
     $previousPin=Get-ReleaseManifestPin $old.version $priorCommit
     Review-Package $previous $previousPin $old.version
     Review-Package (Join-Path $snapshot[0].root "plugins\$product") $previousPin $old.version
-    $tag="gdcae-research-$TargetVersion"
-    $release=Get-OfficialJson "releases/tags/$tag"
-    if ($release.tag_name -cne $tag -or $release.draft -or !$release.prerelease){throw 'RELEASE_IDENTITY'}
-    foreach ($proof in @(@('package-manifest.json',$ManifestPin),@("CAE-Agent-Research-Preview-$($TargetVersion)_PUBLIC_DIRECTORY.zip",$offer.zip_sha256))) {
-        $matchesAsset=@($release.assets | Where-Object {$_.name -ceq $proof[0] -and $_.state -ceq 'uploaded' -and $_.digest -ceq ('sha256:'+$proof[1])})
-        if ($matchesAsset.Count -ne 1){throw 'RELEASE_DIGEST_MISMATCH'}
-        Test-ReleaseAsset $matchesAsset[0] $tag $proof[0] $proof[1]
-    }
-    $commit=Read-Commit $tag
-    $head=Get-OfficialJson "git/ref/heads/$branch"
-    if ($head.object.type -cne 'commit' -or $head.object.sha -cne $commit -or $commit -cne $TargetCommit){throw 'CHANNEL_MOVED'}
+    $commit=$offer.target_commit
     # Inspect immutable, isolated source before invoking a refresh on the user's profile.
     $temp=Join-Path ([IO.Path]::GetTempPath()) ('gdcae-market-'+[guid]::NewGuid().ToString('N'))
     $original=$env:CODEX_HOME
@@ -314,6 +345,7 @@ function Install-Offer($offer) {
         $env:CODEX_HOME=$temp
         $stage=Invoke-CodexJson @('plugin','marketplace','add',$origin,'--ref',$commit,'--sparse','.agents/plugins','--sparse','plugins/gdcae-research','--json')
         if ($stage.marketplaceName -cne $market){throw 'STAGED_MARKETPLACE_IDENTITY'}
+        Assert-StagedRef $stage.installedRoot $commit $offer.channel_blob
         Review-Package (Join-Path $stage.installedRoot "plugins\$product") $ManifestPin $TargetVersion
         $catalog=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $stage.installedRoot '.agents/plugins/marketplace.json') | ConvertFrom-Json
         if ($catalog.name -cne $market -or @($catalog.plugins).Count -ne 1 -or $catalog.plugins[0].name -cne $product -or
@@ -356,7 +388,8 @@ function Install-Offer($offer) {
         return @{status='FAILED_OLD_VERSION_RESTORED';version=$old.version;commit=$priorCommit;reason=$reason}
     }
     [IO.File]::Delete($journal)
-    return @{status='INSTALLED_RESTART_REQUIRED';version=$TargetVersion;commit=$commit;enabled=$true;manifest_sha256=$ManifestPin;zip_sha256=$ZipPin}
+    return @{status='INSTALLED_RESTART_REQUIRED';version=$TargetVersion;commit=$commit;enabled=$true;manifest_sha256=$ManifestPin;
+        zip_sha256=$ZipPin;release_zip_bytes_verified=$false;staged_head=$commit;staged_channel_blob=$offer.channel_blob}
 }
 
 function Get-StateDirectory {
@@ -412,7 +445,7 @@ function Write-CheckCache($file,$offer,$checked) {
 }
 
 $mode=@{hook='SESSIONSTART_AUTO_CHECK';'skill-check'='FIRST_SKILL_USE_CHECK';check='MANUAL_CHECK';install='CONFIRMED_INSTALL';
-    'pin-current'='CONFIRMED_MIGRATION';verify='INSTALLED_READBACK';identity='INSTALLED_IDENTITY'}[$Action]
+    'pin-current'='CONFIRMED_MIGRATION';verify='INSTALLED_READBACK';identity='INSTALLED_IDENTITY';offer='VERIFIED_OFFER'}[$Action]
 # Connector provenance comes from the Host tool event. Its bytes are for display only:
 # never persist these inputs, perform an install, or replace the release verification path.
 if ($PSBoundParameters.ContainsKey('ChannelBase64') -or $PSBoundParameters.ContainsKey('ChannelBlobSha')) {
@@ -445,7 +478,7 @@ $result=$null
 $httpStatus=$null
 $hostExit=$null
 $cacheState='MISS'
-$operation=$Action -in 'install','pin-current','verify','identity'
+$operation=$Action -in 'install','pin-current','verify','identity','offer'
 $store=if($env:PLUGIN_DATA -and !$operation){'PLUGIN_DATA'}else{'LOCALAPPDATA'}
 try {
     if ($Action -in 'install','pin-current' -and !$ConfirmUpdate){throw 'CONFIRM_EXACT_OFFER'}
@@ -458,7 +491,7 @@ try {
         if ($configured -cnotin $FromCommit,$TargetCommit){throw 'PIN_CONFLICT'}
         $reportedCurrent=(Get-Installed).version
     }
-    try {
+    if ($Action -ne 'offer'){try {
         $state=Get-StateDirectory
         $guard=Join-Path $state 'channel.lock'
         $file=Join-Path $state 'check-v2.json'
@@ -473,10 +506,22 @@ try {
         }
         if($operation){throw $cacheState}
         if($cacheState -eq 'BUSY'){$result=@{status='BUSY';current=$local}}
-    }
+    }}
     if ($lock -and !$operation){
         try {$result=Read-CheckCache $file;if ($result){$cacheState='HIT'}}
         catch {$cacheState='CORRUPT_OR_UNREADABLE'}
+    }
+    if ($Action -in 'install','offer','pin-current'){$connectorCalls=@(Get-ConnectorCalls)}
+    if ($Action -eq 'offer'){
+        $offer=Get-ConnectorOffer
+        $installed=Get-Installed
+        $from=(Invoke-MarketplacePin (Get-HostHome)).ref
+        $baselinePin=Get-ReleaseManifestPin $installed.version $from
+        Verify-Installation (Get-HostHome) $installed.version $from $baselinePin
+        $result=Compare-Offer $offer $installed.version
+        $result.from_commit=$from
+        $result.target_commit=$offer.target_commit
+        $result.release_zip_bytes_verified=$false
     }
     if ($Action -eq 'pin-current'){$result=Pin-Current}
     if ($Action -eq 'identity'){
@@ -504,7 +549,7 @@ try {
         }
     }
     if (!$result){
-        $offer=Get-Offer
+        $offer=if ($Action -eq 'install'){Get-ConnectorOffer}else{Get-Offer}
         if ($Action -eq 'install'){$result=Install-Offer $offer}
         else {
             $result=Compare-Offer $offer $local
@@ -537,7 +582,7 @@ $result.mode=$mode
 $result.cache=$cacheState
 $result.cache_store=$store
 $rc=0
-if ($operation -and $result.status -notin 'INSTALLED_RESTART_REQUIRED','ALREADY_INSTALLED','PINNED_CURRENT','VERIFIED_INSTALLATION','FIXED_BASELINE'){$rc=2}
+if ($operation -and $result.status -notin 'INSTALLED_RESTART_REQUIRED','ALREADY_INSTALLED','PINNED_CURRENT','VERIFIED_INSTALLATION','FIXED_BASELINE','AVAILABLE','CURRENT','CHANNEL_BEHIND'){$rc=2}
 $result.exit_code=$rc
 if ($Action -eq 'hook') {
     @{hookSpecificOutput=@{hookEventName='SessionStart';additionalContext=('GD-CAE update receipt '+($result | ConvertTo-Json -Compress))}} | ConvertTo-Json -Depth 4 -Compress
