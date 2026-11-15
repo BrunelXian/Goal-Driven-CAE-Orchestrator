@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "repository": "BrunelXian/Goal-Driven-CAE-Orchestrator",
+  "product": "gdcae-research",
+  "channel": "plugin-creator-private",
+  "plugin_id": "plugins_6af978c244ec8191ba521a0eb8bb949d",
+  "release_id": "pluginrel_6af9be046c1c8191a20dc4030f8d987f",
+  "version": "0.2.0-preview.17",
+  "source_commit": "fd9a9fe015b869ae45dae608638417b784c0266f",
+  "manifest_sha256": "8ad1928d4e909a8ee38d91ba9b31b272cedaa9fef4edb57eaeca029e3c7b971d",
+  "zip_sha256": "77f1f4e59477b45077b906858b83ddab8a189fa93a03ce1dfebcfa2076d57150"
+}
