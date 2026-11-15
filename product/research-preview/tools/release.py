@@ -12,7 +12,7 @@ PRODUCT = Path(__file__).resolve().parents[1]
 REPO = PRODUCT.parents[1]
 ID = "gdcae-research"
 PLUGIN = REPO / "plugins" / ID
-VERSION = "0.2.0-preview.13"
+VERSION = "0.2.0-preview.15"
 PREFIX = f"GDCAE-Research-Preview-{VERSION}/"
 INNER = f"GDCAE-Install-{VERSION}.zip"
 PLUGIN_DIR = f"INSTALL-MEDIA/plugins/{ID}/"
@@ -74,28 +74,62 @@ def entries(data, allowed):
 def sums(files):
     return "".join(f"{digest(data)}  {name}\n" for name, data in sorted(files.items())).encode()
 
+def private_publisher_manifest(public_manifest):
+    """Restore the original private Creator metadata only for an identity-checked build."""
+    filename = os.environ.get("GDCAE_PREVIEW15_PUBLISHER_MANIFEST")
+    require(filename, "Set GDCAE_PREVIEW15_PUBLISHER_MANIFEST to the approved external .15 plugin.json")
+    path = Path(filename).resolve()
+    require(path.is_file() and not path.is_relative_to(REPO) and path.stat().st_size <= 65536,
+            "expected an external publisher manifest")
+    original = public_bytes(path.parent, path.name)
+    require(digest(original) == "d70ba01dbf56cd270cb6a6a835b5855f467b1065993b86665883337e04eb0f94",
+            "private publisher manifest identity mismatch")
+    reviewed = json.loads(original)
+    del reviewed["author"]["email"]
+    require(reviewed == json.loads(public_manifest), "public plugin source disagrees with the approved identity")
+    return original
+
+
 def plugin_files():
     payload = {name: public_bytes(PLUGIN, name) for name in PAYLOAD}
+    payload["plugin.json"] = private_publisher_manifest(payload["plugin.json"])
+    # Plugin Creator may supply the skill body while the Host denies a second
+    # file read. Embed the same reviewed onboarding text in both entry points.
+    guide = payload["references/project-main.md"]
+    begin, end = b"<!-- onboarding:start -->", b"<!-- onboarding:end -->"
+    require(guide.count(begin) == guide.count(end) == 1 and guide.index(begin) < guide.index(end),
+            "missing shared onboarding definition")
+    introduction = guide.split(begin, 1)[1].split(end, 1)[0].strip()
+    marker = b"<!-- embed:project-main/onboarding -->"
+    for skill in ("skills/setup/SKILL.md", "skills/research/SKILL.md"):
+        require(payload[skill].count(marker) == 1, "missing onboarding insertion point: " + skill)
+        payload[skill] = payload[skill].replace(marker, introduction)
     payload["LICENSE"] = public_bytes(REPO, "LICENSE").replace(b"\r\n", b"\n")
     payload["runtime/agreement-core.zip"] = archive({"aegiscae/"+name:
         public_bytes(REPO/"src/aegiscae",name).replace(b"\r\n",b"\n") for name in CORE_FILES})
     require(digest(payload["core/sp_history.py"]) == CORE_SHA, "historical analysis component changed")
     meta = json.loads(payload["plugin.json"])
     require((meta["name"], meta["version"]) == (ID, VERSION), "plugin identity")
-    # The portable metadata may be reserialized. The legacy path may contain
-    # only the exact projection, with or without the Host's optional hooks field.
+    # Pin complete semantic documents, including each path and publisher field.
     compatibility = {key: meta[key] for key in ("name", "version", "description", "license")}
     compatibility.update(skills="./skills/", interface=meta["extensions"]["com.openai"]["interface"])
     documents = {"plugin.json": meta, ".codex-plugin/plugin.json": compatibility}
-    metadata_hashes = {name: digest(json.dumps(doc, ensure_ascii=True, allow_nan=False,
-                       sort_keys=True, separators=(",", ":")).encode("ascii"))
-                       for name, doc in documents.items()}
-    with_hooks = dict(compatibility, hooks=meta["extensions"]["com.openai"]["hooks"])
-    projected_hooks_hash = digest(json.dumps(with_hooks, ensure_ascii=True, allow_nan=False,
-                                             sort_keys=True, separators=(",", ":")).encode("ascii"))
+    def semantic_hash(doc):
+        return digest(json.dumps(doc, ensure_ascii=True, allow_nan=False, sort_keys=True,
+                                 separators=(",", ":")).encode("ascii"))
+    metadata_hashes = {name: semantic_hash(doc) for name, doc in documents.items()}
+    ext = meta["extensions"]["com.openai"]
+    with_hooks = dict(compatibility, hooks=ext["hooks"])
+    # Observed Plugin Creator projection. Derive values from reviewed source,
+    # never from metadata found beside the installed executable.
+    creator = dict(with_hooks, author=meta["author"], keywords=[], skills="./skills",
+                   interface={"defaultPrompt": None, **ext["interface"]},
+                   requires_local_executor=ext["requires_local_executor"],
+                   extensions={"com.openai": {"onboardingSkill": ext["onboardingSkill"]}})
     package = encoded({"version": VERSION, "component": "sp-history-1.0.0",
                        "metadata_sha256": metadata_hashes,
-                       "compat_with_hooks_sha256": projected_hooks_hash,
+                       "compat_with_hooks_sha256": semantic_hash(with_hooks),
+                       "plugin_creator_compat_sha256": semantic_hash(creator),
                        "files": {k: digest(v) for k,v in payload.items()}})
     payload["package-manifest.json"] = package
     return payload

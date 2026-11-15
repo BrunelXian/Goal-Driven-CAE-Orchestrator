@@ -1,10 +1,12 @@
 param([Parameter(Mandatory)][string]$Plugin,[Parameter(Mandatory)][string]$Work,
       [Parameter(Mandatory)][string]$PreviousTree,[Parameter(Mandatory)][string]$PreviousCommit,
-      [Parameter(Mandatory)][string]$TargetCommit)
+      [Parameter(Mandatory)][string]$TargetCommit,
+      [Parameter(Mandatory)][string]$TargetTree,[string]$Updater)
 $ErrorActionPreference='Stop'
 $Plugin=(Get-Item $Plugin).FullName
 $state=(New-Item -ItemType Directory -Path $Work).FullName
-$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $Plugin 'scripts/update.ps1'),[ref]$null,[ref]$null)
+if (!$Updater){$Updater=Join-Path $Plugin 'scripts/update.ps1'}
+$ast=[Management.Automation.Language.Parser]::ParseFile($Updater,[ref]$null,[ref]$null)
 foreach($f in $ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]},$false)){
     . ([scriptblock]::Create($f.Extent.Text))
 }
@@ -18,21 +20,14 @@ $previousVersion=(Get-Content (Join-Path $previousFolder 'plugin.json') -Raw|Con
 $oldPin=(Get-FileHash (Join-Path $previousFolder 'package-manifest.json')).Hash.ToLowerInvariant()
 $ManifestPin=(Get-FileHash (Join-Path $Plugin 'package-manifest.json')).Hash.ToLowerInvariant()
 $ZipPin='7'*64
-$offer=@{version=$TargetVersion;manifest_sha256=$ManifestPin;zip_sha256=$ZipPin}
+$offer=@{version=$TargetVersion;manifest_sha256=$ManifestPin;zip_sha256=$ZipPin;target_commit=$TargetCommit;
+    channel_blob=(& git -C $TargetTree rev-parse HEAD:channel.json)}
 $ConfirmUpdate=$true
 $originalReview=(Get-Item Function:Review-Package).ScriptBlock
 $originalSave=(Get-Item Function:Save-RecoveryPackage).ScriptBlock
 # Only the transport/Host boundaries below are fixtures. Real package bytes,
 # manifest verification, transaction sequencing and recovery use the shipped code.
 function Get-ReleaseManifestPin {return $oldPin}
-function Read-Commit {return $TargetCommit}
-function Test-ReleaseAsset {}
-function Get-OfficialJson($suffix){
-    if ($suffix -like 'git/ref/*'){return @{object=@{sha=$TargetCommit;type='commit'}}}
-    return @{tag_name="gdcae-research-$TargetVersion";draft=$false;prerelease=$true;assets=@(
-        @{name='package-manifest.json';state='uploaded';digest="sha256:$ManifestPin"},
-        @{name="CAE-Agent-Research-Preview-${TargetVersion}_PUBLIC_DIRECTORY.zip";state='uploaded';digest="sha256:$ZipPin"})}
-}
 function Get-Installed {return @{version=$previousVersion}}
 function Invoke-MarketplacePin($homePath,$expected,$replacement,$revision){
     if ($replacement){
@@ -54,7 +49,7 @@ function Save-RecoveryPackage($folder,$pin,$version,$commit,$directory){
 function Invoke-CodexJson($arguments){
     $op=$arguments -join ' '
     if ($op -like 'plugin marketplace list*'){return @{marketplaces=@(@{name=$market;root=$PreviousTree})}}
-    if ($op -like 'plugin marketplace add*'){return @{marketplaceName=$market;installedRoot=$PreviousTree}}
+    if ($op -like 'plugin marketplace add*'){return @{marketplaceName=$market;installedRoot=$(if($script:fault -eq 'wrong-head'){$PreviousTree}else{$TargetTree})}}
     if ($op -like 'plugin add*'){return @{version=$TargetVersion;installedPath=$Plugin}}
     if ($op -like 'plugin marketplace upgrade*'){
         if ($script:ref -ceq $TargetCommit){
@@ -70,11 +65,12 @@ function Verify-Installation($homePath,$version,$commit,$pin){
     Review-Package '' $pin $version
 }
 $results=@()
-foreach ($fault in @('','refresh','concurrent')){
+foreach ($fault in @('wrong-head','','refresh','concurrent')){
     $script:ref=$FromCommit;$script:revision=1;$script:writes=@();$script:fault=$fault
     try{$status=(Install-Offer $offer).status}catch{$status=$_.Exception.Message}
     $pending=Test-Path (Join-Path $state 'pending.json')
     switch ($fault) {
+        'wrong-head' {if ($status -ne 'STAGED_HEAD_MISMATCH' -or $writes.Count -or $pending){throw "stage: $status"}}
         '' {if ($status -ne 'INSTALLED_RESTART_REQUIRED' -or $ref -ne $TargetCommit -or $pending){throw "success: $status"}}
         'refresh' {if ($status -ne 'FAILED_OLD_VERSION_RESTORED' -or $ref -ne $FromCommit -or $pending){throw "restore: $status"}}
         'concurrent' {if ($status -ne 'PIN_CONFLICT' -or !$pending -or $writes.Count -ne 1){throw "conflict: $status"}}

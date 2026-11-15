@@ -5,6 +5,10 @@ description: "Discuss research goals, review Sanity Models and plan CAE work wit
 
 # GD-CAE Research Preview
 
+介绍、能力和科研任务共用[意图分流与科研流程](../../references/project-main.md)。已有具体任务时直接给问题表、模型资格和下一步。已进入 Main 的用户直接接续当前研究；只有用户主动要求时才重新展示介绍。已有项目的具体读写请求继续按下文处理。
+
+<!-- embed:project-main/onboarding -->
+
 本会话首次调用时，先按[版本检查与确认](../../references/update.md)使用已授权 GitHub 连接器和本安装的 PowerShell 升级器核对官方频道。未授权、离线或工具受限时继续下面的科研流程。
 
 收到明确的新科研任务、已移交的 Main 首轮或基准资格问题时，执行[项目 Main 与模型资格流程](../../references/project-main.md)。已移交的 Main 首先展示问题表，再评估模型资格；安装对话负责一次性交接。
