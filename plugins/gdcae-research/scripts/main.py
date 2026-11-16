@@ -11,7 +11,7 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.19"
+VERSION = "0.2.0-preview.20"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
 FILES = {"scripts/t02_service.py", "scripts/t02_worker.py", "scripts/abqjobpilot_readonly.py", "runtime/abq-readonly.json", "plugin.json", "skills/research/SKILL.md", "scripts/main.py",

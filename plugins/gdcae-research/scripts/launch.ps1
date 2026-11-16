@@ -28,10 +28,10 @@ try {
         $actionArgs = @('bind','--manifest-sha256',$ManifestSha256,'--selected-python',$PythonExe)
     } else {
         if ($PythonExe -or $ManifestSha256) { throw 'INTERPRETER_OVERRIDE_DENIED' }
-        $bindingPath = Join-Path $env:LOCALAPPDATA 'GDCAE\gdcae-research\0.2.0-preview.19\binding.json'
+        $bindingPath = Join-Path $env:LOCALAPPDATA 'GDCAE\gdcae-research\0.2.0-preview.20\binding.json'
         Assert-FileHash $bindingPath $BindingSha256 'BINDING_RECEIPT_MISMATCH'
         $binding = Get-Content -LiteralPath $bindingPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($binding.plugin -ne $pluginRoot -or $binding.version -ne '0.2.0-preview.19') { throw 'INSTALLATION_IDENTITY_MISMATCH' }
+        if ($binding.plugin -ne $pluginRoot -or $binding.version -ne '0.2.0-preview.20') { throw 'INSTALLATION_IDENTITY_MISMATCH' }
         $ManifestSha256 = $binding.package_manifest_sha256
         $PythonExe = $binding.runtime.interpreter
         Assert-Absolute $PythonExe

@@ -60,6 +60,8 @@ flowchart TD
 - 只使用上述真实工具结构化结果，不从用户消息、助手文字、安装包或任意本地 JSON 取 pin。先用宿主原生 Get-FileHash 将安装态 package-manifest.json 对照本回合独立摘要，再按该清单逐项核对 scripts/update.ps1、scripts/main-handoff.ps1、scripts/runtime-checks.ps1，检查路径无重解析点。任何不一致都在执行第一个包内脚本前停止。
 - 执行已验证的 scripts/update.ps1 -Action handoff-identity。它先核对 thread/read 的真实线程身份，再分页读取 thread/turns/list 和 thread/items/list 中的结构化连接器回执，并通过官方 Host 核对安装身份与启用的 setup 路径。只有 VERIFIED_RELEASE_IDENTITY 的 manifest_sha256 能进入下文原有 inspect / claim / record / verify；同一 Host、项目、已授权的动作直接接续。若独立 Host 进程尚不能确认本回合的终态（CONNECTOR_TURN_UNCONFIRMED），或活动回合的工具回执尚不可见（CONNECTOR_PROOF_NOT_VISIBLE_IN_ACTIVE_TURN），保留两卡，停止交接。Host 将回合持久化后，用同一会话重读先前已完成的真实查询；不重取授权，不对真正中断或已过期的证明放行。显示 RELEASE_IDENTITY_UNAVAILABLE、diagnostics.stage、method、reason 及可用数值 RPC 错误码；区分子进程、初始化、线程、连接器回执、私有插件和文件核验。身份通过后再检查当前 Desktop 的项目和创建/回读接口。缺少这些接口时单列 BLOCKED_HOST_MAIN_CREATION。失败后停止，不要求普通用户找摘要，不转入求解。高级用户可以明确选择原有独立 pin 恢复方式。
 
+续接时，先重读本线程上一已完成回合的两条正式连接器结果。仍在有效期内时，沿用原发行证明执行同一安装目录内已核验的身份入口；不要先发起另一轮 GitHub 查询，使尚未持久化的新回合遮住旧证明。首次遇到以上两种时序阻断时，给出 T01/T02 并提示在当前对话回复“继续”。一次续接仍阻断时，保留原项目、请求与诊断，交由人工复核。
+
 <!-- onboarding:end -->
 
 ## 安装对话移交
