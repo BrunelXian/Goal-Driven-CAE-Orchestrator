@@ -1,6 +1,6 @@
 # 私有 Preview .19 的 Desktop RPC 诊断
 
-**结论：RPC 诊断 PASS；本次 Desktop 自动发行身份核验 BLOCKED；Setup → Main NOT_EXECUTED。** 受测已发行 .19 来自个人私有插件，源码提交 `3069b9891a7cb322b1a5e3ef9c5d5071f5ac58b6`，独立 Manifest 为 `e7ed5de9cc6f54f2d4edda7c9ac3ec70f56b8d3835969d0b67e40804a209554d`。从 Desktop 开发会话对实际安装运行外部核定的修订入口；这些源码尚未进入私有发行。
+**A 端结论：RPC 诊断 PASS。普通 Desktop 的既有 Setup 使用修订入口，同会话第二回合验证私有发行身份并复用唯一 Main，两项均 PASS。新建 Main 为 NOT_TESTED。** 受测已发行 .19 来自个人私有插件，源码提交 `3069b9891a7cb322b1a5e3ef9c5d5071f5ac58b6`，独立 Manifest 为 `e7ed5de9cc6f54f2d4edda7c9ac3ec70f56b8d3835969d0b67e40804a209554d`。修订入口由测试流程从已核定源码显式调用。已发布的 .19 仍包含原脚本。
 
 ## 根因及修改
 
@@ -8,7 +8,7 @@
 
 私有身份路径复用一次只读 app-server 连接。CLI 来自进程 PATH 中的应用；缺失时仅查当前用户已注册的特定 OpenAI Desktop 包。启动前验证 Windows Authenticode 和发行者。其他发行者或无法确认的签名阻断。握手回读的 codexHome 必须匹配当前有效目录。按真实线程及回合分页读取结构化 GitHub 工具回执，再检查私有 plugin/read、plugin/skill/read 与包外 pin 固定的磁盘文件。超时、EOF、读写失败、RPC 错误、交互要求、回执窗口和待续接有不同理由；对外仅输出阶段、方法、安全代码、可用退出码等。自然退出与验证器清理进程分开记录。Main 唯一性、请求标识及写入门禁未改动。
 
-## Desktop 能力与门禁
+## 首次 Desktop 开发会话的分项检查与阻断记录
 
 | 检查 | A 机实际观察 |
 | --- | --- |
@@ -23,3 +23,16 @@
 - Windows PowerShell 5.1 与 pwsh 的协议测试覆盖 EOF、超时、非法响应、子进程要求交互、逐方法拒绝和数值错误码脱敏。回执测试覆盖回合/线程错配、过期、失败、不完整与窗口耗尽。
 - 对独立测试目录构造未发布的修订文件集。真实 stdio T02 在临时后端 Project 读取和登记成功，重放幂等，新进程回读修订 4，执行授权 false。研究约定、Task Card、项目存储、协议拒绝和发行 Core 边界合计 104 项通过。安装形态 Sanity Model 27 项通过。身份拒绝、更新器与 Main 交接防重测试通过。
 - 普通 Desktop Setup 的待验路径为取得同一回合、同一真实线程的可信回执；如果当前回合未持久化，保留草稿和原授权，在同会话续接核验。只有 VERIFIED_RELEASE_IDENTITY 才可 inspect / claim，验证同一 Project、唯一 Main、卡片接收及重复请求。始终不能以后台 thread/start、手工创建或旧 Main 的存在代替该验收。
+
+## 普通 Desktop 既有 Setup 的两回合复验
+
+用专用 Project 的历史 verify 工具回执辨认出实际交接过该 Main 的 Setup。下表记载该 Setup 的已完成回合，原始命令及完整线程标识保存在 A 机 Host 历史中。
+
+| 环节 | 可复核结果 |
+| --- | --- |
+| 发行证明 | 第一回合的 `github.fetch` 读取官方 main ref，`github.fetch_file` 随即以固定 Commit `f67877053cfa2cc54d89162973ef8392e69127e1` 读取 .19 publisher receipt（base64）。两个 Host 工具调用均 completed。回执 Git blob 为 `0e459b7defaa71a9b33e3b49ab679fcde7a15ce1`。 |
+| 本机身份门禁 | 第二回合先核对修订版 update.ps1 的 SHA-256 `d28f6e32fc45fa1b77bb7254eb8543f8900a239dd70205e4b029281e9c11abd0`，对已安装私有 .19 运行 handoff-identity。返回 VERIFIED_RELEASE_IDENTITY，进程退出 0，Manifest 与独立回执一致。诊断记录默认用户 home、WindowsApps CLI、子进程启动、initialize、home 对照及线程确认成功，最后方法为 plugin/skill/read，阶段 complete。 |
+| 项目归属和接收内容 | 发布包内 main-handoff.ps1 使用此次验证得到的 Manifest pin 执行 inspect，返回 VERIFIED。Desktop list_projects、list_threads 和 read_thread 核实同一 Project 中唯一同名 Main；Main 历史中可读回 T01 模型资格和 T02 能力发现，既有两份证据可复算。这些是既往接收记录，本次没有新投递任务。 |
+| 重复请求 | 在相同 Setup 中两次执行已安装入口 claim，两个命令各自退出 0。两份 JSON 的 host、project、request_id、thread_id 及 title 相同，state 均为 VERIFIED，may_create 均为 false。当前复验没有 create_thread 调用。 |
+
+**验收边界。** 此次测试验证了普通 Desktop 同一 Setup 跨回合取证、实际安装身份和已绑定 Main 的幂等复用。首次自然入口自动完成交接及在空 Project 新建可见 Main 仍待独立验收。B 机原故障的具体 RPC 阶段仍未知。本轮没有更新私有插件或运行求解。
