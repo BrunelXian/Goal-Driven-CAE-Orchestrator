@@ -11,10 +11,10 @@ import sys
 import tempfile
 from types import ModuleType
 
-VERSION = "0.2.0-preview.18"
+VERSION = "0.2.0-preview.19"
 CORE_VERSION = "sp-history-1.0.0"
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"
-FILES = {"plugin.json", "skills/research/SKILL.md", "scripts/main.py",
+FILES = {"scripts/t02_service.py", "scripts/t02_worker.py", "scripts/abqjobpilot_readonly.py", "runtime/abq-readonly.json", "plugin.json", "skills/research/SKILL.md", "scripts/main.py",
          "scripts/launch.ps1", "core/sp_history.py", "references/sanity-model-protocol.md", "scripts/main-handoff.ps1", "references/project-main.md",
          "scripts/intake.ps1", "scripts/agreement_main.py", "runtime/agreement-core.zip","references/research-agreement.md",
          "LICENSE", "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
@@ -194,7 +194,7 @@ def guard(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['preflight','bind','doctor','main','agreement'])
-    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference','task-list','task-init','task-create','task-update','capability-discovery'])
+    parser.add_argument('--operation', choices=['new','freeze','propose','confirm','attribute','overview','detail','diff','hint','sanity-triage','sanity-assess','sanity-reference','task-list','task-init','task-create','task-update','capability-discovery','t02-plan','t02-read'])
     parser.add_argument('--input-file', type=Path)
     parser.add_argument('--host-id')
     parser.add_argument('--desktop-project-id')

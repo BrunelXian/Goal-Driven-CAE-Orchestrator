@@ -86,6 +86,9 @@ def run(args,plugin,checked,owner):
         require(set(body)=={"name","schema"} and body["schema"]=="research-agreement-project-v3","EXPLICIT_OPT_IN_REQUIRED")
         created=project.create_research_project(root,body["name"],research_agreements=True)
         return {**created.inspect(),"current_hint":query(root)}
+    if op in ("t02-plan", "t02-read"):
+        from t02_service import run as run_t02
+        return run_t02(args,plugin,project.open_agreement_project(root,write=op=="t02-read"),body)
     if op == "capability-discovery":
         from aegiscae.research.capability_discovery import discover
         project.open_agreement_project(root)

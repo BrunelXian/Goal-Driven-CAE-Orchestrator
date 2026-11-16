@@ -12,11 +12,11 @@ PRODUCT = Path(__file__).resolve().parents[1]
 REPO = PRODUCT.parents[1]
 ID = "gdcae-research"
 PLUGIN = REPO / "plugins" / ID
-VERSION = "0.2.0-preview.18"
+VERSION = "0.2.0-preview.19"
 PREFIX = f"GDCAE-Research-Preview-{VERSION}/"
 INNER = f"GDCAE-Install-{VERSION}.zip"
 PLUGIN_DIR = f"INSTALL-MEDIA/plugins/{ID}/"
-PAYLOAD = ("plugin.json", "scripts/launch.ps1", "scripts/main.py", "skills/research/SKILL.md",
+PAYLOAD = ("scripts/t02_service.py", "scripts/t02_worker.py", "runtime/abq-readonly.json", "plugin.json", "scripts/launch.ps1", "scripts/main.py", "skills/research/SKILL.md",
            "core/sp_history.py", "references/sanity-model-protocol.md", "scripts/main-handoff.ps1", "references/project-main.md",
            "scripts/intake.ps1", "scripts/agreement_main.py", "references/research-agreement.md",
            "assets/mesh.png", "skills/setup/SKILL.md", "scripts/runtime.ps1",
@@ -96,6 +96,7 @@ def private_publisher_manifest(public_manifest):
 
 def plugin_files():
     payload = {name: public_bytes(PLUGIN, name) for name in PAYLOAD}
+    payload["scripts/abqjobpilot_readonly.py"] = public_bytes(PRODUCT / "tools", "abqjobpilot_readonly.py").replace(b"\r\n", b"\n")
     payload["plugin.json"] = private_publisher_manifest(payload["plugin.json"])
     # Plugin Creator may supply the skill body while the Host denies a second
     # file read. Embed the same reviewed onboarding text in both entry points.

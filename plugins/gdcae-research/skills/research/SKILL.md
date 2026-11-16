@@ -19,6 +19,12 @@ Core 模式：用户要求实际曲线计算、科研项目读取或写入时才
 
 For all main and agreement operations pass -HostId and -DesktopProjectId from the verified Desktop handoff. For a research agreement, use the same launcher and the [installed agreement commands](../../references/research-agreement.md). Ask which explicit ResearchProject the researcher means. Read `overview`, `detail`, `diff` or `hint` and show the returned Markdown. Never infer confirmation from a query or proposal. Confirm only the exact reviewed digest after an explicit researcher decision. In significant research replies, obtain a fresh hint for that project. For the SP comparison with an associated agreement pass its absolute `-AgreementRoot` to `main`. Preserve the version identity of earlier messages.
 
+### T02 工程能力发现
+
+核实 Main 后，读取 task-list。存在 T02 时主动提出只读检查，说明查询范围（队列、历史及用户指定作业状态）和写入 T02 的证据。使用本安装的 launch.ps1 -Action agreement。在现有 Project、Host、DesktopProject 和绑定摘要范围内，先执行 -Operation t02-plan，InputFile 仅含 queue_id（无指定作业用 null）。分别报告本机安装记录、受信服务版本、连接、后端 Project UUID 和授权状态。计划回执不证明已连接。
+
+取得用户针对该后端及队列范围的只读查询与证据登记同意后，用 task-update 把计划返回的两项 consent_refs 原样登记到 T02 的 evidence 并置 IN_PROGRESS。使用最新账本修订执行 t02-read，InputFile 仅含 queue_id、expected_revision 和唯一 key。随后使用新进程 task-list 读回 T02 的修订、证据文件名与 SHA-256。重复请求复用原 key 和修订。若部署缺失、版本不兼容、UUID 不符、授权缺失或服务未返回完整结果，报告具体阻断并保留任务。不得从模型、用户文本或任务输入选择服务命令。此入口只查询和登记证据，作业提交和科研判定分别需要独立权限及验证。
+
 For questions about model qualification, variables or scientific acceptance, consult the bundled [Sanity Model protocol](../../references/sanity-model-protocol.md). Distinguish its research guidance from this release's read-only historical comparison. Installation and research agreement confer no solver authority.
 
 Use the installed copy of this skill for the adapted SMALL-PUNCH case on Windows. Obtain the operator's absolute external project root, a fresh output directory outside the project, and the binding SHA256 saved at installation. The parent of the output directory must already exist.

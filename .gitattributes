@@ -10,3 +10,6 @@ product/research-preview/** text eol=lf
 product/research-preview/release/case/** -text
 docs/user/SANITY_MODEL_USER_GUIDE.md text eol=lf
 plugins/gdcae-research/references/update.md text eol=crlf
+
+# Frozen document hashes refer to the Git blob bytes on all checkout platforms.
+docs/baseline/*.md text eol=lf

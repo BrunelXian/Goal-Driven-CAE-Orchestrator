@@ -37,7 +37,7 @@ def verify(plugin, pin, work):
         invoke(calculate + args, caller, reason)
     operations = ["new","freeze","propose","confirm","attribute","overview","detail","diff","hint",
                   "sanity-triage","sanity-assess","sanity-reference","task-list","task-init","task-create",
-                  "task-update","capability-discovery"]
+                  "task-update","capability-discovery","t02-plan","t02-read"]
     for operation in operations:
         invoke(["-Action", "agreement", "-Operation", operation, *common, *scope], wrong, "MAIN_IDENTITY_MISMATCH")
     assert not out.exists() and not (work / "model").exists()
@@ -69,7 +69,7 @@ def verify(plugin, pin, work):
     action("-Action", "verify", *receipt, "-ObservedProjectId", "other-desktop", "-ObservedTitle", "Other Main")
     invoke(["-Action", "agreement", "-Operation", "task-list", *common,
             "-HostId", "fixture", "-DesktopProjectId", "other-desktop"], other, "MAIN_PROJECT_MISMATCH")
-    print("PASS: all 17 agreement routes and analysis reject Setup before project access; verified synthetic Main accepted")
+    print("PASS: all agreement routes and analysis reject Setup before project access; verified synthetic Main accepted")
 
 
 if __name__ == "__main__":
