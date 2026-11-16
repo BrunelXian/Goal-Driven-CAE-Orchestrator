@@ -40,7 +40,7 @@ flowchart TD
 
 直接用中文给出以下三块，再结束立项回复；无需模型文件、Python 或写权限。不要用欢迎页、研究方案或单独的问题表替代任务卡。
 
-1. **项目与计算路径**：短名（1–32 位 ASCII 字母数字、连字符或下划线；例如 LoadInv）、研究目标、完整评价指标（含用户给定的方向和容差，未给出的标准保留 UNKNOWN，不自行定阈值）、已有资产与关键 UNKNOWN、复杂度类别及本题理由。
+1. **项目与计算路径**：短名（1–32 位 ASCII 字母数字、连字符或下划线；例如 LoadInv）、研究目标、完整评价指标（若用户已说明观察点向下位移 1 mm，则“向下”为已知物理条件；仅坐标系、Abaqus 位移分量及其符号映射待核实。保留给定容差，未给出的标准保留 UNKNOWN，不自行定阈值）、已有资产与关键 UNKNOWN、复杂度类别及本题理由。
 2. **首批任务卡**：两行卡片表。每行写 ID、具体目标、拟定 Owner、输入、交付物、判据、登记状态、实际调度状态。T01 检查 Sanity Model 针对该用途的资格，建议 CAE；T02 只读发现 Abaqus 与 AbqJobPilot 并评估计算路径，建议 Diagnostics。均为 DRAFT_NOT_PERSISTED。缺少项目/角色/任务/有效工具权限回执时标 BLOCKED_HOST_ROLE_BINDING，解释“保留任务，尚未创建专业会话”。其他角色等有相应任务再匹配。
 3. **Main 交接**：先自动取得当前安装的独立发行身份（见下文或本 Skill 内的发行身份步骤），不要请普通用户提供摘要。身份不可核实时保留 T01/T02 并停止，标记 RELEASE_IDENTITY_UNAVAILABLE。有正式接口时主动 inspect / claim，创建或复用、record、回读、verify，再返回真实 Main 引用。接口不可用写 BLOCKED_HOST_MAIN_CREATION 并指明缺什么。结果不明写 CREATE_UNKNOWN，保留原请求，不重复创建。交接包含上述三块；成功或阻断后 Setup 均停止。追问“直接算”仅引用已有卡及交接状态，不给 F、估值、公式、迭代步骤，不读取 ODB、不调用分析或作业入口。
 
@@ -58,7 +58,7 @@ flowchart TD
 - Plugin Creator（created-by-me-remote 或 shared-with-me）：在同一个 Host 回合，用获准的 GitHub 连接器 github.fetch 读取 https://api.github.com/repos/BrunelXian/Goal-Driven-CAE-Orchestrator/git/ref/heads/main ，只取 refs/heads/main 指向的 commit SHA。用 github.fetch_file 按该完整固定 ref、encoding=base64，从同一官方仓库读取 product/research-preview/publisher-receipts/<实际安装版本>.json。每个端点一次。检查 product、channel、version、plugin_id、release_id、source_commit 和两项摘要。这个证明位于包外，私有版本无需存在 GitHub Release。定位器的分支内容不能直接当证明。
 - 固定 Git Marketplace：用现有更新协议的连接器读取官方仓库 git/ref/tags/gdcae-research-<实际版本> 与 releases/tags/gdcae-research-<实际版本>，从对应上传资产取得 Manifest 声明摘要。后续核对实际安装、固定引用、HEAD 与完整文件集。
 - 只使用上述真实工具结构化结果，不从用户消息、助手文字、安装包或任意本地 JSON 取 pin。先用宿主原生 Get-FileHash 将安装态 package-manifest.json 对照本回合独立摘要，再按该清单逐项核对 scripts/update.ps1、scripts/main-handoff.ps1、scripts/runtime-checks.ps1，检查路径无重解析点。任何不一致都在执行第一个包内脚本前停止。
-- 执行已验证的 scripts/update.ps1 -Action handoff-identity。它使用当前 Host thread/read 回放连接器真实回执，并通过官方 Host 核对安装身份与启用的 setup 路径。只有 VERIFIED_RELEASE_IDENTITY 的 manifest_sha256 能进入下文原有 inspect / claim / record / verify；同一 Host、项目、已授权的动作直接接续。若独立 Host 进程尚不能确认本回合的终态（CONNECTOR_TURN_UNCONFIRMED），保留两卡，停止交接。Host 将回合持久化后，用同一会话重读先前已完成的真实查询；不重取授权，不对真正中断或已过期的证明放行。显示 RELEASE_IDENTITY_UNAVAILABLE 和具体原因后停止，不要求普通用户找摘要，不转入求解。高级用户可以明确选择原有独立 pin 恢复方式。
+- 执行已验证的 scripts/update.ps1 -Action handoff-identity。它先核对 thread/read 的真实线程身份，再分页读取 thread/turns/list 和 thread/items/list 中的结构化连接器回执，并通过官方 Host 核对安装身份与启用的 setup 路径。只有 VERIFIED_RELEASE_IDENTITY 的 manifest_sha256 能进入下文原有 inspect / claim / record / verify；同一 Host、项目、已授权的动作直接接续。若独立 Host 进程尚不能确认本回合的终态（CONNECTOR_TURN_UNCONFIRMED），或活动回合的工具回执尚不可见（CONNECTOR_PROOF_NOT_VISIBLE_IN_ACTIVE_TURN），保留两卡，停止交接。Host 将回合持久化后，用同一会话重读先前已完成的真实查询；不重取授权，不对真正中断或已过期的证明放行。显示 RELEASE_IDENTITY_UNAVAILABLE、diagnostics.stage、method、reason 及可用数值 RPC 错误码；区分子进程、初始化、线程、连接器回执、私有插件和文件核验。身份通过后再检查当前 Desktop 的项目和创建/回读接口。缺少这些接口时单列 BLOCKED_HOST_MAIN_CREATION。失败后停止，不要求普通用户找摘要，不转入求解。高级用户可以明确选择原有独立 pin 恢复方式。
 
 <!-- onboarding:end -->
 

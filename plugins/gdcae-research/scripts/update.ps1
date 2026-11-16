@@ -136,19 +136,42 @@ function Read-Commit($refName) {
 
 # This configuration-only Host has no plugins to start. In particular reading a
 # legacy branch registration during migration must not schedule its refresh.
-function Invoke-PinRpc($process,[int]$number,[string]$method,$parameters) {
-    Send-RpcLine $process (@{id=$number;method=$method;params=$parameters}|ConvertTo-Json -Compress -Depth 10)
-    $end=[DateTime]::UtcNow.AddSeconds(35)
-    while ([DateTime]::UtcNow -lt $end) {
-        $line=$process.StandardOutput.ReadLineAsync()
-        if (!$line.Wait([Math]::Max(1,[int]($end-[DateTime]::UtcNow).TotalMilliseconds)) -or !$line.Result){throw 'HOST_RPC_UNAVAILABLE'}
-        $message=$line.Result | ConvertFrom-Json
-        if ($message.PSObject.Properties['id'] -and $message.id -eq $number){
-            if ($message.PSObject.Properties['error']){throw 'HOST_CONFIG_REJECTED'}
+function Invoke-PinRpc($process,[int]$number,[string]$method,$parameters,$trace=$null) {
+    $eof=$false
+    $timer=[Diagnostics.Stopwatch]::StartNew()
+    if ($trace){$trace.method=$method;$trace.rpc_code=$null;$trace.rpc_ms=0}
+    try {
+        try {Send-RpcLine $process (@{id=$number;method=$method;params=$parameters}|ConvertTo-Json -Compress -Depth 10)}
+        catch {throw 'HOST_RPC_WRITE_FAILED'}
+        while ($timer.ElapsedMilliseconds -lt 35000) {
+            try {$line=$process.StandardOutput.ReadLineAsync()}catch{throw 'HOST_RPC_READ_FAILED'}
+            try {$ready=$line.Wait([Math]::Max(1,35000-[int]$timer.ElapsedMilliseconds))}catch{throw 'HOST_RPC_READ_FAILED'}
+            if (!$ready){throw 'HOST_RPC_TIMEOUT'}
+            if ($null -eq $line.Result){$eof=$true;throw 'HOST_RPC_EOF'}
+            try {$message=$line.Result|ConvertFrom-Json -ErrorAction Stop}catch{throw 'HOST_RPC_INVALID_JSON'}
+            if (!$message){throw 'HOST_RPC_INVALID_RESPONSE'}
+            if ($message.PSObject.Properties['method']){
+                if ($message.PSObject.Properties['id']){throw 'HOST_RPC_INTERACTION_REQUIRED'}
+                continue
+            }
+            if (!$message.PSObject.Properties['id'] -or $message.id -ne $number){continue}
+            if ($message.PSObject.Properties['error']){
+                if ($trace -and $message.error.PSObject.Properties['code'] -and $message.error.code -is [ValueType]){
+                    $trace.rpc_code=[int]$message.error.code
+                }
+                if (!$trace){throw 'HOST_CONFIG_REJECTED'}
+                throw 'HOST_RPC_REJECTED'
+            }
+            if (!$message.PSObject.Properties['result']){throw 'HOST_RPC_INVALID_RESPONSE'}
             return $message.result
         }
+        throw 'HOST_RPC_TIMEOUT'
+    }finally{
+        if ($trace){
+            $trace.rpc_ms=$timer.ElapsedMilliseconds
+            if ($process.HasExited -or ($eof -and $process.WaitForExit(100))){$trace.child_exit=$process.ExitCode}
+        }
     }
-    throw 'HOST_RPC_TIMEOUT'
 }
 function Send-RpcLine($process,[string]$json) {
     $data=[Text.Encoding]::UTF8.GetBytes($json+[char]10)
@@ -203,7 +226,108 @@ function Verify-Installation($homePath,$version,$commit,$manifest) {
     Review-Package (Join-Path $ms[0].root "plugins\$product") $manifest $version
     Review-Package (Join-Path $homePath "plugins\cache\$market\$product\$version") $manifest $version
 }
-function Get-ConnectorCalls([switch]$ForHandoff) {
+function Open-HandoffRpc($trace) {
+    $trace.stage='cli_resolution'
+    $cmd=Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue|Select-Object -First 1
+    if ($cmd){
+        $exe=$cmd.Source
+        $trace.cli_source=if($exe -match '[\\/]WindowsApps[\\/]'){'WindowsApps'}else{'PATH application'}
+    }else{
+        $trace.cli_source='registered Desktop package'
+        if (!(Get-Command Get-AppxPackage -ErrorAction SilentlyContinue)){throw 'HOST_CLI_NOT_FOUND'}
+        $packages=@(Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue |
+            Where-Object {$_.PackageFamilyName -ceq 'OpenAI.Codex_2p2nqsd0c76g0' -and $_.Status -eq 'Ok'})
+        if ($packages.Count -ne 1){throw 'HOST_CLI_NOT_FOUND'}
+        $exe=Join-Path $packages[0].InstallLocation 'app/resources/codex.exe'
+        if (!(Test-Path -LiteralPath $exe -PathType Leaf)){throw 'HOST_CLI_NOT_FOUND'}
+    }
+    $trace.cli='codex.exe'
+    $trace.stage='cli_identity'
+    $signature=Get-AuthenticodeSignature -LiteralPath $exe
+    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.GetNameInfo(
+        [Security.Cryptography.X509Certificates.X509NameType]::SimpleName,$false) -cne 'OpenAI OpCo, LLC'){throw 'HOST_CLI_IDENTITY_UNVERIFIED'}
+    $si=[Diagnostics.ProcessStartInfo]::new()
+    $si.FileName=$exe
+    # No separate plugin-disabled server: this read-only connection must also see plugin metadata.
+    $si.Arguments='app-server --stdio'
+    $si.UseShellExecute=$false;$si.CreateNoWindow=$true
+    $si.RedirectStandardInput=$true;$si.RedirectStandardOutput=$true;$si.RedirectStandardError=$true
+    $si.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
+    $trace.stage='child_start'
+    try {$p=[Diagnostics.Process]::Start($si)}catch{throw 'HOST_RPC_START_FAILED'}
+    $trace.child_started=$true
+    try {
+        $p.BeginErrorReadLine()
+        $trace.stage='initialize'
+        $hello=Invoke-PinRpc $p 1 initialize @{clientInfo=@{name='gdcae-handoff';version='1'};capabilities=@{experimentalApi=$true}} $trace
+        if (!$hello.PSObject.Properties['userAgent'] -or !$hello.userAgent){throw 'HOST_HANDSHAKE_INVALID'}
+        $trace.stage='home_binding'
+        if (!$hello.PSObject.Properties['codexHome'] -or ![IO.Path]::IsPathRooted($hello.codexHome)){throw 'HOST_HOME_UNCONFIRMED'}
+        $expectedHome=[IO.Path]::GetFullPath((Get-HostHome)).TrimEnd([IO.Path]::DirectorySeparatorChar)
+        $actualHome=[IO.Path]::GetFullPath($hello.codexHome).TrimEnd([IO.Path]::DirectorySeparatorChar)
+        if (![string]::Equals($actualHome,$expectedHome,[StringComparison]::OrdinalIgnoreCase)){throw 'HOST_HOME_MISMATCH'}
+        $trace.home_confirmed=$true
+        $trace.stage='initialized_notification'
+        try {Send-RpcLine $p '{"method":"initialized","params":{}}'}catch{throw 'HOST_RPC_WRITE_FAILED'}
+        $trace.initialized=$true
+        return $p
+    }catch{
+        if (!$p.HasExited){$p.Kill()}
+        $p.Dispose()
+        throw
+    }
+}
+
+function Get-RecentHandoffCalls($p,$trace) {
+    $tid=$env:CODEX_THREAD_ID
+    $trace.stage='thread_identity'
+    if ($tid -notmatch '^[0-9a-fA-F-]{36}$'){throw 'HOST_THREAD_REQUIRED'}
+    $trace.stage='thread_read'
+    $r=Invoke-PinRpc $p 2 'thread/read' @{threadId=$tid;includeTurns=$false} $trace
+    if ($r.thread.id -cne $tid){throw 'HOST_THREAD_MISMATCH'}
+    $trace.thread_confirmed=$true
+    $trace.stage='turn_list'
+    $turns=Invoke-PinRpc $p 3 'thread/turns/list' @{threadId=$tid;sortDirection='desc';limit=3;itemsView='notLoaded'} $trace
+    $number=10
+    $activeTurnSeen=$false
+    foreach ($turn in $turns.data){
+        $age=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()-[long]$turn.startedAt
+        if ($age -lt 0){throw 'CONNECTOR_PROOF_EXPIRED'}
+        if ($age -gt 1800){
+            if ($activeTurnSeen){throw 'CONNECTOR_PROOF_NOT_VISIBLE_IN_ACTIVE_TURN'}
+            throw 'CONNECTOR_PROOF_EXPIRED'
+        }
+        if ($turn.status -ceq 'inProgress'){$activeTurnSeen=$true}
+        $argsMap=@{threadId=$tid;turnId=$turn.id;sortDirection='desc';limit=32}
+        $calls=@()
+        $trace.stage='receipt_items'
+        for ($page=0;$page -lt 3;$page++){
+            $number++
+            $items=Invoke-PinRpc $p $number 'thread/items/list' $argsMap $trace
+            foreach ($row in $items.data){
+                if ($row.turnId -cne $turn.id){throw 'HOST_TURN_MISMATCH'}
+                $item=$row.item
+                if ($item.type -ceq 'mcpToolCall' -and $item.server -ceq 'codex_apps' -and $item.tool -cin 'github.fetch','github.fetch_file'){$calls+= $item}
+            }
+            if (!$items.nextCursor){break}
+            if ($page -eq 2){throw 'HOST_RECEIPT_WINDOW_EXCEEDED'}
+            $argsMap.cursor=$items.nextCursor
+        }
+        if ($calls.Count){
+            $trace.stage='connector_proof'
+            if ($turn.status -cnotin 'completed','inProgress'){throw 'CONNECTOR_TURN_UNCONFIRMED'}
+            if (@($calls|Where-Object {$_.status -cne 'completed'}).Count){throw 'CONNECTOR_QUERY_NOT_COMPLETED'}
+            return $calls
+        }
+    }
+    $trace.stage='connector_proof'
+    if ($activeTurnSeen){throw 'CONNECTOR_PROOF_NOT_VISIBLE_IN_ACTIVE_TURN'}
+    if ($turns.nextCursor){throw 'HOST_RECEIPT_WINDOW_EXCEEDED'}
+    throw 'CONNECTOR_PROOF_MISSING'
+}
+
+function Get-ConnectorCalls([switch]$ForHandoff,$Process,$Trace) {
+    if ($ForHandoff){return Get-RecentHandoffCalls $Process $Trace}
     # Read structured events from the invoking Host thread, never from caller JSON.
     $tid=$env:CODEX_THREAD_ID
     if ($tid -notmatch '^[0-9a-fA-F-]{36}$'){throw 'HOST_THREAD_REQUIRED'}
@@ -229,9 +353,6 @@ function Get-ConnectorCalls([switch]$ForHandoff) {
             $calls=@($turn.items | Where-Object {$_.type -ceq 'mcpToolCall' -and $_.server -ceq 'codex_apps' -and $_.tool -cin 'github.fetch','github.fetch_file'})
             if (!$calls.Count){continue}
             $age=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()-[long]$turn.startedAt
-            if ($ForHandoff -and $age -ge 0 -and $age -le 1800 -and $turn.status -cnotin 'completed','inProgress'){
-                throw 'CONNECTOR_TURN_UNCONFIRMED'
-            }
             if ($turn.status -cnotin 'completed','inProgress' -or $age -lt 0 -or $age -gt 1800){throw 'CONNECTOR_PROOF_EXPIRED'}
             return $calls
         }
@@ -422,21 +543,13 @@ function Read-PublisherReceipt($calls, [string]$version) {
     if ($raw.Contains('\') -or [regex]::Matches($raw,'"[a-z_0-9]+"\s*:').Count -ne $keys.Count){throw 'PUBLISHER_RECEIPT_FORMAT'}
     return @{receipt=$r;commit=$commit;blob=$blob}
 }
-function Read-PrivateInstall($receipt,$folder,$marketName) {
-    $si=[Diagnostics.ProcessStartInfo]::new()
-    $si.FileName=(Get-Command codex.exe -CommandType Application|Select-Object -First 1).Source
-    $si.Arguments='app-server --stdio';$si.UseShellExecute=$false;$si.CreateNoWindow=$true
-    $si.RedirectStandardInput=$true;$si.RedirectStandardOutput=$true;$si.RedirectStandardError=$true
-    $si.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
-    $p=[Diagnostics.Process]::Start($si)
-    try {
-        $p.BeginErrorReadLine()
-        $null=Invoke-PinRpc $p 1 initialize @{clientInfo=@{name='gdcae-handoff';version='1'};capabilities=@{}}
-        Send-RpcLine $p '{"method":"initialized","params":{}}'
-        $detail=(Invoke-PinRpc $p 2 'plugin/read' @{remoteMarketplaceName=$marketName;pluginName=$receipt.plugin_id}).plugin
-        $body=(Invoke-PinRpc $p 3 'plugin/skill/read' @{remoteMarketplaceName=$marketName;remotePluginId=$receipt.plugin_id;skillName='setup'}).contents
-        Assert-PrivateInstall $detail $body $receipt $folder $marketName
-    } finally {if (!$p.HasExited){$p.Kill()};$p.Dispose()}
+function Read-PrivateInstall($receipt,$folder,$marketName,$p,$trace) {
+    $trace.stage='plugin_read'
+    $detail=(Invoke-PinRpc $p 100 'plugin/read' @{remoteMarketplaceName=$marketName;pluginName=$receipt.plugin_id} $trace).plugin
+    $trace.stage='skill_read'
+    $body=(Invoke-PinRpc $p 101 'plugin/skill/read' @{remoteMarketplaceName=$marketName;remotePluginId=$receipt.plugin_id;skillName='setup'} $trace).contents
+    $trace.stage='installed_identity'
+    Assert-PrivateInstall $detail $body $receipt $folder $marketName
 }
 function Assert-PrivateInstall($detail,$body,$receipt,$folder,$marketName) {
     $s=$detail.summary
@@ -465,7 +578,8 @@ function Test-HandoffFiles($folder,$version,$pin) {
         if ($name -ne 'package-manifest.json' -and ((Get-FileHash -LiteralPath (Join-Path $folder $name)).Hash -ne $m.files.$name)){throw 'PACKAGE_BYTES'}
     }
 }
-function Get-HandoffIdentity($folder) {
+function Get-HandoffIdentity($folder,$trace) {
+    $trace.stage='install_location'
     $folder=(Get-Item -LiteralPath $folder).FullName
     $meta=Get-Content -LiteralPath (Join-Path $folder 'plugin.json') -Encoding UTF8 -Raw | ConvertFrom-Json
     $version=$meta.version
@@ -474,20 +588,26 @@ function Get-HandoffIdentity($folder) {
     $cache=Join-Path (Get-HostHome) 'plugins/cache'
     $marketName=(Get-Item -LiteralPath $folder).Parent.Parent.Name
     if ($folder -ne [IO.Path]::GetFullPath((Join-Path $cache "$marketName/$product/$version"))){throw 'HOST_INSTALL_LOCATION_MISMATCH'}
-    $connectorCalls=@(Get-ConnectorCalls -ForHandoff)
-    if ($marketName -ceq $market){
-        $ref=(Invoke-MarketplacePin (Get-HostHome)).ref
-        if ($ref -cnotmatch '^[0-9a-f]{40}$'){throw 'PIN_MISMATCH'}
-        $manifest=Get-ReleaseManifestPin $version $ref
-        Verify-Installation (Get-HostHome) $version $ref $manifest
-        return @{status='VERIFIED_RELEASE_IDENTITY';channel='git-marketplace';version=$version;commit=$ref;manifest_sha256=$manifest}
-    }
-    if ($marketName -cnotin 'created-by-me-remote','shared-with-me','shared-with-me-remote'){throw 'UNSUPPORTED_INSTALL_SOURCE'}
-    $proof=Read-PublisherReceipt $connectorCalls $version
-    Read-PrivateInstall $proof.receipt $folder $marketName
-    Test-HandoffFiles $folder $version $proof.receipt.manifest_sha256
-    return @{status='VERIFIED_RELEASE_IDENTITY';channel=$proof.receipt.channel;version=$version;release_id=$proof.receipt.release_id;
-        plugin_id=$proof.receipt.plugin_id;receipt_commit=$proof.commit;receipt_blob=$proof.blob;manifest_sha256=$proof.receipt.manifest_sha256}
+    $p=Open-HandoffRpc $trace
+    try {
+        $connectorCalls=@(Get-ConnectorCalls -ForHandoff -Process $p -Trace $trace)
+        if ($marketName -ceq $market){
+            $trace.stage='git_marketplace'
+            $ref=(Invoke-MarketplacePin (Get-HostHome)).ref
+            if ($ref -cnotmatch '^[0-9a-f]{40}$'){throw 'PIN_MISMATCH'}
+            $manifest=Get-ReleaseManifestPin $version $ref
+            Verify-Installation (Get-HostHome) $version $ref $manifest
+            return @{status='VERIFIED_RELEASE_IDENTITY';channel='git-marketplace';version=$version;commit=$ref;manifest_sha256=$manifest}
+        }
+        if ($marketName -cnotin 'created-by-me-remote','shared-with-me','shared-with-me-remote'){throw 'UNSUPPORTED_INSTALL_SOURCE'}
+        $trace.stage='publisher_receipt'
+        $proof=Read-PublisherReceipt $connectorCalls $version
+        Read-PrivateInstall $proof.receipt $folder $marketName $p $trace
+        $trace.stage='protected_files'
+        Test-HandoffFiles $folder $version $proof.receipt.manifest_sha256
+        return @{status='VERIFIED_RELEASE_IDENTITY';channel=$proof.receipt.channel;version=$version;release_id=$proof.receipt.release_id;
+            plugin_id=$proof.receipt.plugin_id;receipt_commit=$proof.commit;receipt_blob=$proof.blob;manifest_sha256=$proof.receipt.manifest_sha256}
+    }finally{if (!$p.HasExited){$p.Kill()};$p.Dispose()}
 }
 
 function Get-StateDirectory {
@@ -543,15 +663,20 @@ function Write-CheckCache($file,$offer,$checked) {
 }
 
 if ($Action -eq 'handoff-identity'){
+    $trace=[ordered]@{stage='arguments';home_source=$(if ($env:CODEX_HOME){'explicit'}else{'user_default'});cli=$null;
+        cli_source=$null;home_confirmed=$false;child_started=$false;initialized=$false;thread_confirmed=$false;method=$null;rpc_code=$null;rpc_ms=0;child_exit=$null}
     try {
         if ($PSBoundParameters.Keys | Where-Object {$_ -notin 'Action','InstalledRoot'}){throw 'INVALID_IDENTITY_ARGUMENTS'}
         $folder=if ($InstalledRoot){$InstalledRoot}else{$root}
-        Get-HandoffIdentity $folder | ConvertTo-Json -Compress
+        $result=Get-HandoffIdentity $folder $trace
+        $trace.stage='complete'
+        $result.diagnostics=$trace
+        $result | ConvertTo-Json -Compress -Depth 4
         exit 0
     }catch{
         $reason=$_.Exception.Message
         if ($reason -cnotmatch '^[A-Z_]{3,64}$'){$reason='HOST_OR_PROOF_UNAVAILABLE'}
-        @{status='RELEASE_IDENTITY_UNAVAILABLE';reason=$reason}|ConvertTo-Json -Compress
+        @{status='RELEASE_IDENTITY_UNAVAILABLE';reason=$reason;diagnostics=$trace}|ConvertTo-Json -Compress -Depth 4
         exit 2
     }
 }
