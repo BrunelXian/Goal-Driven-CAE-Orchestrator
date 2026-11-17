@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "gdcae-core": {
+      "type": "stdio",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        "${PLUGIN_ROOT}/server/start.ps1",
+        "gdcae-core"
+      ],
+      "cwd": "${PLUGIN_ROOT}"
+    },
+    "abqjobpilot": {
+      "type": "stdio",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        "${PLUGIN_ROOT}/server/start.ps1",
+        "abqjobpilot"
+      ],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

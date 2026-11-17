@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aegiscae"
-version = "0.0.0"
+version = "0.3.1"
 description = "Controlled, deterministic and auditable runtime for CAE workflows."
 requires-python = ">=3.11,<4"
 dependencies = []

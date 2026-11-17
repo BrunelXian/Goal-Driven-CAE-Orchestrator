@@ -41,11 +41,16 @@ def source_layer(path: Path, src_root: Path) -> str:
 
 def permitted_fixture_import(node, path):
     sources = {
-        ("aegiscae/interfaces/fixture_scope.py", "aegiscae.research.project"):
+        ("aegiscae/interfaces/research_scope.py", "aegiscae.research.project"):
             {"_path", "create_research_project", "open_agreement_project"},
         ("aegiscae/interfaces/fixture_scope.py", "aegiscae.research.scoped_fixture_port"): {"BASELINE"},
         ("aegiscae/interfaces/mcp_scoped.py", "aegiscae.research"): {"scoped_fixture"},
-        ("aegiscae/interfaces/mcp_scoped.py", "aegiscae.research.task_cards"): {"record_scoped", "view"},
+        ("aegiscae/interfaces/mcp_scoped.py", "aegiscae.research.task_cards"): {"view"},
+        ("aegiscae/interfaces/research_scope.py", "aegiscae.research.workflow"): {"validate_agent_contract"},
+        ("aegiscae/interfaces/mcp_research.py", "aegiscae"): {"__version__"},
+        ("aegiscae/interfaces/mcp_research.py", "aegiscae.research.workflow"):
+            {"agent_start", "agent_advance", "agent_status"},
+        ("aegiscae/interfaces/mcp_research.py", "aegiscae.research.project_tasks"): {"record_scoped", "view"},
     }
     return (isinstance(node, ast.ImportFrom) and node.level == 0
             and all(item.asname is None and item.name in sources.get((path, node.module), set())
@@ -160,7 +165,7 @@ def root_package_violations(path: Path, tree: ast.Module) -> tuple[str, ...]:
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == "__version__"
             and isinstance(node.value, ast.Constant)
-            and node.value.value == "0.0.0"
+            and node.value.value == "0.3.1"
         ):
             continue
         violations.append(

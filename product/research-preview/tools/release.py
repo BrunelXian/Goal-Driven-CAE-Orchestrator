@@ -24,7 +24,7 @@ PAYLOAD = ("scripts/t02_service.py", "scripts/t02_worker.py", "runtime/abq-reado
            "scripts/update.ps1", "hooks/hooks.json", "references/update.md")
 CORE_FILES = ("__init__.py", "contracts/__init__.py", "contracts/research_contracts.py",
               "research/__init__.py", "research/project.py", "research/research_agreement.py", "research/sanity.py",
-              "research/task_cards.py", "research/task_roles.py", "research/capability_discovery.py")
+              "research/task_cards.py", "research/project_tasks.py", "research/task_roles.py", "research/capability_discovery.py")
 CASE = ("CASE.md", "Sanity.csv", "run_014.csv", "difference.csv", "force-displacement.png",
         "rc3-evidence.json", "recompute.py")
 CORE_SHA = "df8e330150d4959eb55f6add60b92eba41395d68c4794f68dd558834b67ef535"

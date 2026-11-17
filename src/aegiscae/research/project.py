@@ -331,22 +331,23 @@ def _read_state(connection, root, agreement_state=None):
         elif workflow_event:
             try:
                 if meta["schema_version"] == 3 and event["workflow"].get("schema") == "research-task-v1":
-                    from aegiscae.research import task_cards
+                    from aegiscae.research import project_tasks
                     _require(event["bundle_digest"] == latest_frozen_digest, "INTEGRITY_ERROR")
-                    task_cards.apply(agreement_state.setdefault("task_hub", task_cards.empty()),
+                    project_tasks.apply(agreement_state.setdefault("task_hub", project_tasks.empty()),
                                      event["workflow"], meta["research_project_id"], current_revision,
                                      latest_frozen_digest)
-                elif meta["schema_version"] == 3 and event["workflow"].get("schema") == "scoped-fixture-workflow-v1":
-                    from aegiscae.research import scoped_fixture_rules, task_cards
+                elif meta["schema_version"] == 3 and event["workflow"].get("schema") in (
+                        "scoped-fixture-workflow-v1", "scoped-agent-workflow-v2"):
+                    from aegiscae.research import scoped_fixture_rules, project_tasks
                     _require(event["bundle_digest"] is None and not latest_frozen_digest, "INTEGRITY_ERROR")
                     scoped_fixture_rules.apply(
                         agreement_state.setdefault("scoped_fixture", scoped_fixture_rules.initial()),
-                        agreement_state.setdefault("task_hub", task_cards.empty()), event["workflow"],
+                        agreement_state.setdefault("task_hub", project_tasks.empty()), event["workflow"],
                         meta["research_project_id"], current_revision)
                 elif meta["schema_version"] == 3 and event["workflow"].get("schema") == "scoped-task-v1":
-                    from aegiscae.research import task_cards
+                    from aegiscae.research import project_tasks
                     _require(event["bundle_digest"] is None and not latest_frozen_digest, "INTEGRITY_ERROR")
-                    task_cards.apply_scoped(agreement_state, event["workflow"],
+                    project_tasks.apply_scoped(agreement_state, event["workflow"],
                                             meta["research_project_id"], current_revision)
                 elif meta["schema_version"] == 3:
                     parent = next((b for b in decoded if b[1] == latest_frozen_digest

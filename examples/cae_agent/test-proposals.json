@@ -1,0 +1,8 @@
+{
+  "source": "SCRIPTED_PROTOCOL_TEST_DATA",
+  "out_of_bounds": {"value": "201", "reason": "Exercise rejection before any resource is consumed."},
+  "proposals": [
+    {"value": "45", "reason": "First in-range sample specified in the protocol test."},
+    {"value": "105", "reason": "Alternative specified by the replay case after the preceding sample missed its target."}
+  ]
+}

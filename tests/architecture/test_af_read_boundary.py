@@ -36,10 +36,10 @@ def scoped_reducer_call(tree, node, parent, path):
     # Pure projections during validation/replay. No AF client is accepted here.
     allowed = {
         ("src/aegiscae/research/project.py", "_read_state"):
-            {("scoped_fixture_rules", "apply"), ("task_cards", "apply_scoped")},
-        ("src/aegiscae/research/scoped_fixture.py", "_prior_view"): {("rules", "apply")},
-        ("src/aegiscae/research/scoped_fixture.py", "_record"): {("rules", "apply")},
-        ("src/aegiscae/research/scoped_fixture_rules.py", "emit"): {("task_cards", "apply")},
+            {("scoped_fixture_rules", "apply"), ("project_tasks", "apply_scoped"), ("project_tasks", "apply")},
+        ("src/aegiscae/research/scoped_coordinator.py", "_prior_view"): {("rules", "apply")},
+        ("src/aegiscae/research/scoped_coordinator.py", "_record"): {("rules", "apply")},
+        ("src/aegiscae/research/scoped_fixture_rules.py", "emit"): {("project_tasks", "apply")},
     }
     return (isinstance(parent, ast.Call) and parent.func is node
             and isinstance(node.value, ast.Name)

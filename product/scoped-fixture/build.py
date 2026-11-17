@@ -22,15 +22,15 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def reachable(files):
+def reachable(files, entry=ENTRY):
     """Resolve imports of committed aegiscae modules, including package initializers."""
     modules = {}
     for path in files:
         if path.startswith("src/aegiscae/") and path.endswith(".py"):
             name = path[4:-3].replace("/", ".").removesuffix(".__init__")
             modules[name] = path
-    pending = [ENTRY]
-    if ENTRY not in modules:
+    pending = [entry]
+    if entry not in modules:
         raise ValueError("SCOPED_ENTRY_NOT_IN_COMMIT")
     visited = set()
     while pending:

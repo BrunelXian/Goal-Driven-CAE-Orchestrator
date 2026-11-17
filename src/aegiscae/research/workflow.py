@@ -4,7 +4,8 @@ import copy
 from dataclasses import asdict, replace
 
 from aegiscae.contracts.research_contracts import ContractError, digest_bytes, identifier, require
-from aegiscae.research import mutation, project as store
+from aegiscae.research import mutation, project as store, scoped_coordinator
+from aegiscae.research.agent_contract import validate_agent_contract
 from aegiscae.research.budget import BudgetLedger, SyntheticOracle
 from aegiscae.research.budget_rules import apply_event, empty_ledger
 from aegiscae.research.mutation_rules import MutationRequest
@@ -358,3 +359,21 @@ class WorkflowCoordinator:
         if current["state"] != "ACCEPTANCE_UNKNOWN":
             return self._event("UNKNOWN", {}, revision)
         return current
+
+
+# Agent-proposal mode uses the same scoped project transactions as the legacy
+# fixture rehearsal. Only the operator-bound contract selects the adapter.
+def agent_start(project, scope_id, max_runs, expected_revision, key, *, contract):
+    validate_agent_contract(contract)
+    return scoped_coordinator.start(project, scope_id, max_runs, expected_revision, key, contract=contract)
+
+
+def agent_advance(project, scope_id, max_runs, expected_revision, key, proposal=None, *, contract):
+    validate_agent_contract(contract)
+    return scoped_coordinator.advance(project, scope_id, max_runs, expected_revision, key, proposal,
+                                  contract=contract)
+
+
+def agent_status(project, scope_id, max_runs, request_key=None, *, contract):
+    validate_agent_contract(contract)
+    return scoped_coordinator.status(project, scope_id, max_runs, request_key, contract=contract)

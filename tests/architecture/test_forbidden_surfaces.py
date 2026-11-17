@@ -44,7 +44,7 @@ def permitted_mcp_sdk_import(node: ast.AST, display_path: str) -> bool:
     """SDK use is a named import allowlist, never a generic client permission."""
     return (
         display_path in {MCP_INTERFACE_PATH, "src/aegiscae/interfaces/mcp_proposal.py",
-                         "src/aegiscae/interfaces/mcp_scoped.py"}
+                         "src/aegiscae/interfaces/mcp_research.py"}
         and isinstance(node, ast.ImportFrom)
         and node.level == 0
         and node.module in MCP_SDK_IMPORTS

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cae-agent",
+  "version": "0.3.1",
+  "description": "Local research coordination over scoped project and evidence services.",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "CAE Agent",
+        "shortDescription": "Local research tasks, evidence and bounded iteration"
+      }
+    }
+  }
+}

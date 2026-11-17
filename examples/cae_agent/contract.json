@@ -1,0 +1,8 @@
+{
+  "schema": "agent-research-contract-v1",
+  "baseline_sha256": "5cf6f722404b7bb11cc6b5e5776872bfc2b8201af253db24c7fe4cb88d72c599",
+  "backend": {"kind": "FIXTURE", "id": "scoped-spring-fixture-v1"},
+  "parameter": {"name": "F", "unit": "N", "min": "1", "max": "200"},
+  "goal": {"metric": "displacement", "selector": "fixture-tip", "direction": "downward-positive",
+           "unit": "mm", "target": "1", "tolerance": "0.1"}
+}

@@ -21,8 +21,11 @@ def digest(value):
 class InstalledHost:
     """A new ephemeral read-only Host thread, with no account copying or model turn."""
 
-    def __init__(self, codex, home, market):
+    def __init__(self, codex, home, market, *, plugin_name=NAME, plugin_id=ID,
+                 required_services=("gdcae-core", "abqjobpilot")):
         self.codex, self.home, self.market = map(Path, (codex, home, market))
+        self.plugin_name, self.plugin_id = plugin_name, plugin_id
+        self.required_services = tuple(required_services)
         self.calls = []
         self.messages = queue.Queue()
         self.seq = 0
@@ -69,7 +72,7 @@ class InstalledHost:
                                             "capabilities": {"experimentalApi": True}})
             self.host_version = init.get("userAgent", "").split(" (")[0]
             self.send({"method": "initialized", "params": {}})
-            detail = self.rpc("plugin/read", {"pluginName": NAME, "marketplacePath":
+            detail = self.rpc("plugin/read", {"pluginName": self.plugin_name, "marketplacePath":
                               str(self.market / ".agents/plugins/marketplace.json")})["plugin"]
             self.plugin = {k: detail["summary"][k] for k in ("installed", "enabled")}
             self.plugin.update(mcpServers=sorted(detail["mcpServers"]), apps=len(detail.get("apps", [])))
@@ -80,11 +83,11 @@ class InstalledHost:
             deadline = time.monotonic() + 45
             while True:
                 rows = self.rpc("mcpServerStatus/list", {"threadId": self.thread, "limit": 100})["data"]
-                self.servers = {r["name"]: {"tools": sorted(r["tools"]), "status": r["runtimeStatus"],
+                self.servers = {r["name"]: {"tools": sorted(r.get("tools") or {}), "status": r["runtimeStatus"],
                                 "info": r.get("serverInfo"), "http_origin": r.get("httpOrigin")}
-                                for r in rows if r.get("pluginId") == ID}
-                if set(self.servers) == {"gdcae-core", "abqjobpilot"} and all(
-                        r["status"] == "connected" for r in self.servers.values()):
+                                for r in rows if r.get("pluginId") == self.plugin_id}
+                if all(self.servers.get(name, {}).get("status") == "connected"
+                       for name in self.required_services):
                     return self
                 if time.monotonic() >= deadline:
                     raise RuntimeError("INSTALLED_SERVICES_NOT_CONNECTED: " + str(self.servers))

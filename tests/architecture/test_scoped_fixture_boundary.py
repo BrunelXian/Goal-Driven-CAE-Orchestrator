@@ -13,7 +13,8 @@ from test_research_boundary import research_violations
 
 
 @pytest.mark.parametrize("module", [
-    "interfaces/fixture_scope.py", "interfaces/mcp_scoped.py",
+    "interfaces/fixture_scope.py", "interfaces/mcp_scoped.py", "interfaces/research_scope.py",
+    "interfaces/mcp_research.py", "research/agent_contract.py", "research/scoped_coordinator.py",
     "research/scoped_fixture.py", "research/scoped_fixture_port.py", "research/scoped_fixture_rules.py",
 ])
 def test_fixture_modules_remain_inside_named_boundaries(module):
@@ -28,14 +29,14 @@ def test_fixture_modules_remain_inside_named_boundaries(module):
 
 def test_new_tool_does_not_broaden_original_reader_or_allow_arbitrary_calls():
     snippet = ast.parse("from aegiscae.research.project import open_agreement_project").body[0]
-    assert permitted_fixture_import(snippet, "aegiscae/interfaces/fixture_scope.py")
+    assert permitted_fixture_import(snippet, "aegiscae/interfaces/research_scope.py")
     assert not permitted_fixture_import(snippet, "aegiscae/interfaces/mcp_read.py")
     assert not permitted_fixture_import(snippet, "aegiscae/interfaces/mcp_scoped.py")
     for expression in ('path.open("wb")', "path.unlink()"):
-        tree = ast.parse("def authorize():\n    " + expression)
-        assert write_violations(tree, "src/aegiscae/interfaces/fixture_scope.py")
+        tree = ast.parse("def issue():\n    " + expression)
+        assert write_violations(tree, "src/aegiscae/interfaces/research_scope.py")
     tree = ast.parse('def dispatch():\n    path.open("xb")')
     assert write_violations(tree, "src/aegiscae/interfaces/mcp_scoped.py")
     for call in ("client.apply(event)", "rules.submit(event)"):
         tree = ast.parse("def _record():\n    " + call)
-        assert boundary_violations(tree, "src/aegiscae/research/scoped_fixture.py")
+        assert boundary_violations(tree, "src/aegiscae/research/scoped_coordinator.py")

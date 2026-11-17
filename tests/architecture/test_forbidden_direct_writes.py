@@ -118,8 +118,8 @@ def write_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
         method_name = node.func.attr if isinstance(node.func, ast.Attribute) else None
 
         if (permitted_store_creation(tree, node, display_path)
-                or (display_path == "src/aegiscae/interfaces/fixture_scope.py"
-                    and enclosing_function(tree, node) == "authorize" and same(node, 'path.open("xb")'))
+                or (display_path == "src/aegiscae/interfaces/research_scope.py"
+                    and enclosing_function(tree, node) == "issue" and same(node, 'path.open("xb")'))
                 or permitted_mutation_write(tree, node, display_path)
                 or proposal_creation(tree, node, display_path)
                 or continuation_creation(tree, node, display_path)

@@ -1,6 +1,3 @@
-"""AegisCAE Runtime package skeleton.
+"""GD-CAE research contracts, project records and controlled workflow runtime."""
 
-No Runtime functionality is implemented during Milestone 0.
-"""
-
-__version__ = "0.0.0"
+__version__ = "0.3.1"
