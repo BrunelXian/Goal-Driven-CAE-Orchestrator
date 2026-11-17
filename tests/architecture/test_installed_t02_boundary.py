@@ -13,7 +13,7 @@ def test_deployed_research_core_uses_audited_sql_and_excludes_executors():
         "__init__.py", "contracts/__init__.py", "contracts/research_contracts.py",
         "research/__init__.py", "research/project.py", "research/research_agreement.py",
         "research/sanity.py", "research/task_cards.py", "research/task_roles.py",
-        "research/capability_discovery.py",
+        "research/capability_discovery.py", "research/project_tasks.py",
     }
     for name in files:
         path = REPO_ROOT/"src/aegiscae"/name
