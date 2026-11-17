@@ -178,3 +178,41 @@ def test_read_retry_and_original_key_reconciliation_without_execution(tmp_path):
             assert calls == 2 and log[-2]["backoff_seconds"] > 0 and log[-1]["attempt"] == 2
 
     asyncio.run(scenario())
+
+
+def test_unknown_unobserved_write_stops_and_reads_have_a_retry_limit(tmp_path):
+    from rehearse import BACKOFF_SECONDS, MutationResponseUnknown, invoke, recovering_connection
+    import pytest
+
+    binding, grant = make_scope(tmp_path, max_executions=0)
+    connect = stdio_connect(binding, grant["binding_sha256"])
+
+    async def scenario():
+        calls = []
+        counters = {"fresh_service_sessions": 0}
+        async with recovering_connection(connect, counters) as call:
+            project = await invoke(call, calls, "gdcae_project_open", {})
+            pid = {"project_id": grant["project_id"]}
+            request = {**pid, "expected_revision": project["revision"], "key": "missing-ack"}
+
+            async def interrupt_write(name, arguments):
+                if name == "gdcae_workflow_start":
+                    raise TimeoutError()
+                return await call(name, arguments)
+            interrupt_write.reopen = call.reopen
+            with pytest.raises(MutationResponseUnknown):
+                await invoke(interrupt_write, calls, "gdcae_workflow_start", request)
+            assert [v["tool"] for v in calls[-2:]] == ["gdcae_workflow_start", "gdcae_workflow_status"]
+            assert calls[-1]["result"]["data"]["request_receipt"] is None
+            assert calls[-1]["result"]["data"]["state"] == "NEW"
+
+        async def always_busy(name, args):
+            return {"error": "STORE_BUSY", "data": None}
+
+        reads = []
+        with pytest.raises(RuntimeError, match="STORE_BUSY"):
+            await invoke(always_busy, reads, "gdcae_workflow_status", pid)
+        assert len(reads) == len(BACKOFF_SECONDS) + 1
+        assert [row["backoff_seconds"] for row in reads[:-1]] == list(BACKOFF_SECONDS)
+
+    asyncio.run(scenario())
