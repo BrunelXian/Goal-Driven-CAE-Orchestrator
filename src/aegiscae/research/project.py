@@ -336,6 +336,18 @@ def _read_state(connection, root, agreement_state=None):
                     task_cards.apply(agreement_state.setdefault("task_hub", task_cards.empty()),
                                      event["workflow"], meta["research_project_id"], current_revision,
                                      latest_frozen_digest)
+                elif meta["schema_version"] == 3 and event["workflow"].get("schema") == "scoped-fixture-workflow-v1":
+                    from aegiscae.research import scoped_fixture_rules, task_cards
+                    _require(event["bundle_digest"] is None and not latest_frozen_digest, "INTEGRITY_ERROR")
+                    scoped_fixture_rules.apply(
+                        agreement_state.setdefault("scoped_fixture", scoped_fixture_rules.initial()),
+                        agreement_state.setdefault("task_hub", task_cards.empty()), event["workflow"],
+                        meta["research_project_id"], current_revision)
+                elif meta["schema_version"] == 3 and event["workflow"].get("schema") == "scoped-task-v1":
+                    from aegiscae.research import task_cards
+                    _require(event["bundle_digest"] is None and not latest_frozen_digest, "INTEGRITY_ERROR")
+                    task_cards.apply_scoped(agreement_state, event["workflow"],
+                                            meta["research_project_id"], current_revision)
                 elif meta["schema_version"] == 3:
                     parent = next((b for b in decoded if b[1] == latest_frozen_digest
                                    and b[2] <= current_revision), None)
@@ -479,12 +491,15 @@ def _commit_workflow_event(connection, meta, bundle_digest, payload, *, at_utc=N
 
 
 def create_research_project(explicit_new_root, descriptive_name, *, declared_af_binding=None,
-                            rod_preview=False, research_agreements=False):
+                            rod_preview=False, research_agreements=False, reserved_project_id=None):
     _require(type(rod_preview) is bool, "INVALID_SCHEMA_SELECTION")
     _require(type(research_agreements) is bool and not (research_agreements and rod_preview),
              "INVALID_SCHEMA_SELECTION")
     _require(not research_agreements or declared_af_binding is None, "INVALID_BINDING")
     _require(not rod_preview or declared_af_binding is None, "INVALID_BINDING")
+    if reserved_project_id is not None:
+        identifier(reserved_project_id, 'rp')
+        _require(research_agreements, 'INVALID_SCHEMA_SELECTION')
     _validate_name(descriptive_name)
     declared = _binding(declared_af_binding)
     root = _path(explicit_new_root, exists=False)
@@ -496,7 +511,7 @@ def create_research_project(explicit_new_root, descriptive_name, *, declared_af_
         created, transaction_id = _utc(), "tx_" + uuid.uuid4().hex
         _validate_time(created)
         meta = {"schema_version": 3 if research_agreements else 2 if rod_preview else 1,
-                "research_project_id": "rp_" + uuid.uuid4().hex,
+                "research_project_id": reserved_project_id or "rp_" + uuid.uuid4().hex,
                 "project_revision": 1, "created_at_utc": created,
                 "created_transaction_id": transaction_id,
                 "revision_transaction_id": transaction_id, "revision_at_utc": created,

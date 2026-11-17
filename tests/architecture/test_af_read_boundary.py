@@ -9,6 +9,7 @@ import pytest
 from conftest import REPO_ROOT, SRC_ROOT, iter_python_files, parse_python_file
 from test_forbidden_legacy_dependencies import ADAPTER_PATH
 from test_research_boundary import permitted_store_sql
+from test_research_boundary import enclosing_function
 from test_proposal_boundary import proposal_sql
 from test_continuation_boundary import continuation_sql
 from test_main_runtime_boundary import runtime_sql
@@ -31,6 +32,20 @@ IMPLICIT_ROOTS = {
 SAFE_EXCEPTION_FIELDS = {"code", "message", "retryable", "details"}
 
 
+def scoped_reducer_call(tree, node, parent, path):
+    # Pure projections during validation/replay. No AF client is accepted here.
+    allowed = {
+        ("src/aegiscae/research/project.py", "_read_state"):
+            {("scoped_fixture_rules", "apply"), ("task_cards", "apply_scoped")},
+        ("src/aegiscae/research/scoped_fixture.py", "_prior_view"): {("rules", "apply")},
+        ("src/aegiscae/research/scoped_fixture.py", "_record"): {("rules", "apply")},
+        ("src/aegiscae/research/scoped_fixture_rules.py", "emit"): {("task_cards", "apply")},
+    }
+    return (isinstance(parent, ast.Call) and parent.func is node
+            and isinstance(node.value, ast.Name)
+            and (node.value.id, node.attr) in allowed.get((path, enclosing_function(tree, node)), set()))
+
+
 def boundary_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
     """Reject known bypass patterns without granting general client execution."""
     violations: list[str] = []
@@ -50,6 +65,7 @@ def boundary_violations(tree: ast.AST, display_path: str) -> tuple[str, ...]:
             if node.attr == "call":
                 reject(node, "raw .call forwarding")
             if (node.attr in WRITE_OR_LIFECYCLE or node.attr.startswith("apply_")) and not (
+                scoped_reducer_call(tree, node, parents.get(node), display_path) or
                 node.attr == "execute" and (permitted_store_sql(tree, parents.get(node), display_path)
                                           or proposal_sql(tree, parents.get(node), display_path)
                                           or continuation_sql(tree, parents.get(node), display_path)

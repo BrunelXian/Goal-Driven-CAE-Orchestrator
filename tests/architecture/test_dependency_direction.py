@@ -39,6 +39,19 @@ def source_layer(path: Path, src_root: Path) -> str:
     return relative.parts[1] if len(relative.parts) > 2 else "root"
 
 
+def permitted_fixture_import(node, path):
+    sources = {
+        ("aegiscae/interfaces/fixture_scope.py", "aegiscae.research.project"):
+            {"_path", "create_research_project", "open_agreement_project"},
+        ("aegiscae/interfaces/fixture_scope.py", "aegiscae.research.scoped_fixture_port"): {"BASELINE"},
+        ("aegiscae/interfaces/mcp_scoped.py", "aegiscae.research"): {"scoped_fixture"},
+        ("aegiscae/interfaces/mcp_scoped.py", "aegiscae.research.task_cards"): {"record_scoped", "view"},
+    }
+    return (isinstance(node, ast.ImportFrom) and node.level == 0
+            and all(item.asname is None and item.name in sources.get((path, node.module), set())
+                    for item in node.names))
+
+
 def package_parts(path: Path, src_root: Path) -> tuple[str, ...]:
     relative = path.relative_to(src_root).with_suffix("")
     parts = relative.parts
@@ -113,6 +126,7 @@ def import_direction_violations(
                 target_layer not in ALLOWED_AEGISCAE_TARGETS[layer]
                 and not permitted_mcp_bridge_import(node, display_path)
                 and not proposal_import(node, display_path)
+                and not permitted_fixture_import(node, display_path)
             ):
                 violations.append(
                     f"{display_path}:{node.lineno}: forbidden dependency "

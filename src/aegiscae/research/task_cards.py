@@ -153,3 +153,45 @@ def record(project, request, op):
         require(receipt and receipt["digest"] == digest(event), "TASK_READBACK_MISMATCH")
         return {"status": "REGISTERED_READ_BACK", "key": event["key"], **receipt,
                 "project": project.research_project_id, "execution_authorized": False}
+
+
+def apply_scoped(state, event, project_id, revision):
+    flow = state.get("scoped_fixture")
+    require(flow and event.get("main") == flow["scope"], "SCOPE_CONFLICT")
+    require(event.get("schema") == "scoped-task-v1" and event.get("op") in {"task-create", "task-update"}
+            and isinstance(event.get("data"), dict) and token(event["data"].get("task_id"), r"T[0-9]{2,6}")
+            and event["data"]["task_id"] not in {"T01", "T02", "T03", "T04"}, "RESERVED_TASK_OR_OPERATION")
+    require(token(event.get("key"), r"[A-Za-z0-9._-]{1,96}") and not event["key"].startswith("fixture.")
+            and event["key"] not in flow["receipts"], "REQUEST_KEY_CONFLICT")
+    hub = state["task_hub"]
+    apply(hub, dict(event, schema=SCHEMA), project_id, revision, None)
+    hub["receipts"][event["key"]]["digest"] = digest(event)
+    card = hub["cards"][event["data"]["task_id"]]
+    card["role_contract"]["session_status"] = "LOGICAL_STEP"
+    card["host_attestation"] = "UNATTESTED"
+
+
+def record_scoped(project, scope_id, request, op):
+    """Write a task through the same ledger after transport scope validation."""
+    require(isinstance(request, dict) and set(request) == {"project", "expected_revision", "key", "data"}
+            and request["project"] == project.research_project_id, "INVALID_TASK_REQUEST")
+    require(token(scope_id, "[0-9a-f]{64}") and token(request["key"], r"[A-Za-z0-9._-]{1,96}")
+            and not request["key"].startswith("fixture."), "INVALID_TASK_KEY")
+    event = dict(request, schema="scoped-task-v1", op=op, main=scope_id)
+    state = {}
+    with project._snapshot(write=True, agreement_state=state) as (conn, meta, bundles, _):
+        flow = state.get("scoped_fixture")
+        require(not bundles and flow and flow["scope"] == scope_id, "SCOPED_MAIN_REQUIRED")
+        receipt = state["task_hub"]["receipts"].get(request["key"])
+        if receipt:
+            require(receipt["digest"] == digest(event), "REQUEST_KEY_CONFLICT")
+        else:
+            apply_scoped(state, event, project.research_project_id, meta["project_revision"])
+            _commit_workflow_event(conn, meta, None, event)
+            conn.commit()
+    reread = {}
+    with project._snapshot(agreement_state=reread) as (_, _, _, _):
+        receipt = reread["task_hub"]["receipts"][request["key"]]
+        require(receipt["digest"] == digest(event), "TASK_READBACK_MISMATCH")
+        return dict(status="REGISTERED_READ_BACK", project=project.research_project_id,
+                    key=request["key"], host_attestation="UNATTESTED", execution_authorized=False, **receipt)
