@@ -1,0 +1,31 @@
+{
+  "format": "vericae-local-test-release-v1",
+  "product_version": "0.5.5",
+  "plugin_name": "vericae-research",
+  "marketplace_name": "vericae-v050002b",
+  "release_status": "LOCAL_TEST_SOURCE_NOT_PUBLISHED",
+  "source_base_commit": "1833383aed38efe5849aa57deaa629b7a1f31dcc",
+  "previous_test_version": "0.5.4",
+  "subagent_policy": "Subagent Visibility & Traceability",
+  "desktop_visibility_validation": "NOT_RUN",
+  "workspace_schema_version": 1,
+  "delivery_mode": "PURE_CODEX_NATIVE",
+  "developer_cli_shipped": false,
+  "native_agent_configs": 3,
+  "host_tool_isolation": "HOST_ISOLATION_NOT_SUPPORTED",
+  "collaboration_mode": "PERSISTENT_ROLE_THREADS_NATIVE_CROSS_THREAD",
+  "persistent_role_threads": 4,
+  "role_names": [
+    "Main",
+    "CAE",
+    "Results",
+    "Independent Validation"
+  ],
+  "cross_thread_human_uat": "NOT_RUN",
+  "model_policy": "ADAPTIVE_AGENT_MODEL_ASSIGNMENT",
+  "model_policy_file": "references/model-policy.yaml",
+  "model_catalog_checked": "2026-11-23",
+  "model_assignment_human_uat": "NOT_RUN",
+  "cross_thread_model_preservation": "NOT_RUN",
+  "prior_collaboration_acceptance": "0.5.4_USER_REPORTED_PASS"
+}

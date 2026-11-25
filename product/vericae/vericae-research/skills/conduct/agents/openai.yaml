@@ -1,0 +1,4 @@
+interface:
+  display_name: Conduct CAE Research
+  short_description: Main经长期角色对话派发并回收原始成果
+  default_prompt: 恢复项目与长期角色绑定，先建Task Card再原生派发并读原回复；普通发送不覆盖目标模型，新增角色先做简短能力评估。

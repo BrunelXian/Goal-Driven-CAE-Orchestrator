@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "vericae-research",
+  "version": "0.5.5",
+  "description": "File-based CAE research planning, Main-led analysis and read-only environment checks. Isolated test source; no execution connection.",
+  "author": {
+    "name": "Xian"
+  },
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "VeriCAE Research (Test)",
+        "shortDescription": "File-based CAE research",
+        "developerName": "Xian"
+      }
+    }
+  }
+}

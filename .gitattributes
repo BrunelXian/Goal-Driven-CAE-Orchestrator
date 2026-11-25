@@ -13,3 +13,4 @@ plugins/gdcae-research/references/update.md text eol=crlf
 
 # Frozen document hashes refer to the Git blob bytes on all checkout platforms.
 docs/baseline/*.md text eol=lf
+product/vericae/vericae-research/** text eol=lf

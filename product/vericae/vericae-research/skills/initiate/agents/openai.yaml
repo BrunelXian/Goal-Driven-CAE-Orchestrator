@@ -1,0 +1,4 @@
+interface:
+  display_name: Initiate CAE Research
+  short_description: 确认立项并建立文件与四个长期角色对话
+  default_prompt: 理解科研问题并展示六模块草案；确认后建立文件和同项目四角色对话，按实际模型目录指定模型与Thinking，并核验实际生效值。

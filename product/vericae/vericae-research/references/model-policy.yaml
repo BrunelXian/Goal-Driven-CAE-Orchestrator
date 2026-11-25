@@ -1,0 +1,34 @@
+format: vericae-model-policy-v1
+catalog_checked: '2026-11-23'
+catalog_source: Codex native model catalog
+scope: requested_defaults_not_effective_configuration
+roles:
+  Main:
+    family: Astra
+    model: gpt-6.2-astra
+    thinking: high
+  CAE:
+    family: Luna
+    model: gpt-6-luna
+    thinking: medium
+  Results:
+    family: Luna
+    model: gpt-6-luna
+    thinking: medium
+  Independent Validation:
+    family: Sol
+    model: gpt-6.2-sol
+    thinking: high
+assessment_candidates:
+  routine:
+    model: gpt-6-luna
+    thinking: medium
+  engineering:
+    model: gpt-6.2-sol
+    thinking_options: [medium, high]
+  scientific:
+    model: gpt-6.2-astra
+    thinking: high
+  high_risk_review:
+    evaluate_first: {model: gpt-6.2-sol, thinking: high}
+    escalation_candidate: {model: gpt-6.2-astra, thinking: high}

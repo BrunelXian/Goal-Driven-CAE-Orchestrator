@@ -1,0 +1,20 @@
+{
+  "name": "vericae-public",
+  "interface": {
+    "displayName": "VeriCAE Research"
+  },
+  "plugins": [
+    {
+      "name": "vericae-research",
+      "source": {
+        "source": "local",
+        "path": "./vericae-research"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
