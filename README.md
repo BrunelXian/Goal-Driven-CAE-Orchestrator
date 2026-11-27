@@ -1,32 +1,36 @@
-# VeriCAE 0.5.5
-**Agentic Research Framework for Computational Engineering**
+# VeriCAE · Agentic Research Framework for Computational Engineering
 
-VeriCAE helps CAE researchers turn an engineering question into a testable contract, a qualified reference model and a sequence of experiments whose conclusions another engineer can check. Research lives in Markdown and YAML files. Codex Desktop provides the skills and persistent role conversations. The research layer runs without a separate agent runtime, database or message broker.
+**Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE gives research engineers a way to ask that question before trusting a result. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
 
-## Research principles
+**Research Preview · VeriCAE 0.5.6** is available from the public PR branch in the quick start. The companion execution platform is **AbqJobPilot 0.5.3 DEV**. The two products have separate version histories. This preview is a source snapshot for evaluation. The preview can be evaluated from source. This branch carries no stable-release designation or public marketplace listing.
 
-- **Verified-Model-First.** Establish what a simple reference model predicts, document its assumptions and qualify it for the intended use before extending it.
-- **Goal-Driven.** The Research Contract defines the observable, units, acceptance criterion and stopping conditions. The Research Card tracks the model, its qualification and the next decision.
-- **Verifiable.** Connect each claim to its inputs, model version, Task Card and evidence. For execution claims, check the actual Run and Receipt and retain the scope of each verdict.
+## Where research ends and execution begins
 
-## From a question to a research decision
+```mermaid
+flowchart TD
+    User[Research engineer] --> Main[VeriCAE Main in Codex Desktop]
+    Main <--> Files[Research Contract, Card, Task Cards and evidence]
+    Main <-->|Task and original reply| CAE[CAE]
+    Main <-->|Task and original reply| Results[Results]
+    Main <-->|Task and original reply| IV[Independent Validation]
+    Main <-->|Authorized MCP requests and evidence| Pilot[AbqJobPilot on Windows]
+    Pilot --> Gate[Project, Owner, Supervisor, Plan and Grant]
+    Gate --> Run[Controlled backend and Run]
+    Run --> Receipt[Receipt and versioned verdicts]
+    Receipt --> Pilot
+```
 
-**Initiate** drafts a six-part Research Card and confirms the project name and scope with the researcher. It prepares the file workspace and a Handoff. **Conduct** reads those files to resume the investigation. **Setup** inspects the environment and reports which capabilities the current Desktop conversation can actually use.
+VeriCAE owns scientific decisions. Research state lives in Markdown and YAML, and Codex supplies the persistent conversations and their communication. The plugin requires no separate agent runtime or task database. AbqJobPilot owns execution authorization, budgets, process supervision and provenance. A Task Card scopes research work. A Grant governs execution. [AbqJobPilot repository](https://github.com/BrunelXian/AbqJobPilot)
 
-| Persistent role | Responsibility |
-|---|---|
-| Main | Owns research state, writes bounded Task Cards, dispatches them to existing role conversations and reads their original replies. |
-| CAE | Reviews geometry, materials, boundary conditions and units. Derives a reference response and produces the artifacts allowed by the task. |
-| Results | Checks the selected quantity, units, location and frame against the recorded outputs and execution evidence. |
-| Independent Validation | Derives or checks the result independently, challenges assumptions and reports what the evidence can support. |
+## How a study works
 
-Researchers can consult a role directly. File changes require a bounded dispatch from Main. Version 0.5.5 also supports model and reasoning-effort requests for role conversations, verification of the effective settings when exposed by the host, and a capability assessment before adding a specialist.
+1. **Verified-Model-First.** Initiate turns a question into a Research Contract. Specify the observable, units, tolerance and stopping condition. The six-part Research Card records the simplest model that can test the claim and its qualification status.
+2. **Goal-Driven.** Conduct resumes from the Handoff. **Main** writes the primary state and dispatches bounded Task Cards to existing conversations. **CAE** examines geometry, materials, loads and restraints and derives an expected response. **Results** checks the actual output selector, units and provenance.
+3. **Verifiable.** **Independent Validation** challenges assumptions and recomputes the result. Main reads the original replies, links artifacts to tasks and records which conclusions survive review. Researchers can consult a role directly. [Task and return protocol](product/vericae/vericae-research/references/cross-thread-protocol.md)
 
-AbqJobPilot forms the execution layer. It owns project bindings, grants, runs, receipts and execution verdicts. VeriCAE uses an explicitly configured MCP connection for the permitted operations. To verify an external server, the current Desktop Main must discover the expected tools and obtain a matching response to an authorized read. A researcher can plan a project and review models offline.
+## Quick start
 
-## Install the public 0.5.5 snapshot
-
-Use Git and a Codex installation with the `codex plugin` and `codex plugin marketplace` commands. In PowerShell, run the following from a directory where you want to keep the checkout. The local marketplace uses that checkout as its source.
+With Git and a Codex installation that supports local plugin marketplaces, run these commands in PowerShell. Keep the checkout where the marketplace can continue to read it. The historical branch name is intentional.
 
 ```powershell
 git clone --branch codex/vericae-0.5.5-public --single-branch https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator.git
@@ -36,26 +40,34 @@ codex plugin add vericae-research --marketplace vericae-public --json
 codex plugin list --marketplace vericae-public --json
 ```
 
-Check that the entry is installed and enabled, with version `0.5.5`. The plugin's Desktop display name is **VeriCAE Research (Test)**. Open your research directory as a Codex project and use **Set Up Research Environment** to check the three skill entries. If Desktop still references an obsolete skill path, save the research checkpoint, safely finish running tasks and restart Desktop. Return to the same project and Main conversation.
+Look for `vericae-research@vericae-public`, version `0.5.6`, with `installed` and `enabled` both true. In a Codex Desktop project, select **VeriCAE Research (Test)** and ask **Set Up Research Environment** to identify its three visible skill entries. Research planning works offline. Live execution or historical readback requires a separately provisioned AbqJobPilot connection.
 
-For a first study, ask: *“Plan a study of the tip displacement of a uniformly loaded cantilever. Propose a project name and show me the Research Card before creating files.”* Check the load definition, observable and acceptance criterion before confirming. Later, ask Conduct to resume from `docs/initiation/HANDOFF.md` and review the assumptions for the first model. The plugin includes the [workspace template](product/vericae/vericae-research/templates/research-project/README.md) and [role protocol](product/vericae/vericae-research/references/cross-thread-protocol.md). An [optional developer checker](product/vericae/developer) verifies local file consistency.
+Try Initiate with *“Plan a cantilever tip-displacement study. Show me the observable, reference model and six-part Research Card before creating any files.”* After confirming the draft and project directory, use Conduct to resume from `docs/initiation/HANDOFF.md`. [Workspace template](product/vericae/vericae-research/templates/research-project/README.md)
 
-## Verification status
+### Reproduce the axial-bar comparison in one minute
 
-**VeriCAE 0.5.5 + AbqJobPilot 0.5.3 DEV** completed INT-001, a read-only cross-system verification of an existing axial-bar run.
+From the checkout root, run the public replay in PowerShell. It reads the frozen bar input and the published historical displacement observations. Abaqus and an MCP connection are unnecessary.
 
-| INT-001 dimension | Verdict |
-|---|---|
-| MCP Integration | PASS |
-| Native Agent Orchestration | PASS |
-| Scientific / Numerical Verification | PASS |
-| Independent Validation | PASS |
-| Evidence Qualification | PARTIAL |
+```powershell
+./docs/vericae/demo/replay.ps1
+```
 
-The analytical displacement and the historical DAT result agreed at printed precision. Overall qualification remains **PARTIAL** because the historical extraction output lacks a verified binding to its owner. INT-001 did not submit a new job or establish an autonomous solve cycle for a new task. [INT-001 scope and findings](docs/vericae/INT-001.md)
+Expected: analytical and printed DAT displacement **−0.010 mm**, absolute diagnostic difference **2.235174179 × 10⁻¹⁰ mm**. Repeating the arithmetic checks numerical agreement. Qualifying the historical extraction still requires evidence linking its producer to its output. [Replay inputs and method](docs/vericae/demo/README.md) · [Study findings](docs/vericae/INT-001.md)
 
-## Limits and next validation steps
+![Frozen axial-bar inputs and historical evidence open in the editor workbench](docs/vericae/images/int001-workbench.png)
 
-Native thread visibility, cross-thread messaging and effective model settings depend on the Codex host. The public plugin supplies the research workflow. The validated history interface requires a separately provisioned AbqJobPilot DEV environment. The next execution milestone is a separately authorized new task with verified inputs, execution containment and output binding, followed by independent review.
+*Preview workbench in VS Code: the frozen Abaqus input beside the public case notes and replay instructions.*
 
-The repository and plugin carry the [Apache License 2.0](LICENSE).
+## Engineering evidence
+
+| Study | Evidence | Decision |
+|---|---|---|
+| INT-001 · VeriCAE 0.5.5 + AbqJobPilot 0.5.3 DEV | Read-only review of a **historical real Abaqus** T3D2 run. MCP integration, four-role orchestration, scientific/numerical verification and independent validation each passed. | **PARTIAL overall.** The historical extraction receipt is `FAILED`. Execution and extraction qualifications are `REVIEW_REQUIRED`. Historical result data integrity is `INSUFFICIENT`. The ODB-derived value has diagnostic use only. |
+| INT-002A.1 · separate execution-bridge test | Real MCP submission with an exact Grant and budget, a fake backend, terminal Run, SHA-256-bound test output, idempotent submission and reconnect recovery. 250 targeted regression checks passed. | **TEST_ONLY PASS**, `solver_conclusion=NOT_RUN`. General-purpose real execution remains **NOT_READY**. |
+| INT-002B · separate planning exercise | Research Contract, Task Cards and acceptance criteria prepared. The execution owner became unavailable. | **Planning PASS. Execution BLOCKED / STOPPED.** Zero new submissions. Current Grant balance unknown. |
+
+## Runtime limits and research directions
+
+Version 0.5.6 adds a four-step MCP check in the project's active Desktop Main: verify registration, discover tools, make an authorized read, then validate the responding service and permission scope. If discovery fails, Setup diagnoses the environment. When a restart is needed, Main saves a checkpoint and the researcher resumes the original conversation. Host support governs thread visibility and effective model settings. [Runtime verification and recovery](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+
+The next engineering milestones are reproducible execution-environment binding and evidence-qualified fresh solves. The research questions are how to qualify a reference model for a stated use, choose the next numerical experiment under a goal and budget, and transfer independent review across solvers and coupled physics. [Apache License 2.0](LICENSE)

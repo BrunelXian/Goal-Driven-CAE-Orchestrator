@@ -3,7 +3,7 @@ name: setup
 description: 当用户要检查VeriCAE、Codex原生能力、科研文件或执行连接状态时使用。只读报告实际能力与缺项；不要求额外语言运行时，不创建科研状态、安装组件、签发Grant或启动Solver。
 ---
 
-# Set Up Research Environment — VeriCAE 0.5.5
+# Set Up Research Environment — VeriCAE 0.5.6
 
 先读取 [共同契约](../../references/three-skills-contract.md) 与
 [Workspace Format v1](../../docs/vericae/WORKSPACE_FORMAT.md)。本Skill只检查，不自动安装、
@@ -13,7 +13,7 @@ description: 当用户要检查VeriCAE、Codex原生能力、科研文件或执�
 
 1. **Codex**：核对当前宿主、实际可用的原生文件/调度工具与插件入口；版本不能核实时写NOT_VERIFIED。
    区分工具声明、实际可调用、真实操作已验收；ID或提示词不证明Desktop可见。
-2. **VeriCAE**：manifest版本0.5.5，恰好三个Skill、原生Subagent TOML、Markdown/YAML模板
+2. **VeriCAE**：manifest版本0.5.6，恰好三个Skill、原生Subagent TOML、Markdown/YAML模板
    及静态协议。插件不包含CLI或语言运行时；不以Python、Node、EXE安装作为前置条件。
 3. **研究工作区**：有明确路径就用Codex原生文件查看/搜索，读取Handoff、Card、Tasks、模型及日志，
    核对必需文件、字段、六模块与实际引用。无项目写NOT_CREATED，不替Initiate创建。

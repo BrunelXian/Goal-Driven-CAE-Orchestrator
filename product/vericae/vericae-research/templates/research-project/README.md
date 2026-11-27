@@ -30,6 +30,6 @@ Receipt 的真实性和执行事实仍需通过 AbqJobPilot 核实；本工具�
 Independent Validation，复用已有对话，不用临时spawn替代。实际Thread引用在Handoff/Task正文，
 不增加Schema字段或状态服务。消息首部含发送方→接收方及Task ID；实际发送/读取和UI持久性分别核验。
 
-0.5.5新建角色按当前目录请求默认model/thinking，实际观测值另记Handoff正文。
+0.5.6新建角色按当前目录请求默认model/thinking，实际观测值另记Handoff正文。
 新增专业角色前先评估必要性与最低成本可靠候选；普通派发不覆盖已有线程模型。
 没有实际配置/发送前后核验时明确未验证，不需要额外Runtime或状态数据库。

@@ -10,13 +10,13 @@ model:
   qualification: UNVERIFIED
 references:
   - path: README.md
-    sha256: 'a2f0bdc306e7ccd516c38e58b04f59128a9370bc12788be1fd0a207e2a4a6576'
+    sha256: 'b05bbc17d8be2ecfa2685a3d73d56afc2bb416a6f90f60f59f9f27115b329645'
   - path: research/TASK_CARDS.md
     sha256: 'b88036208db09c20eaf9f0dba9381f9a6ac4ecf5a2ce707e5f1fa3ed28601de3'
   - path: models/SANITY_MODEL_SPEC.md
     sha256: '3f3ae6aeebf635ad0b83ea44e0c8a10c3319847d051ac0becc7c024e1c321c57'
   - path: docs/initiation/HANDOFF.md
-    sha256: '4aacc06db55502a465599a70ed1db9326316371c39d7a261b6a11c11d949beef'
+    sha256: 'e62518acdcaffa5967a68d5c9267015a57268e3282ff0f07635b34810b38e60f'
   - path: .abqjobpilot/link.json
     sha256: 'f83701780871b75120b9d11c58051e8faf3791410417d1663c9ce31f25a4c892'
 receipts: []

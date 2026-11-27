@@ -1,4 +1,4 @@
-# VeriCAE 0.5.5 — Pure Codex Native Three Skills Contract
+# VeriCAE 0.5.6 — Pure Codex Native Three Skills Contract
 
 三个入口：[Initiate](../skills/initiate/SKILL.md)、[Conduct](../skills/conduct/SKILL.md)、
 [Setup](../skills/setup/SKILL.md)。用户侧只交付这三个Skill、Codex原生Subagent TOML、

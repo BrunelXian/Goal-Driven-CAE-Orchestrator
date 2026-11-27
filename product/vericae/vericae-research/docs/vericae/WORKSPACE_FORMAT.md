@@ -1,4 +1,4 @@
-# VeriCAE Workspace Format v1 — Native use in 0.5.5
+# VeriCAE Workspace Format v1 — Native use in 0.5.6
 
 The existing file format is unchanged. This static reference is usable through Codex native file tools;
 there is no packaged CLI or language-runtime prerequisite. Native review is NATIVE_FILE_REVIEW, not a

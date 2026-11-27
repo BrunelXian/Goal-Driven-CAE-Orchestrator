@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vericae"
-version = "0.5.5"
+version = "0.5.6"
 description = "Read-only consistency checks for file-based CAE research workspaces."
 requires-python = ">=3.11,<4"
 dependencies = ["PyYAML>=6.0.3,<7"]

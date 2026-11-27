@@ -1,4 +1,4 @@
-# VeriCAE 0.5.5 — 角色对话与Subagent双模式协议
+# VeriCAE 0.5.6 — 角色对话与Subagent双模式协议
 
 此协议由Main和CAE / Results / Independent Validation共同遵守，不增加Runtime或认证服务。
 标准协作对象是 [四个持久角色Thread](persistent-role-threads.md)，由Main经

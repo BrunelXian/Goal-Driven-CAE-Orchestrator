@@ -1,6 +1,6 @@
 {
   "name": "vericae-research",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "File-based CAE research planning, Main-led analysis and read-only environment checks. Isolated test source; no execution connection.",
   "author": {
     "name": "Xian"
