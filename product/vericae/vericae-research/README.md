@@ -1,6 +1,6 @@
-# VeriCAE Research 0.5.6
+# VeriCAE Research 1.0.0
 
-This is the Codex Native plugin packaged as `vericae-research@vericae-public` in the repository's local marketplace. The repository README gives the installation commands and a read-only numerical demo.
+This is the Codex Native plugin packaged as `vericae-research@vericae-public` in the repository's local marketplace. The archive includes INSTALL.md and RELEASE_NOTES.md beside the marketplace catalog.
 
 | Entry | Role |
 |---|---|

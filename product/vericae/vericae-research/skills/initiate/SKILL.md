@@ -3,7 +3,7 @@ name: initiate
 description: 当用户用自然语言提出新的CAE科研问题、希望立项或开始研究时使用。理解物理问题，确认项目名称与六模块草案；确认范围后建立文件工作区及同项目四个长期角色对话并交给Conduct。纯科研规划不需要MCP、AbqJobPilot、Abaqus或Grant。
 ---
 
-# Initiate CAE Research — VeriCAE 0.5.6
+# Initiate CAE Research — VeriCAE 1.0.0
 
 你把科研意图整理为实际研究文件，由 `<ProjectName> Main` 接续。
 本阶段不运行Solver、不要求已有Grant、不创建或宣称已创建真实Subagent。

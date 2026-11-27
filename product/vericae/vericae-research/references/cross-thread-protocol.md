@@ -1,4 +1,4 @@
-# VeriCAE 0.5.6 — Native Cross-Thread Dispatch
+# VeriCAE 1.0.0 — Native Cross-Thread Dispatch
 
 标准流程 **Main → Role Thread → Main**，长期角色及复用规则见 [角色对话规范](persistent-role-threads.md)。
 消息是正文协作约定，不是认证令牌或执行权限；不新增通信服务器、AgentHub、消息数据库或Runtime。

@@ -3,7 +3,7 @@ name: conduct
 description: 当用户要继续、恢复或审查已有CAE科研项目时使用。从Handoff恢复文件与长期角色对话，由Main先建任务单、原生跨对话派发并读取原回复，保持单写者及扁平调度。无执行连接仍支持纯科研分析，不要求数据库或后台服务。
 ---
 
-# Conduct CAE Research — VeriCAE 0.5.6
+# Conduct CAE Research — VeriCAE 1.0.0
 
 `<ProjectName> Main` 是唯一科研主控，负责决策和主状态单写。
 先读取 [共同契约](../../references/three-skills-contract.md) 与

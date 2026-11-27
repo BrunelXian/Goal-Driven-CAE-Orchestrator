@@ -1,5 +1,11 @@
 # VeriCAE CHANGELOG
 
+## 1.0.0 — Research workflow release freeze
+
+2026-11-27. Frozen from the 0.5.6 public package. This release preserves the three native Skills, four persistent research roles, file workspace and Desktop MCP recovery protocol. The installation asset contains a local marketplace, plugin, license, installation guide, release notes and per-file checksums.
+
+UAT-100 on the 0.5.6 baseline passed real Desktop read-only communication with AbqJobPilot 0.5.3 DEV. Autonomous execution of a new real-solver study remains unqualified.
+
 ## 0.5.6 — MCP Runtime Verification & Environment Recovery
 
 2026-11-25 · Development baseline. The public branch packages these changes for research evaluation.

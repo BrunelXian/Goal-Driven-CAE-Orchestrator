@@ -1,4 +1,4 @@
-# VeriCAE 0.5.6 — Pure Codex Native Three Skills Contract
+# VeriCAE 1.0.0 — Pure Codex Native Three Skills Contract
 
 三个入口：[Initiate](../skills/initiate/SKILL.md)、[Conduct](../skills/conduct/SKILL.md)、
 [Setup](../skills/setup/SKILL.md)。用户侧只交付这三个Skill、Codex原生Subagent TOML、
@@ -51,7 +51,7 @@ Main Dispatch要求可核验原生Main来源及完整Task Card，才可在明确
 自定义Subagent继承父会话MCP及权限；`HOST_ISOLATION_NOT_SUPPORTED`。
 Main-Only为行为协议，不能宣称宿主硬隔离；feature关闭项也需核实实际工具与调用权限。
 执行授权由AbqJobPilot Grant机制保证；本切片不创建/扩容Grant、不提交、不调用ODB、不运行Abaqus。
-本测试插件无MCP文件、endpoint、server、空transport、hook或启动命令。
+本插件无MCP文件、endpoint、server、空transport、hook或启动命令。
 未核验外部连接时显示 `AbqJobPilot MCP: UNAVAILABLE`、`connection: NOT_CONNECTED`；
 不调用其他历史插件残留工具代替目标服务。外部MCP的注册、Desktop Main实际调用和恢复遵循
 [MCP Registration & Runtime Verification](mcp-runtime-verification.md)：CLI成功不代替Desktop验收。

@@ -1,4 +1,4 @@
-# VeriCAE 0.5.6 — Codex原生Subagent配置
+# VeriCAE 1.0.0 — Codex原生Subagent配置
 
 交付三个完整TOML，默认继承宿主当前模型，不固定模型或改写用户设置：
 0.5.4标准协作优先 [四个长期角色对话](persistent-role-threads.md)；此处TOML是可选临时

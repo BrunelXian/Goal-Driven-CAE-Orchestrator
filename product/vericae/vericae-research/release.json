@@ -1,11 +1,10 @@
 {
-  "format": "vericae-local-test-release-v1",
-  "product_version": "0.5.6",
+  "format": "vericae-release-v1",
+  "product_version": "1.0.0",
   "plugin_name": "vericae-research",
   "marketplace_name": "vericae-public",
-  "release_status": "PUBLIC_RESEARCH_PREVIEW_SOURCE",
-  "source_base_commit": "fdaa423f9b3d422551446f1f2be67cbd7f1a7b0a",
-  "previous_test_version": "0.5.5",
+  "release_status": "LOCAL_SOURCE_FREEZE",
+  "source_base_commit": "8c7ff743f8635316a4aeecc2e38b5459fce5c0ea",
   "subagent_policy": "Subagent Visibility & Traceability",
   "desktop_visibility_validation": "NOT_RUN",
   "workspace_schema_version": 1,
@@ -28,8 +27,8 @@
   "model_assignment_human_uat": "NOT_RUN",
   "cross_thread_model_preservation": "NOT_RUN",
   "prior_collaboration_acceptance": "0.5.4_USER_REPORTED_PASS",
-  "release_theme": "MCP Runtime Verification & Environment Recovery",
+  "release_theme": "Verifiable CAE research in Codex Desktop",
   "mcp_runtime_policy_file": "references/mcp-runtime-verification.md",
-  "mcp_runtime_human_uat": "NOT_RUN",
-  "source_snapshot_commit": "256351a25a1aee9bb9381acb92a4dfa07c2b0cfa"
+  "mcp_runtime_human_uat": "UAT-100_PASS_0.5.6_DESKTOP_HISTORY_READ_ONLY",
+  "previous_version": "0.5.6"
 }

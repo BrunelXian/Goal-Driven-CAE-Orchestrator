@@ -1,4 +1,4 @@
-# VeriCAE 0.5.6 — Adaptive Agent Model Assignment
+# VeriCAE 1.0.0 — Adaptive Agent Model Assignment
 
 这是Main的简短配置/判断协议，不是决策引擎、预算数据库或第二Runtime。
 保持四个持久角色、同项目绑定、Main单写者、真实跨对话来源与授权、短回执及原生通信纪律。

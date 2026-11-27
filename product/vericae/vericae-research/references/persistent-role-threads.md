@@ -1,4 +1,4 @@
-# VeriCAE 0.5.6 — Persistent Role Threads
+# VeriCAE 1.0.0 — Persistent Role Threads
 
 标准科研协作是 **Main → Role Thread → Main**。每个项目恰有以下四个长期角色对话，
 不是四个临时spawn任务，也不要求四个常驻执行进程：

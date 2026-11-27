@@ -1,14 +1,14 @@
 {
   "name": "vericae-research",
-  "version": "0.5.6",
-  "description": "File-based CAE research planning, Main-led analysis and read-only environment checks. Isolated test source; no execution connection.",
+  "version": "1.0.0",
+  "description": "File-based CAE research planning, Main-led analysis and read-only environment checks. Uses separately configured MCP connections.",
   "author": {
     "name": "Xian"
   },
   "skills": "./skills",
   "requires_local_executor": true,
   "interface": {
-    "displayName": "VeriCAE Research (Test)",
+    "displayName": "VeriCAE Research",
     "shortDescription": "File-based CAE research",
     "developerName": "Xian"
   }

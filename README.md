@@ -2,7 +2,7 @@
 
 **Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE is an agentic research framework for computational engineering built around that question. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
 
-**VeriCAE 0.5.6** is available as a source-based Research Preview on the branch in the quick start. Its companion execution platform, **AbqJobPilot 0.5.3 DEV**, is versioned separately. Stable distribution and public marketplace publication fall outside this preview.
+**VeriCAE 1.0.0** is frozen locally for open-source distribution. It packages the Codex Native research layer. AbqJobPilot 0.5.3 DEV is a separately provisioned execution platform. [1.0.0 release notes](product/vericae/release/RELEASE_NOTES.md)
 
 ## Where research ends and execution begins
 
@@ -35,17 +35,7 @@ The companion preview includes an isolated fake-backend demo that exercises acce
 
 ## Quick start
 
-With Git and a Codex installation that supports local plugin marketplaces, run these commands in PowerShell. Keep the checkout where the marketplace can continue to read it. The historical branch name is intentional.
-
-```powershell
-git clone --branch codex/vericae-0.5.5-public --single-branch https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator.git
-cd Goal-Driven-CAE-Orchestrator
-codex plugin marketplace add ./product/vericae
-codex plugin add vericae-research --marketplace vericae-public --json
-codex plugin list --marketplace vericae-public --json
-```
-
-Look for `vericae-research@vericae-public`, version `0.5.6`, with `installed` and `enabled` both true. In a Codex Desktop project, select **VeriCAE Research (Test)** and ask **Set Up Research Environment** to identify its three visible skill entries. Research planning works offline. Live execution or historical readback requires a separately provisioned AbqJobPilot connection.
+Use the versioned ZIP and its companion SHA-256 checksum. Extract it to a persistent directory, register the extracted marketplace and install VeriCAE Research. The installation guide includes the exact commands, an integrity check and the Desktop acceptance step. [Install VeriCAE 1.0.0](product/vericae/release/INSTALL.md)
 
 Try Initiate with *“Plan a cantilever tip-displacement study. Show me the observable, reference model and six-part Research Card before creating any files.”* After confirming the draft and project directory, use Conduct to resume from `docs/initiation/HANDOFF.md`. [Workspace template](product/vericae/vericae-research/templates/research-project/README.md)
 
@@ -73,7 +63,7 @@ Expected: analytical and printed DAT displacement **−0.010 mm**, absolute diag
 
 ## Runtime limits and research directions
 
-Version 0.5.6 adds a four-step MCP check in the project's active Desktop Main: verify registration, discover tools, make an authorized read, then validate the responding service and permission scope. If discovery fails, Setup diagnoses the environment. When a restart is needed, Main saves a checkpoint and the researcher resumes the original conversation. Host support governs thread visibility and effective model settings. [Runtime verification and recovery](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+VeriCAE 1.0.0 retains the four-step MCP check in the project's active Desktop Main: verify registration, discover tools, make an authorized read, then validate the responding service and permission scope. If discovery fails, Setup diagnoses the environment. When a restart is needed, Main saves a checkpoint and the researcher resumes the original conversation. Host support governs thread visibility and effective model settings. [Runtime verification and recovery](product/vericae/vericae-research/references/mcp-runtime-verification.md)
 
 The next engineering milestones are reproducible execution-environment binding and evidence-qualified fresh solves. The research questions are how to qualify a reference model for a stated use, choose the next numerical experiment under a goal and budget, and transfer independent review across solvers and coupled physics. [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md)
 
