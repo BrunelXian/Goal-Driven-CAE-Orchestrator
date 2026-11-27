@@ -43,7 +43,7 @@ The framework is built on three principles: **Verified-Model-First** — start f
   <img src="docs/vericae/images/research-workflow-light.svg" alt="VeriCAE research workflow: define a research goal; Main coordinates CAE, Results and Independent Validation; scoped MCP connects the research layer to AbqJobPilot; returned evidence informs research findings and the next decision." width="100%">
 </picture>
 
-### The research experience
+### The three research skills
 
 1. **Initiate CAE Research** — Frame the question, agree on the scope and acceptance criteria, and create a Research Contract and Research Card.
 2. **Conduct CAE Research** — Main coordinates scoped Task Cards across three specialist conversations: CAE reviews the model and physics, Results analyzes observations and provenance, and Independent Validation checks claims independently. Main synthesizes the findings and proposes the next research decision.
@@ -57,13 +57,23 @@ VeriCAE is built on **Codex Native** conversations. Main is the sole writer of p
 
 *The architecture diagram illustrates the intended research workflow, not a completed end-to-end live solver run.*
 
-### Real research evidence
+### Research Experience — INT-001
 
-![VS Code showing the frozen Abaqus axial-bar input beside the historical evidence and replay instructions](docs/vericae/images/int001-workbench.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/research-experience-dark.svg">
+  <img src="docs/vericae/images/research-experience-light.svg" alt="Structured summary of the historical INT-001 axial-bar verification: the four research roles, analytical and recorded displacement, numerical check PASS and overall evidence PARTIAL." width="100%">
+</picture>
 
-*Actual published INT-001 replay workbench in VS Code.*
+*Structured summary of published INT-001 records, not a verbatim transcript or a screenshot. General new-task real Abaqus execution remains unqualified end to end.*
 
-The historical Abaqus DAT and independent analytical prediction agree at **−0.010 mm**. The numerical check passed; the overall evidence verdict remained PARTIAL because of an unsuccessful extraction receipt and insufficient output provenance. General new-task real Abaqus execution remains unqualified end to end.
+[Read the full case record](docs/vericae/INT-001.md) · [Reproduce the numerical comparison](docs/vericae/demo/README.md)
+
+<details>
+<summary>Inspect the original VS Code replay workbench</summary>
+
+![Original INT-001 replay workbench](docs/vericae/images/int001-workbench.png)
+
+</details>
 
 [Technical architecture](ENGINE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status](docs/COMPATIBILITY.md)
 
@@ -106,3 +116,14 @@ These are future research and engineering priorities, not claims of completed ca
 - **Multi-solver and multiphysics research:** explore additional CAE backends and verifiable coupled thermo-mechanical and fluid–structure workflows.
 
 [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Current verification boundaries](docs/COMPATIBILITY.md)
+
+### Research Projects
+
+Related research programmes that inform the development and application of VeriCAE. Each repository maintains its own scientific and validation status.
+
+| Project | Research focus |
+| --- | --- |
+| [**RL-LAM-ScanOpt**](https://github.com/BrunelXian/RL-LAM-ScanOpt) | Laser additive manufacturing: scan-path optimisation, LDED benchmarks and FEA teacher data. A target application for VeriCAE. |
+| [**SP-InvOpt / SMALL-PUNCH**](https://github.com/SHUAIXSYU/SMALL-PUNCH) | Small Punch Test inverse optimisation: material constitutive parameter identification from force–displacement curves. Earlier GD-CAE and AbqJobPilot workflows have supported this research. |
+
+These links identify related research, not completed VeriCAE 1.0.0 end-to-end qualifications. Further projects will be added as they are made public.

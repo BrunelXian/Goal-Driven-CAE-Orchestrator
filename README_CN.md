@@ -57,13 +57,23 @@ VeriCAE 使用 Codex Native 持久化角色会话，科研状态保存为 Markdo
 
 *上图为目标科研工作流示意，并非已完成的端到端真实求解运行截图。*
 
-### 真实科研证据
+### 科研实践 — INT-001
 
-![VS Code 中的冻结 Abaqus 轴向杆模型与历史证据、复算说明](docs/vericae/images/int001-workbench.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/research-experience-dark.svg">
+  <img src="docs/vericae/images/research-experience-light.svg" alt="INT-001 历史轴向杆验证的结构化摘要：四个科研角色、解析解与历史位移记录、数值核验 PASS、整体证据 PARTIAL。" width="100%">
+</picture>
 
-*真实的 INT-001 公开复算工作台（VS Code）。*
+*依据已公开的 INT-001 记录整理，并非逐字对话摘录或界面截图。通用全新真实 Abaqus 求解任务的端到端资格验证尚未完成。*
 
-历史 Abaqus DAT 与独立解析推导均得到 **−0.010 mm**。数值核验通过；由于历史提取回执失败及输出来源证据不足，整体证据裁定仍为 PARTIAL。通用全新真实 Abaqus 求解任务的端到端资格验证尚未完成。
+[完整案例记录](docs/vericae/INT-001.md) · [离线数值复算](docs/vericae/demo/README.md)
+
+<details>
+<summary>查看原始 VS Code 复算工作台</summary>
+
+![INT-001 原始复算工作台](docs/vericae/images/int001-workbench.png)
+
+</details>
 
 [技术内核](ENGINE.md) · [工程案例](docs/vericae/ENGINEERING-CASE-STUDY.md) · [兼容性与验证范围](docs/COMPATIBILITY.md)
 
@@ -104,3 +114,14 @@ codex plugin list --marketplace vericae-public --json
 - **多求解器与多物理场：** 探索更多 CAE 后端，以及可验证的热力耦合与流固耦合工作流。
 
 [科研议程](docs/vericae/RESEARCH-AGENDA.md) · [当前验证范围](docs/COMPATIBILITY.md)
+
+### 科研项目
+
+与 VeriCAE 的开发和科研应用相关的项目。各项目在自己的仓库中维护科研进展与验证状态。
+
+| 项目 | 研究方向 |
+| --- | --- |
+| [**RL-LAM-ScanOpt**](https://github.com/BrunelXian/RL-LAM-ScanOpt) | 激光增材制造：扫描路径优化、LDED 基准与有限元教师数据。VeriCAE 的目标应用方向。 |
+| [**SP-InvOpt / SMALL-PUNCH**](https://github.com/SHUAIXSYU/SMALL-PUNCH) | 小冲杆试验反演：通过力–位移曲线识别材料本构参数。此前的 GD-CAE 与 AbqJobPilot 工作流已为该研究提供支持。 |
+
+此处为关联科研项目入口，不表示均已通过 VeriCAE 1.0.0 的端到端资格验证。其他科研项目公开后将陆续加入。
