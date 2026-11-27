@@ -10,14 +10,17 @@
 
 **English** · [简体中文](README_CN.md)
 
-[![VeriCAE release](https://img.shields.io/badge/VeriCAE-v1.0.0-314657?style=flat-square)](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0)
-[![License](https://img.shields.io/badge/License-Apache--2.0-65717d?style=flat-square)](LICENSE)
-[![Codex Native](https://img.shields.io/badge/Runtime-Codex%20Native-41576b?style=flat-square)](ENGINE.md)
-[![MCP stdio](https://img.shields.io/badge/Interface-MCP%20stdio-38766b?style=flat-square)](ENGINE.md)
-[![AbqJobPilot](https://img.shields.io/badge/AbqJobPilot-v1.0.0-41576b?style=flat-square)](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0)
+[![Project — Research Software](https://img.shields.io/badge/Project-Research%20Software-386597)](product/vericae/vericae-research/README.md)
+[![Workflow — Goal-Driven](https://img.shields.io/badge/Workflow-Goal--Driven-237468)](ENGINE.md#research-decisions)
+[![Runtime — Codex Native](https://img.shields.io/badge/Runtime-Codex%20Native-70599C)](ENGINE.md#connection-and-recovery)
+[![Interface — MCP](https://img.shields.io/badge/Interface-MCP-286E86)](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+<br>
+[![Release — v1.0.0](https://img.shields.io/badge/Release-v1.0.0-365E94)](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0)
+[![License — Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-96536E)](LICENSE)
+[![Execution — AbqJobPilot](https://img.shields.io/badge/Execution-AbqJobPilot-97562F)](https://github.com/BrunelXian/AbqJobPilot)
+[![Solver — Abaqus](https://img.shields.io/badge/Solver-Abaqus-75612A)](docs/vericae/INT-001.md "Historical Abaqus axial-bar verification")
 
-
-[Download release](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [Explore source code](product/vericae/) · [Execution platform](https://github.com/BrunelXian/AbqJobPilot)
+[Download release](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [Documentation index](docs/README.md) · [Explore source code](product/vericae/)
 
 </div>
 
@@ -43,7 +46,7 @@ The framework is built on three principles: **Verified-Model-First** — start f
   <img src="docs/vericae/images/research-workflow-light.svg" alt="VeriCAE research workflow: define a research goal; Main coordinates CAE, Results and Independent Validation; scoped MCP connects the research layer to AbqJobPilot; returned evidence informs research findings and the next decision." width="100%">
 </picture>
 
-### The research experience
+### The three research skills
 
 1. **Initiate CAE Research** — Frame the question, agree on the scope and acceptance criteria, and create a Research Contract and Research Card.
 2. **Conduct CAE Research** — Main coordinates scoped Task Cards across three specialist conversations: CAE reviews the model and physics, Results analyzes observations and provenance, and Independent Validation checks claims independently. Main synthesizes the findings and proposes the next research decision.
@@ -57,15 +60,21 @@ VeriCAE is built on **Codex Native** conversations. Main is the sole writer of p
 
 *The architecture diagram illustrates the intended research workflow, not a completed end-to-end live solver run.*
 
-### Real research evidence
+The historical axial-bar verification demonstrates numerical agreement and independent review; a newly initiated real Abaqus solve-and-extract loop remains unqualified end to end. [Technical architecture](ENGINE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status](docs/COMPATIBILITY.md)
 
-![VS Code showing the frozen Abaqus axial-bar input beside the historical evidence and replay instructions](docs/vericae/images/int001-workbench.png)
+### Repository Structure
 
-*Actual published INT-001 replay workbench in VS Code.*
-
-The historical Abaqus DAT and independent analytical prediction agree at **−0.010 mm**. The numerical check passed; the overall evidence verdict remained PARTIAL because of an unsuccessful extraction receipt and insufficient output provenance. General new-task real Abaqus execution remains unqualified end to end.
-
-[Technical architecture](ENGINE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status](docs/COMPATIBILITY.md)
+```text
+product/vericae/
+├── .agents/plugins/marketplace.json      Marketplace catalog
+├── vericae-research/                     Codex Native research plugin
+│   ├── skills/                           Initiate, Conduct and Setup skills
+│   ├── native-agents/                    Specialist agent definitions
+│   ├── references/                       Research and collaboration protocols
+│   └── templates/research-project/       Research workspace templates
+├── developer/                            Workspace checker for developers
+└── release/                              Package builder and release tests
+```
 
 ## 3. Installation
 
@@ -90,9 +99,15 @@ For example, ask: *"Plan a cantilever tip-displacement study. Identify the refer
 
 ## 4. Development & Contributors
 
-**Project maintainer:** [BrunelXian](https://github.com/BrunelXian).
+<p align="center">
+  <a href="https://github.com/BrunelXian">
+    <img src="https://avatars.githubusercontent.com/u/43325767?v=4&amp;s=120" width="72" height="72" alt="BrunelXian"><br>
+    <strong>@BrunelXian</strong>
+  </a><br>
+  VeriCAE founder, system architect and maintainer
+</p>
 
-Developed through an AI-assisted engineering workflow using ChatGPT and Codex, with human-led research direction, architecture decisions and acceptance review.
+ChatGPT and Codex assist development. The maintainer sets the research direction and reviews changes for acceptance.
 
 Contributions, independent reproductions and research collaborations are welcome. VeriCAE is licensed under [Apache-2.0](LICENSE); the companion AbqJobPilot project uses MIT.
 
@@ -106,3 +121,14 @@ These are future research and engineering priorities, not claims of completed ca
 - **Multi-solver and multiphysics research:** explore additional CAE backends and verifiable coupled thermo-mechanical and fluid–structure workflows.
 
 [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Current verification boundaries](docs/COMPATIBILITY.md)
+
+### Research Projects
+
+Related research programmes that inform the development and application of VeriCAE. Each repository maintains its own scientific and validation status.
+
+| Project | Research focus |
+| --- | --- |
+| [**RL-LAM-ScanOpt**](https://github.com/BrunelXian/RL-LAM-ScanOpt) | Laser additive manufacturing: scan-path optimisation, LDED benchmarks and FEA teacher data. A target application for VeriCAE. |
+| [**SP-InvOpt / SMALL-PUNCH**](https://github.com/SHUAIXSYU/SMALL-PUNCH) | Small Punch Test inverse optimisation: material constitutive parameter identification from force–displacement curves. Earlier GD-CAE and AbqJobPilot workflows have supported this research. |
+
+These links identify related research, not completed VeriCAE 1.0.0 end-to-end qualifications. Further projects will be added as they are made public.

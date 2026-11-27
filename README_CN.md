@@ -10,14 +10,17 @@
 
 [English](README.md) · **简体中文**
 
-[![VeriCAE release](https://img.shields.io/badge/VeriCAE-v1.0.0-314657?style=flat-square)](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0)
-[![License](https://img.shields.io/badge/License-Apache--2.0-65717d?style=flat-square)](LICENSE)
-[![Codex Native](https://img.shields.io/badge/Runtime-Codex%20Native-41576b?style=flat-square)](ENGINE.md)
-[![MCP stdio](https://img.shields.io/badge/Interface-MCP%20stdio-38766b?style=flat-square)](ENGINE.md)
-[![AbqJobPilot](https://img.shields.io/badge/AbqJobPilot-v1.0.0-41576b?style=flat-square)](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0)
+[![Project — Research Software](https://img.shields.io/badge/Project-Research%20Software-386597)](product/vericae/vericae-research/README.md)
+[![Workflow — Goal-Driven](https://img.shields.io/badge/Workflow-Goal--Driven-237468)](ENGINE.md#research-decisions)
+[![Runtime — Codex Native](https://img.shields.io/badge/Runtime-Codex%20Native-70599C)](ENGINE.md#connection-and-recovery)
+[![Interface — MCP](https://img.shields.io/badge/Interface-MCP-286E86)](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+<br>
+[![Release — v1.0.0](https://img.shields.io/badge/Release-v1.0.0-365E94)](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0)
+[![License — Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-96536E)](LICENSE)
+[![Execution — AbqJobPilot](https://img.shields.io/badge/Execution-AbqJobPilot-97562F)](https://github.com/BrunelXian/AbqJobPilot)
+[![Solver — Abaqus](https://img.shields.io/badge/Solver-Abaqus-75612A)](docs/vericae/INT-001.md "历史 Abaqus 轴向杆核验")
 
-
-[正式下载](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [浏览公开源码](product/vericae/) · [执行平台](https://github.com/BrunelXian/AbqJobPilot)
+[正式下载](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [文档索引](docs/README.md) · [浏览公开源码](product/vericae/)
 
 </div>
 
@@ -57,15 +60,21 @@ VeriCAE 使用 Codex Native 持久化角色会话，科研状态保存为 Markdo
 
 *上图为目标科研工作流示意，并非已完成的端到端真实求解运行截图。*
 
-### 真实科研证据
+历史轴向杆案例验证了数值一致性与独立审查；全新真实 Abaqus 求解与结果提取闭环尚未完成端到端资格验证。[技术内核](ENGINE.md) · [工程案例](docs/vericae/ENGINEERING-CASE-STUDY.md) · [兼容性与验证范围](docs/COMPATIBILITY.md)
 
-![VS Code 中的冻结 Abaqus 轴向杆模型与历史证据、复算说明](docs/vericae/images/int001-workbench.png)
+### 仓库结构
 
-*真实的 INT-001 公开复算工作台（VS Code）。*
-
-历史 Abaqus DAT 与独立解析推导均得到 **−0.010 mm**。数值核验通过；由于历史提取回执失败及输出来源证据不足，整体证据裁定仍为 PARTIAL。通用全新真实 Abaqus 求解任务的端到端资格验证尚未完成。
-
-[技术内核](ENGINE.md) · [工程案例](docs/vericae/ENGINEERING-CASE-STUDY.md) · [兼容性与验证范围](docs/COMPATIBILITY.md)
+```text
+product/vericae/
+├── .agents/plugins/marketplace.json      本地插件市场清单
+├── vericae-research/                     Codex Native 科研插件
+│   ├── skills/                           Initiate、Conduct、Setup 三项科研技能
+│   ├── native-agents/                    三个专业角色的原生智能体定义
+│   ├── references/                       科研与角色协作协议
+│   └── templates/research-project/       科研工作区模板
+├── developer/                            开发工具，用于检查工作区文件
+└── release/                              打包工具与发布测试
+```
 
 ## 3. 安装
 
@@ -90,9 +99,17 @@ codex plugin list --marketplace vericae-public --json
 
 ## 4. 开发者与贡献
 
-**项目维护者：** [BrunelXian](https://github.com/BrunelXian)。
+<p align="center">
+  <a href="https://github.com/BrunelXian">
+    <img src="https://avatars.githubusercontent.com/u/43325767?v=4&amp;s=120" width="72" height="72" alt="BrunelXian"><br>
+    <strong>@BrunelXian</strong>
+  </a><br>
+  VeriCAE 创立者、系统架构设计者与维护者
+</p>
 
-项目采用人类主导科研方向、架构决策与验收审查的 AI 辅助工程开发方式，使用 ChatGPT 与 Codex 协作。欢迎贡献、复现验证及科研合作。VeriCAE 使用 [Apache-2.0](LICENSE) 许可证，AbqJobPilot 使用 MIT 许可证。
+ChatGPT 与 Codex 辅助开发，科研方向和验收审查由维护者负责。
+
+欢迎贡献、独立复现及科研合作。VeriCAE 使用 [Apache-2.0](LICENSE) 许可证，AbqJobPilot 使用 MIT 许可证。
 
 ## 5. 未来计划
 
@@ -104,3 +121,14 @@ codex plugin list --marketplace vericae-public --json
 - **多求解器与多物理场：** 探索更多 CAE 后端，以及可验证的热力耦合与流固耦合工作流。
 
 [科研议程](docs/vericae/RESEARCH-AGENDA.md) · [当前验证范围](docs/COMPATIBILITY.md)
+
+### 科研项目
+
+与 VeriCAE 的开发和科研应用相关的项目。各项目在自己的仓库中维护科研进展与验证状态。
+
+| 项目 | 研究方向 |
+| --- | --- |
+| [**RL-LAM-ScanOpt**](https://github.com/BrunelXian/RL-LAM-ScanOpt) | 激光增材制造：扫描路径优化、LDED 基准与有限元教师数据。VeriCAE 的目标应用方向。 |
+| [**SP-InvOpt / SMALL-PUNCH**](https://github.com/SHUAIXSYU/SMALL-PUNCH) | 小冲杆试验反演：通过力–位移曲线识别材料本构参数。此前的 GD-CAE 与 AbqJobPilot 工作流已为该研究提供支持。 |
+
+此处为关联科研项目入口，不表示均已通过 VeriCAE 1.0.0 的端到端资格验证。其他科研项目公开后将陆续加入。
