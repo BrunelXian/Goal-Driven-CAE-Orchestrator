@@ -8,9 +8,9 @@
 
 ## 1. What is VeriCAE?
 
-VeriCAE is a goal-driven AI research framework for computational engineering. Instead of prescribing every simulation step, researchers define a scientific objective, and VeriCAE helps organize the research team, plan numerical experiments, review models, analyze evidence and decide what to investigate next.
+VeriCAE is an open-source AI research framework for computational engineering. Rather than prescribing every simulation step, researchers define a scientific goal. VeriCAE helps organize a persistent research team, formulate hypotheses, plan numerical experiments, review models, analyze evidence and decide what to investigate next.
 
-Built around **Verified-Model-First**, **Goal-Driven Research** and **Independent Verification**, VeriCAE connects scientific reasoning with controlled engineering workflows.
+The framework is built on three principles: **Verified-Model-First** — start from a model qualified for the research question; **Goal-Driven** — investigate within explicit objectives and constraints; **Verifiable** — connect scientific claims to evidence and independent review.
 
 ### What can you investigate?
 
@@ -28,9 +28,19 @@ Built around **Verified-Model-First**, **Goal-Driven Research** and **Independen
   <img src="docs/vericae/images/research-workflow-light.svg" alt="VeriCAE research workflow: define a research goal; Main coordinates CAE, Results and Independent Validation; scoped MCP connects the research layer to AbqJobPilot; returned evidence informs research findings and the next decision." width="100%">
 </picture>
 
-VeriCAE uses **Codex Native** conversations: Main manages the research state, CAE examines the model and physics, Results analyzes recorded outputs, and Independent Validation checks scientific claims. Research contracts, cards, tasks and reports are stored in Markdown and YAML.
+### The research experience
 
-**[AbqJobPilot](https://github.com/BrunelXian/AbqJobPilot)** is the independent Windows execution layer. It manages authorization, job lifecycles and execution evidence through MCP. A research agreement does not authorize a solver run. The diagram illustrates the intended research workflow; general new-task real Abaqus execution is not yet qualified end to end.
+1. **Initiate CAE Research** — Frame the question, agree on the scope and acceptance criteria, and create a Research Contract and Research Card.
+2. **Conduct CAE Research** — Main coordinates scoped Task Cards across three specialist conversations: CAE reviews the model and physics, Results analyzes observations and provenance, and Independent Validation checks claims independently. Main synthesizes the findings and proposes the next research decision.
+3. **Set Up Research Environment** — When computational tools are needed, verify the actual environment, MCP availability and service identity before dependent work proceeds.
+
+### Two products, two responsibilities
+
+VeriCAE is built on **Codex Native** conversations. Main is the sole writer of primary research state; contracts, cards, tasks and reports are inspectable Markdown/YAML files. No separate VeriCAE agent runtime or database is required. Role and Task Card boundaries define the research workflow, not a host-enforced security sandbox.
+
+**[AbqJobPilot](https://github.com/BrunelXian/AbqJobPilot)** is the independent Windows execution platform. It owns authorization, job lifecycles and execution evidence, connecting to VeriCAE through MCP. A research agreement does not authorize a solver run.
+
+The diagram illustrates the intended research workflow. General new-task real Abaqus execution is not yet qualified end to end. In a historical Abaqus axial-bar study, the multi-agent scientific verification reproduced the expected displacement of −0.010 mm; the overall evidence verdict remained PARTIAL.
 
 [Technical architecture](ARCHITECTURE.md) · [Real Abaqus case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status and compatibility](COMPATIBILITY.md)
 
@@ -47,7 +57,9 @@ codex plugin add vericae-research --marketplace vericae-public --json
 codex plugin list --marketplace vericae-public --json
 ```
 
-3. Open your research workspace in Codex Desktop and use **Initiate CAE Research**. Verify that the three VeriCAE skills are available at version 1.0.0.
+3. Open your research workspace in Codex Desktop. Verify that the three VeriCAE skills are available at version 1.0.0, then use **Initiate CAE Research** to begin.
+
+For example, ask: *"Plan a cantilever tip-displacement study. Identify the reference model and acceptance criteria, and show me the Research Card before creating files."*
 
 **Optional execution platform:** [Download AbqJobPilot 1.0.0 for Windows x64](https://github.com/BrunelXian/AbqJobPilot/releases/download/v1.0.0/AbqJobPilot-1.0.0-Windows-x64-Setup.exe). The installer is unsigned. Use your own licensed Abaqus installation and configure it in AbqJobPilot Settings; real execution requires a separately authorized, supported environment.
 
@@ -63,9 +75,11 @@ Contributions, independent reproductions and research collaborations are welcome
 
 ## 5. Roadmap
 
-- **Autonomous research experiments:** qualify new-task real-solver execution, result retrieval and independent verification in a complete workflow.
-- **Scientific discovery:** evaluate hypothesis generation, informative experiment selection and evidence-based stopping criteria.
-- **Engineering applications:** investigate material inverse identification, additive manufacturing and design optimization.
-- **Broader simulation support:** explore additional CAE solvers and coupled-physics research.
+These are future research and engineering priorities, not claims of completed capabilities in v1.0.0.
+
+- **Autonomous numerical experiments:** qualify general execution-environment binding, new-task real-solver execution and independently verified results.
+- **Simulation-driven scientific discovery:** investigate hypothesis generation, scaling laws, counterexamples and informative experiment selection under a research budget.
+- **Material and process research:** explore small-punch and tensile-test inverse identification, design optimization and additive manufacturing process studies.
+- **Multi-solver and multiphysics research:** explore additional CAE backends and verifiable coupled thermo-mechanical and fluid–structure workflows.
 
 [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Current verification boundaries](COMPATIBILITY.md)
