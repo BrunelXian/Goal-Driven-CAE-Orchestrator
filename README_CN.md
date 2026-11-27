@@ -57,25 +57,7 @@ VeriCAE 使用 Codex Native 持久化角色会话，科研状态保存为 Markdo
 
 *上图为目标科研工作流示意，并非已完成的端到端真实求解运行截图。*
 
-### 科研实践 — INT-001
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/research-experience-dark.svg">
-  <img src="docs/vericae/images/research-experience-light.svg" alt="INT-001 历史轴向杆验证的结构化摘要：四个科研角色、解析解与历史位移记录、数值核验 PASS、整体证据 PARTIAL。" width="100%">
-</picture>
-
-*依据已公开的 INT-001 记录整理，并非逐字对话摘录或界面截图。通用全新真实 Abaqus 求解任务的端到端资格验证尚未完成。*
-
-[完整案例记录](docs/vericae/INT-001.md) · [离线数值复算](docs/vericae/demo/README.md)
-
-<details>
-<summary>查看原始 VS Code 复算工作台</summary>
-
-![INT-001 原始复算工作台](docs/vericae/images/int001-workbench.png)
-
-</details>
-
-[技术内核](ENGINE.md) · [工程案例](docs/vericae/ENGINEERING-CASE-STUDY.md) · [兼容性与验证范围](docs/COMPATIBILITY.md)
+历史轴向杆案例验证了数值一致性与独立审查；全新真实 Abaqus 求解与结果提取闭环尚未完成端到端资格验证。[技术内核](ENGINE.md) · [工程案例](docs/vericae/ENGINEERING-CASE-STUDY.md) · [兼容性与验证范围](docs/COMPATIBILITY.md)
 
 ## 3. 安装
 

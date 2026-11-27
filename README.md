@@ -57,25 +57,7 @@ VeriCAE is built on **Codex Native** conversations. Main is the sole writer of p
 
 *The architecture diagram illustrates the intended research workflow, not a completed end-to-end live solver run.*
 
-### Research Experience — INT-001
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/research-experience-dark.svg">
-  <img src="docs/vericae/images/research-experience-light.svg" alt="Structured summary of the historical INT-001 axial-bar verification: the four research roles, analytical and recorded displacement, numerical check PASS and overall evidence PARTIAL." width="100%">
-</picture>
-
-*Structured summary of published INT-001 records, not a verbatim transcript or a screenshot. General new-task real Abaqus execution remains unqualified end to end.*
-
-[Read the full case record](docs/vericae/INT-001.md) · [Reproduce the numerical comparison](docs/vericae/demo/README.md)
-
-<details>
-<summary>Inspect the original VS Code replay workbench</summary>
-
-![Original INT-001 replay workbench](docs/vericae/images/int001-workbench.png)
-
-</details>
-
-[Technical architecture](ENGINE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status](docs/COMPATIBILITY.md)
+The historical axial-bar verification demonstrates numerical agreement and independent review; a newly initiated real Abaqus solve-and-extract loop remains unqualified end to end. [Technical architecture](ENGINE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status](docs/COMPATIBILITY.md)
 
 ## 3. Installation
 
