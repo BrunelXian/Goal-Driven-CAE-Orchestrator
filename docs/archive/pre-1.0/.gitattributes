@@ -1,2 +1,0 @@
-# Keep archived Git blob line endings when reading evidence on Windows.
-* text eol=lf
