@@ -1,3 +1,7 @@
+<div align="center">
+
+<img src="docs/vericae/images/vericae-logo.svg" alt="VeriCAE — finite-element mesh and verification mark" width="96" height="96">
+
 # VeriCAE
 
 **可验证、目标驱动的 CAE 科研智能体**
@@ -6,7 +10,13 @@
 
 [English](README.md) · **简体中文**
 
-[VeriCAE v1.0.0](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [AbqJobPilot v1.0.0](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) · [Apache-2.0](LICENSE)
+[![VeriCAE release](https://img.shields.io/badge/VeriCAE-v1.0.0-314657?style=flat-square)](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0)
+[![License](https://img.shields.io/badge/License-Apache--2.0-65717d?style=flat-square)](LICENSE)
+[![Codex Native](https://img.shields.io/badge/Runtime-Codex%20Native-41576b?style=flat-square)](ENGINE.md)
+[![MCP stdio](https://img.shields.io/badge/Interface-MCP%20stdio-38766b?style=flat-square)](ENGINE.md)
+[![AbqJobPilot](https://img.shields.io/badge/AbqJobPilot-v1.0.0-41576b?style=flat-square)](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0)
+
+</div>
 
 ## 1. VeriCAE 是什么？
 
