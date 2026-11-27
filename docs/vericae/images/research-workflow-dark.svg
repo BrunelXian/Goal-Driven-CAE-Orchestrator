@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="654" viewBox="0 0 1000 654" role="img" aria-labelledby="title description">
+  <title id="title">VeriCAE — Verifiable, Goal-Driven CAE Research Agent</title>
+  <desc id="description">Conceptual workflow. A research question goes to VeriCAE Main, which coordinates CAE, Results and Independent Validation. Main can make scoped MCP requests to AbqJobPilot, which separately controls execution and returns evidence. The research team evaluates findings and decides whether to stop or return to Main for another iteration.</desc>
+  <style>
+    text { font-family: "Segoe UI", Helvetica, Arial, sans-serif; fill: #e4edee; }
+    .title { font-size: 43px; font-weight: 700; letter-spacing: -1.7px; }
+    .subtitle { font-size: 21px; font-weight: 600; }
+    .body { font-size: 17px; fill: #b6c7ca; }
+    .label { font-family: Consolas, "Liberation Mono", monospace; font-size: 14px; letter-spacing: 1.2px; font-weight: 600; }
+    .main { font-size: 25px; font-weight: 650; }
+    .heading { font-size: 20px; font-weight: 650; }
+    .role { font-size: 17px; font-weight: 650; }
+    .detail { font-size: 15.5px; fill: #b6c7ca; }
+    .route { font-size: 14px; fill: #a8bddc; }
+    .node { fill: #192229; stroke: #394a53; }
+    .research { fill: #1a2b2a; stroke: #53796f; }
+    .execution { fill: #1c2938; stroke: #516680; }
+    .line, .icon { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+    .line { stroke: #859ba4; }
+    .icon { stroke: #9ccabd; }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="m2 1 5 3.5L2 8" fill="none" stroke="#859ba4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="returnArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="m2 1 5 3.5L2 8" fill="none" stroke="#9ccabd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="998" height="652" rx="16" fill="#11191f" stroke="#394a53"/>
+  <text x="40" y="61" class="title">VeriCAE</text>
+  <text x="41" y="92" class="subtitle">Verifiable, Goal-Driven CAE Research Agent</text>
+  <text x="41" y="117" class="body">From research questions to evidence-based engineering decisions.</text>
+  <!-- A small finite-element mesh, drawn as linework. -->
+  <g transform="translate(743 25)" fill="none" stroke="#536e72" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M0 50 42 46 85 38 128 27 171 14 212 0 M0 68 42 64 85 56 128 45 171 32 212 18 M0 86 42 82 85 74 128 63 171 50 212 36"/>
+    <path d="M0 50v36m42-40v36m43-44v36m43-47v36m43-49v36m41-50v36"/>
+    <path d="m0 50 42 14-42 22m42-40 43 10-43 26m43-44 43 7-43 29m43-47 43 5-43 31m43-49 41 4-41 32"/>
+    <g fill="#11191f" stroke="#9ccabd" stroke-width="1.5">
+      <circle cx="0" cy="50" r="2.7"/><circle cx="85" cy="56" r="2.7"/><circle cx="171" cy="32" r="2.7"/><circle cx="212" cy="0" r="2.7"/>
+    </g>
+  </g>
+
+  <!-- Research question and the two authority domains. -->
+  <rect x="40" y="143" width="920" height="79" rx="7" class="node"/>
+  <g class="icon" transform="translate(59 164)" aria-hidden="true">
+    <path d="M2 2h21a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H10l-7 6v-6H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+    <path d="M6 8h13M6 13h8"/>
+  </g>
+  <text x="101" y="175" class="heading">Define your research goal</text>
+  <text x="101" y="201" class="body">“How does material hardening affect the force–displacement response?”</text>
+  <path d="M333 222v47" class="line" marker-end="url(#arrow)"/>
+  <text x="78" y="253" class="label" style="fill:#9ccabd">RESEARCH INTELLIGENCE</text>
+  <text x="657" y="253" class="label" style="fill:#a8bddc">EXECUTION INFRASTRUCTURE</text>
+
+  <rect x="78" y="272" width="510" height="88" rx="7" class="research"/>
+  <text x="100" y="309" class="main">VeriCAE Main</text>
+  <text x="100" y="337" class="detail">Research Contract · Research Card · Research Strategy</text>
+  <rect x="657" y="272" width="303" height="88" rx="7" class="execution"/>
+  <text x="808.5" y="307" text-anchor="middle" class="heading">MCP · Controlled Execution</text>
+  <text x="808.5" y="336" text-anchor="middle" class="detail">Scoped requests and queries</text>
+  <g text-anchor="middle">
+    <text x="622.5" y="290" class="route">Request</text>
+    <path d="M588 300h66" class="line" marker-end="url(#arrow)"/>
+    <text x="622.5" y="325" class="route">Evidence</text>
+    <path d="M657 335H591" class="line" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Main coordinates three research roles. The paired arrows at right show the MCP request and evidence paths. -->
+  <g class="line">
+    <path d="M333 360v18M144 378h333"/>
+    <path d="M144 378v19" marker-end="url(#arrow)"/>
+    <path d="M286 378v19" marker-end="url(#arrow)"/>
+    <path d="M477 378v19" marker-end="url(#arrow)"/>
+    <path d="M800 360v37" marker-end="url(#arrow)"/>
+    <path d="M818 400v-37" marker-end="url(#arrow)"/>
+  </g>
+  <rect x="78" y="400" width="132" height="100" rx="7" class="node"/>
+  <rect x="219" y="400" width="134" height="100" rx="7" class="node"/>
+  <rect x="362" y="400" width="226" height="100" rx="7" class="node"/>
+  <g class="icon" aria-hidden="true">
+    <path d="m133 418 11-5 11 5v10l-11 5-11-5zm0 0 11 5 11-5m-11 5v10"/>
+    <path d="M276 414v18h21m-17-6 5-6 4 3 7-9"/>
+    <path d="m477 413 10 4v7c0 4-4.5 7.5-10 10-5.5-2.5-10-6-10-10v-7zm-5 10 3 3 6-7"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="144" y="457" class="role">CAE</text>
+    <text x="144" y="480" class="detail">Model &amp; Physics</text>
+    <text x="286" y="457" class="role">Results</text>
+    <text x="286" y="480" class="detail">Data &amp; Analysis</text>
+    <text x="477" y="457" class="role">Independent Validation</text>
+    <text x="477" y="480" class="detail">Scientific Review</text>
+  </g>
+  <rect x="657" y="400" width="303" height="100" rx="7" class="execution"/>
+  <g text-anchor="middle">
+    <text x="808.5" y="431" class="main">AbqJobPilot</text>
+    <text x="808.5" y="457" class="detail">Abaqus · Execution Authority · Evidence</text>
+    <text x="808.5" y="480" class="detail">Checks the project, plan and grant</text>
+  </g>
+
+  <!-- The research roles inform findings. A continuing study returns to Main. -->
+  <g class="line">
+    <path d="M144 500v19h333v-19M286 500v19"/>
+    <path d="M333 519v27" marker-end="url(#arrow)"/>
+  </g>
+  <rect x="78" y="549" width="882" height="65" rx="7" class="research"/>
+  <g class="icon" transform="translate(100 570)" aria-hidden="true">
+    <path d="M3 20v-8m0 0V3m0 9h8c4 0 6-3 6-6V3m-4 4 4-4 4 4M0 6l3-3 3 3"/>
+    <circle cx="3" cy="21" r="2.2" fill="#1a2b2a"/>
+  </g>
+  <text x="139" y="589" class="heading">Research Findings &amp; Next Decision</text>
+  <text x="937" y="588" text-anchor="end" class="body">Evaluate · Refine · Continue or Stop</text>
+  <path d="M78 581H48q-8 0-8-8V324q0-8 8-8h27" class="line" style="stroke:#9ccabd" stroke-dasharray="5 4" marker-end="url(#returnArrow)"/>
+  <text transform="translate(30 449) rotate(-90)" text-anchor="middle" class="route" style="fill:#9ccabd">Next iteration</text>
+</svg>
