@@ -4,6 +4,8 @@
 
 *From research questions to evidence-based engineering decisions.*
 
+**English** · [简体中文](README_CN.md)
+
 [VeriCAE v1.0.0](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [AbqJobPilot v1.0.0](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) · [Apache-2.0](LICENSE)
 
 ## 1. What is VeriCAE?
@@ -42,7 +44,7 @@ VeriCAE is built on **Codex Native** conversations. Main is the sole writer of p
 
 The diagram illustrates the intended research workflow. General new-task real Abaqus execution is not yet qualified end to end. In a historical Abaqus axial-bar study, the multi-agent scientific verification reproduced the expected displacement of −0.010 mm; the overall evidence verdict remained PARTIAL.
 
-[Technical architecture](ARCHITECTURE.md) · [Real Abaqus case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status and compatibility](COMPATIBILITY.md)
+[Technical architecture](ENGINE.md) · [Real Abaqus case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Verification status and compatibility](docs/COMPATIBILITY.md)
 
 ## 3. Installation
 
@@ -63,7 +65,7 @@ For example, ask: *"Plan a cantilever tip-displacement study. Identify the refer
 
 **Optional execution platform:** [Download AbqJobPilot 1.0.0 for Windows x64](https://github.com/BrunelXian/AbqJobPilot/releases/download/v1.0.0/AbqJobPilot-1.0.0-Windows-x64-Setup.exe). The installer is unsigned. Use your own licensed Abaqus installation and configure it in AbqJobPilot Settings; real execution requires a separately authorized, supported environment.
 
-[Full installation instructions](INSTALL.md) · [Compatibility and requirements](COMPATIBILITY.md) · [Offline numerical replay — no Abaqus required](docs/vericae/demo/README.md)
+[Full installation instructions](docs/INSTALL.md) · [Compatibility and requirements](docs/COMPATIBILITY.md) · [Offline numerical replay — no Abaqus required](docs/vericae/demo/README.md)
 
 ## 4. Development & Contributors
 
@@ -82,4 +84,4 @@ These are future research and engineering priorities, not claims of completed ca
 - **Material and process research:** explore small-punch and tensile-test inverse identification, design optimization and additive manufacturing process studies.
 - **Multi-solver and multiphysics research:** explore additional CAE backends and verifiable coupled thermo-mechanical and fluid–structure workflows.
 
-[Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Current verification boundaries](COMPATIBILITY.md)
+[Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Current verification boundaries](docs/COMPATIBILITY.md)
