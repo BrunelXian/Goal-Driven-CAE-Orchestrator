@@ -1,0 +1,4 @@
+# Keep the three published evidence files byte-identical on every checkout.
+axial_bar.inp -text
+u2.json -text
+tip-table.txt text eol=lf

@@ -1,0 +1,6 @@
+TEST_ONLY vertical truss - N mm MPa                                                       STEP    1  INCREMENT    1
+INCREMENT     1 SUMMARY
+STEP TIME COMPLETED        1.00    ,  TOTAL TIME COMPLETED         1.00
+THE FOLLOWING TABLE IS PRINTED FOR NODES BELONGING TO NODE SET TIP
+NODE FOOT-  U1             U2             U3
+2      0.0000000E+00 -1.0000000E-02  0.0000000E+00
