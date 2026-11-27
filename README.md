@@ -70,4 +70,8 @@ Expected: analytical and printed DAT displacement **−0.010 mm**, absolute diag
 
 Version 0.5.6 adds a four-step MCP check in the project's active Desktop Main: verify registration, discover tools, make an authorized read, then validate the responding service and permission scope. If discovery fails, Setup diagnoses the environment. When a restart is needed, Main saves a checkpoint and the researcher resumes the original conversation. Host support governs thread visibility and effective model settings. [Runtime verification and recovery](product/vericae/vericae-research/references/mcp-runtime-verification.md)
 
-The next engineering milestones are reproducible execution-environment binding and evidence-qualified fresh solves. The research questions are how to qualify a reference model for a stated use, choose the next numerical experiment under a goal and budget, and transfer independent review across solvers and coupled physics. [Apache License 2.0](LICENSE)
+The next engineering milestones are reproducible execution-environment binding and evidence-qualified fresh solves. The research questions are how to qualify a reference model for a stated use, choose the next numerical experiment under a goal and budget, and transfer independent review across solvers and coupled physics. [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md)
+
+## License
+
+[Apache License 2.0](LICENSE)
