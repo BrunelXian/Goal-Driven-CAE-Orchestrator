@@ -1,99 +1,22 @@
-# AegisCAE Runtime Architecture
+# VeriCAE 1.0.0 architecture
 
-Status: Milestone 0 — Architecture Freeze
+VeriCAE coordinates a computational engineering study in Codex Desktop. AbqJobPilot is a separately installed Windows product that controls execution and records its evidence. The two products communicate through an explicitly configured MCP connection. Planning and offline model review work with just the VeriCAE plugin. [Release compatibility](COMPATIBILITY.md)
 
-Scope note: this document retains the Milestone 0 solver-neutral design. The
-current local tensile/AbqJobPilot product profile is documented separately in
-[Local tensile execution trust](docs/architecture/LOCAL_TENSILE_EXECUTION_TRUST.md).
+| Layer | Owns | Persisted evidence |
+|---|---|---|
+| VeriCAE in Codex Desktop | Research objective, scope, model assumptions, Task Cards and scientific conclusions | Markdown/YAML Research Card, Task Cards, model definition, Handoff, role reports and research logs |
+| AbqJobPilot on Windows | Project and Owner identity, Supervisor, Plan, Grant, budget, backend dispatch and process supervision | Acceptance Receipt, Run and Attempt, outcome, artifact bindings and versioned validation |
 
-## 1. System purpose
+## Research decisions
 
-AegisCAE Runtime is a new, solver-neutral Controlled CAE Runtime. Its intended
-purpose is to provide deterministic, authorized, workspace-confined, and auditable
-control for future CAE workflows. Milestone 0 defines boundaries only; it does not
-implement Runtime behavior or Abaqus capability.
+Initiate agrees the Research Contract and prepares the Handoff. Conduct restores that state in the project's Main conversation. Main is the sole writer of primary research state and dispatches bounded Task Cards through native cross-thread communication. CAE examines the physical model. Results checks the recorded observation and its selector. Independent Validation derives or checks the finding independently. Main connects their original replies to the scientific decision. The three optional specialist TOMLs accompany the four persistent roles. [Role and dispatch protocol](product/vericae/vericae-research/references/cross-thread-protocol.md)
 
-## 2. Trust boundary
+## Execution evidence
 
-The future Runtime boundary will separate untrusted requests, plans, adapters,
-external tools, solver artifacts, and presentation reports from Runtime-owned
-authorization, execution, controlled storage, validation, verdict, and evidence
-authority. Inputs crossing that boundary must eventually be represented by explicit
-contracts and handled fail-closed. No such control-plane implementation exists in
-this Batch.
+A Task Card describes the research work. AbqJobPilot separately checks the bound Project, Plan and Grant for any delegated submission. On acceptance it persists the Receipt and creates the Run. A client can retrieve the original Receipt by submission key and the Run by ID. Subsequent execution adds outcomes and validation evidence to that Run. Scientific agreement, process completion, output provenance and qualification each answer a different question. [Historical example](docs/vericae/INT-001.md)
 
-## 3. Runtime Core ownership
+## Connection and recovery
 
-Runtime Core will exclusively own execution authorization, controlled mutation,
-workflow state, artifact provenance, evidence lifecycle, and final orchestration.
-Production subprocess creation will belong only to the future Unified Executor.
-Production writes will belong only to the future ControlledWorkspace.
+Setup reports registration, tool discovery in the active Desktop Main, an authorized read and verification of the actual service response. Main preserves research state before a necessary Desktop refresh. On resume, the original project and conversation recheck identity, version, permissions and response before continuing dependent work. VeriCAE's package contains three Skills, role definitions, templates and static protocols. Codex supplies the host runtime. [MCP recovery protocol](product/vericae/vericae-research/references/mcp-runtime-verification.md)
 
-Runtime Core is rebuilt from new invariants. Legacy runtime classes, state machines,
-workspace guards, launchers, and evidence authorities are not the new control plane.
-
-## 4. Validation ownership
-
-`aegiscae.validation` will own solver-neutral deterministic validation contracts.
-Runtime will own validation orchestration and final machine-verdict authority.
-Adapter-specific validation will remain behind adapter boundaries and will not
-become Runtime private logic.
-
-Milestone 0 creates only the namespace marker and no Validator implementation.
-
-## 5. Interface ownership
-
-`aegiscae.interfaces` is reserved for future client-facing surfaces over public
-contracts and the Runtime public facade. Interfaces cannot launch tools directly,
-write around the workspace boundary, or reach private Executor internals. No CLI,
-MCP, GUI, LLM, queue, or compatibility interface is created in this Batch.
-
-## 6. Abaqus Adapter ownership
-
-`aegiscae.adapters.abaqus` is reserved for future Abaqus-specific contracts,
-command planning, diagnostics, artifact interpretation, and domain validation.
-Adapters will not own subprocess execution, uncontrolled writes, authorization,
-Runtime state, or final evidence authority. The namespace is empty in Milestone 0.
-
-## 7. Dependency direction
-
-An arrow means that the package on the left may import the package on the right.
-
-```text
-contracts  -> Python standard library only
-validation -> contracts
-runtime    -> contracts and validation public contracts
-adapters   -> contracts and validation public contracts
-interfaces -> contracts and runtime public facade
-```
-
-These permissions are upper bounds, not evidence that an import or implementation
-already exists.
-
-## 8. Future composition root
-
-A future composition root may assemble Runtime public contracts and concrete
-adapters. It will be the only place where those concrete implementations meet.
-The composition root is deferred until public contracts and registration rules
-exist and is not created in this Batch.
-
-## 9. Prohibited dependency directions
-
-The following directions are prohibited:
-
-```text
-runtime -> concrete adapters
-adapter -> runtime private internals
-validation -> adapter
-contracts -> runtime / validation / adapters / interfaces
-interfaces -> raw launcher or private Executor internals
-```
-
-Direct or indirect dependency on `abqpilot` or `abqjobpilot` is prohibited.
-
-## 10. ADR-required architecture changes
-
-Changes to ownership, trust boundaries, dependency direction, execution or write
-authority, verdict or evidence authority, legacy migration policy, compatibility
-surfaces, or the minimum Python version require a reviewed ADR. An accepted ADR is
-not edited silently; a later decision must supersede it.
+Historical GD-CAE Core and AgentHub material remains available for readers tracing earlier designs. The packaged 1.0.0 research workflow requires neither service. [Historical architecture at its original revision](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/blob/4dbd849acb7cf0caf50d81d5f31326afd9fa5e5e/ARCHITECTURE.md)

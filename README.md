@@ -2,7 +2,7 @@
 
 **Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE is an agentic research framework for computational engineering built around that question. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
 
-**VeriCAE 1.0.0** is frozen locally for open-source distribution. It packages the Codex Native research layer. AbqJobPilot 0.5.3 DEV is a separately provisioned execution platform. [1.0.0 release notes](product/vericae/release/RELEASE_NOTES.md)
+**VeriCAE 1.0.0** is the Codex Native research layer. Its companion, **AbqJobPilot 1.0.0**, controls execution and records evidence on Windows. Researchers can plan studies and review models offline. [Download VeriCAE](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [Architecture](ARCHITECTURE.md) · [Pinned versions and verification scope](COMPATIBILITY.md)
 
 ## Where research ends and execution begins
 
@@ -25,7 +25,7 @@ flowchart TD
 
 VeriCAE owns scientific decisions. Research state lives in Markdown and YAML, and Codex supplies persistent conversations and cross-thread communication without a separate VeriCAE runtime or task database. A Task Card scopes research work. On Windows, AbqJobPilot governs execution through the Grant and supervises the backend. A client can retrieve the original acceptance Receipt while work is pending, then use its Run ID to read the outcome and validation evidence after execution.
 
-The companion preview includes an isolated fake-backend demo that exercises acceptance, execution and readback. The Native Tk screenshot shows the DEV application with no project selected. [AbqJobPilot DEV source and demo](https://github.com/BrunelXian/AbqJobPilot/tree/dev/0.5.3) · [Native Tk screenshot](https://github.com/BrunelXian/AbqJobPilot/blob/aea38cd88e6c8367ddb4b6f38d00b15ec453f37e/docs/images/native-tk-preview.png)
+See the companion release for the Windows application and its installation requirements. The screenshot shows the Native Tk workspace with no project selected. [AbqJobPilot 1.0.0](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) · [Native Tk screenshot](https://github.com/BrunelXian/AbqJobPilot/blob/a7cbf27cee4e049f5cccb21416bdbfb7e8836808/docs/images/native-tk-preview.png)
 
 ## How a study works
 
@@ -35,7 +35,7 @@ The companion preview includes an isolated fake-backend demo that exercises acce
 
 ## Quick start
 
-Use the versioned ZIP and its companion SHA-256 checksum. Extract it to a persistent directory, register the extracted marketplace and install VeriCAE Research. The installation guide includes the exact commands, an integrity check and the Desktop acceptance step. [Install VeriCAE 1.0.0](product/vericae/release/INSTALL.md)
+Download the named ZIP and its checksum. Extract the verified archive to a permanent folder, register the extracted marketplace and install VeriCAE Research. [Plugin ZIP](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip) · [ZIP SHA-256](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip.sha256) · [Installation instructions](INSTALL.md)
 
 Try Initiate with *“Plan a cantilever tip-displacement study. Show me the observable, reference model and six-part Research Card before creating any files.”* After confirming the draft and project directory, use Conduct to resume from `docs/initiation/HANDOFF.md`. [Workspace template](product/vericae/vericae-research/templates/research-project/README.md)
 
@@ -57,6 +57,7 @@ Expected: analytical and printed DAT displacement **−0.010 mm**, absolute diag
 
 | Study | Evidence | Decision |
 |---|---|---|
+| UAT-100 · VeriCAE 0.5.6 + AbqJobPilot 0.5.3 DEV | Desktop Main discovered three historical read tools and obtained actual environment and Receipt responses. | **PASS** for read-only MCP communication on the tested baselines. |
 | INT-001 · VeriCAE 0.5.5 + AbqJobPilot 0.5.3 DEV | Read-only review of a **historical real Abaqus** T3D2 run. MCP integration, four-role orchestration, scientific/numerical verification and independent validation each passed. | **PARTIAL overall.** The historical extraction receipt is `FAILED`. Execution and extraction qualifications are `REVIEW_REQUIRED`. Historical result data integrity is `INSUFFICIENT`. The ODB-derived value has diagnostic use only. |
 | INT-002A.1 · separate execution-bridge test | Real MCP submission with an exact Grant and budget, a fake backend, terminal Run, SHA-256-bound test output, idempotent submission and reconnect recovery. 250 targeted regression checks passed. | **TEST_ONLY PASS**, `solver_conclusion=NOT_RUN`. General-purpose real execution remains **NOT_READY**. |
 | INT-002B · separate planning exercise | Research Contract, Task Cards and acceptance criteria prepared. The execution owner became unavailable. | **Planning PASS. Execution BLOCKED / STOPPED.** Zero new submissions. Current Grant balance unknown. |
