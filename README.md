@@ -113,7 +113,14 @@ Contributions, independent reproductions and research collaborations are welcome
 
 ## 5. Roadmap
 
-These are future research and engineering priorities, not claims of completed capabilities in v1.0.0.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/roadmap/roadmap-dark.svg">
+  <img src="docs/vericae/images/roadmap/roadmap-light.svg" width="100%" alt="VeriCAE Ecosystem Roadmap. Codex is supported. DeepSeek, Claude / Harness, Grokbot and Antigravity are planned. AbqJobPilot connects to Abaqus. The AnyJobPilot expansion targets ANSYS (in development) and COMSOL (planned) on parallel branches.">
+</picture>
+
+VeriCAE 1.0.0 runs in Codex. AbqJobPilot is released for Windows, and the published Abaqus case reviewed a historical run. “In Development” and “Planned” describe the maintainer’s DOC-104 integration targets. The release record lists the workflows tested to date. [Release evidence](docs/COMPATIBILITY.md) · [Roadmap data](docs/vericae/images/roadmap/roadmap.json) · [SVG generator](docs/vericae/images/roadmap/render.py)
+
+**Research priorities beyond v1.0.0**
 
 - **Autonomous numerical experiments:** qualify general execution-environment binding, new-task real-solver execution and independently verified results.
 - **Simulation-driven scientific discovery:** investigate hypothesis generation, scaling laws, counterexamples and informative experiment selection under a research budget.
