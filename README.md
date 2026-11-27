@@ -12,15 +12,14 @@ VeriCAE turns that question into a research workflow: define the claim, qualify 
 
 > **Scope:** Research planning, persistent native-agent coordination, evidence review and independent validation are available. An unrestricted, newly initiated **REAL Abaqus** autonomous solve-and-extract loop has **not** passed end-to-end qualification. We distinguish software capability, tested integration and evidence qualification below.
 
-## What it brings to CAE research
+## What Can You Investigate with VeriCAE?
 
-| Research problem | VeriCAE's approach |
-| --- | --- |
-| **What exactly are we trying to establish?** | A Research Contract states the observable, units, model assumptions, permitted changes and acceptance criteria. |
-| **Which model can support that claim?** | **Verified-Model-First** starts with a reference model qualified *for a specific purpose*, not an unexplained solver output. |
-| **Who did what, and with what evidence?** | **Main** dispatches bounded Task Cards to **CAE**, **Results** and **Independent Validation** in persistent Codex Native conversations. |
-| **Was an operation authorized—and what really happened?** | AbqJobPilot separately records Plan, Grant, Run, Receipt and applicable process or artifact evidence. |
-| **Is the number correct and the conclusion warranted?** | Independent review checks physics, selectors, provenance and the strength of the available evidence—even when a calculation appears numerically correct. |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/research-applications-dark.svg">
+  <img src="docs/vericae/images/research-applications-light.svg" alt="Four research applications: 01 Inverse Identification — small-punch material calibration; 02 Simulation-Driven Scientific Discovery — scaling laws and dimensionless analysis; 03 Engineering Design and Process Optimization — laser deposition scan strategy; 04 Mechanism and Sensitivity Investigation — structural failure or thermal distortion." width="100%">
+</picture>
+
+*Illustrative research directions supported by VeriCAE's planning, investigation and verification workflow. These examples are not claims of completed end-to-end real-solver validation.*
 
 ## Architecture: scientific decisions ≠ execution authority
 
