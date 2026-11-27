@@ -1,8 +1,8 @@
-# VeriCAE · Agentic Research Framework for Computational Engineering
+# VeriCAE · Verifiable Goal-Driven CAE Research Agent
 
-**Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE gives research engineers a way to ask that question before trusting a result. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
+**Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE is an agentic research framework for computational engineering built around that question. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
 
-**Research Preview · VeriCAE 0.5.6** is available from the public PR branch in the quick start. The companion execution platform is **AbqJobPilot 0.5.3 DEV**. The two products have separate version histories. This preview is a source snapshot for evaluation. The preview can be evaluated from source. This branch carries no stable-release designation or public marketplace listing.
+**VeriCAE 0.5.6** is available as a source-based Research Preview on the branch in the quick start. Its companion execution platform, **AbqJobPilot 0.5.3 DEV**, is versioned separately. Stable distribution and public marketplace publication fall outside this preview.
 
 ## Where research ends and execution begins
 
@@ -13,14 +13,19 @@ flowchart TD
     Main <-->|Task and original reply| CAE[CAE]
     Main <-->|Task and original reply| Results[Results]
     Main <-->|Task and original reply| IV[Independent Validation]
-    Main <-->|Authorized MCP requests and evidence| Pilot[AbqJobPilot on Windows]
-    Pilot --> Gate[Project, Owner, Supervisor, Plan and Grant]
-    Gate --> Run[Controlled backend and Run]
-    Run --> Receipt[Receipt and versioned verdicts]
-    Receipt --> Pilot
+    Main -->|Scoped MCP request| Accept[AbqJobPilot Owner checks Plan and Grant]
+    Accept -->|At acceptance: persist| Receipt[Acceptance Receipt]
+    Accept -->|At acceptance: create| Run[Run]
+    Run -->|Owner dispatches accepted work| Backend[Controlled backend]
+    Backend -->|Owner records outcome and validation| Run
+    Receipt -->|Lookup by submission key| Read[AbqJobPilot MCP queries]
+    Run -->|Lookup by Run ID| Read
+    Read -->|Return recorded evidence| Main
 ```
 
-VeriCAE owns scientific decisions. Research state lives in Markdown and YAML, and Codex supplies the persistent conversations and their communication. The plugin requires no separate agent runtime or task database. AbqJobPilot owns execution authorization, budgets, process supervision and provenance. A Task Card scopes research work. A Grant governs execution. [AbqJobPilot repository](https://github.com/BrunelXian/AbqJobPilot)
+VeriCAE owns scientific decisions. Research state lives in Markdown and YAML, and Codex supplies persistent conversations and cross-thread communication without a separate VeriCAE runtime or task database. A Task Card scopes research work. On Windows, AbqJobPilot governs execution through the Grant and supervises the backend. A client can retrieve the original acceptance Receipt while work is pending, then use its Run ID to read the outcome and validation evidence after execution.
+
+The companion preview includes an isolated fake-backend demo that exercises acceptance, execution and readback. The Native Tk screenshot shows the DEV application with no project selected. [AbqJobPilot DEV source and demo](https://github.com/BrunelXian/AbqJobPilot/tree/dev/0.5.3) · [Native Tk screenshot](https://github.com/BrunelXian/AbqJobPilot/blob/aea38cd88e6c8367ddb4b6f38d00b15ec453f37e/docs/images/native-tk-preview.png)
 
 ## How a study works
 
