@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">VeriCAE</title>
+  <desc id="desc">An abstract finite-element mesh and verification check, representing verifiable computational engineering.</desc>
+  <rect x="2" y="2" width="124" height="124" rx="27" fill="#172531"/>
+  <g fill="none" stroke="#8299a9" stroke-width="2.5" stroke-linejoin="round" opacity=".85">
+    <path d="M64 21 19 98h90zM41.5 59.5h45M41.5 59.5 64 98l22.5-38.5M64 21v0"/>
+    <path d="m64 21 0 38.5M19 98l22.5-38.5m67.5 38.5-22.5-38.5" opacity=".35"/>
+  </g>
+  <g fill="#9aafbd">
+    <circle cx="64" cy="21" r="2.6"/><circle cx="19" cy="98" r="2.6"/><circle cx="109" cy="98" r="2.6"/>
+  </g>
+  <path d="m36 61 20 21 38-44" stroke="#172531" stroke-width="17" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m36 61 20 21 38-44" stroke="#f4f7fa" stroke-width="10.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="94" cy="38" r="5.25" fill="#85c8b7"/>
+</svg>
