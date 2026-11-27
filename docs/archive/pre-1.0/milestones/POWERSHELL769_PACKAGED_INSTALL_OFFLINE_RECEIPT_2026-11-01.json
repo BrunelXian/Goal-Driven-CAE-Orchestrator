@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "date_local": "2026-11-01",
+  "timezone": "Asia/Shanghai",
+  "status": "OFFLINE_REVIEW_PASS_AWAITING_SCRIPT_HASH_CONFIRMATION",
+  "script": "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\docs\\milestones\\Install-PowerShell769-Approved.ps1",
+  "script_sha256": "2e9babbf27a587505bbcc08514c793e301d801f1bc2e60364d6f800005aa2719",
+  "script_bytes": 9132,
+  "test_script_sha256": "372bf55fa8975ffffe72e2826dab6a52c209fd88455274e977d0a23d1a7e46c6",
+  "powershell_test_version": "5.1.26100.9818",
+  "primary_test": {"exit_code": 0, "checks_passed": 142},
+  "independent_reviewer": {
+    "status": "OFFLINE_REVIEW_PASS",
+    "blocking_findings": 0,
+    "independent_test_exit_code": 0,
+    "independent_checks_passed": 142,
+    "scope": "Full script, frozen options, source-handle lifetime, failure states, sanitized receipt, tests and exact same-byte bootstrap"
+  },
+  "offline_coverage": [
+    "Production script and published bootstrap syntax",
+    "Frozen installer path and complete argument string",
+    "One confirmation and one launch site, no retry or self-elevation",
+    "Preflight failure and human decline produce no fake launch",
+    "Exit 0 pending verification, 3010 stop, 1602 and 1603 stop",
+    "Missing exit code and post-intent exceptions are UNKNOWN",
+    "Source handle retained through fake launch, closure failure is UNKNOWN",
+    "Exception output excludes synthetic private marker",
+    "Real wrong-size guard with synthetic stream",
+    "Exact bootstrap positive and wrong-hash rejection using harmless memory fixtures"
+  ],
+  "not_tested_live": ["MSI execution", "Current source signature chain", "Current installation conflicts", "Post-install state"],
+  "git_tracked_diff_check_exit_code": 0,
+  "new_file_diff_observation": "git diff --no-index --check returns 1 for additions; only LF-to-CRLF warnings observed, no whitespace diagnostics. Actual on-disk bytes are pinned; any conversion invalidates the pin.",
+  "production_script_executed": false,
+  "native_installer_launches": 0,
+  "system_security_mutated": false,
+  "historical_evidence_modified": false,
+  "installation_verified": false,
+  "required_next_step": "User confirmation of this new script and SHA-256 before a single manual invocation"
+}

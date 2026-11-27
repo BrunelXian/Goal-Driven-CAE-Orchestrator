@@ -1,0 +1,581 @@
+{
+  "schema": "d7-a01-recovery-development-candidate-v1",
+  "status": "AWAITING_INDEPENDENT_TESTING_VALIDATION",
+  "gd_head": "06edabc7fa64f943c704de38f81d56cf47d9b40b",
+  "af_head": "7f4b8d8f3a2c862ed8b244d495295f5d51ea0d88",
+  "source_files": {
+    "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\src\\aegiscae\\research\\rod_local_project.py": "sha256:6dbfa1e88b0993db84fa26fa4afc40a68eeb0dcbb12cc4a73a1d35d77370a8bb",
+    "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\src\\aegiscae\\research\\rod_expired_recovery.py": "sha256:d17ba06543b399bfe1f60683a71d51c3cc4e81e1b3978a936a731e14cacca1f0",
+    "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\tests\\unit\\test_d7_expired_recovery.py": "sha256:1fe04c2b9cddc20c13e76608aa135cf25b21e406656a0962b5d7bad8da98390e",
+    "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\docs\\milestones\\D7_A01_EXPIRED_PLAN_RECOVERY.md": "sha256:57fb5198a64102223047b0bcc2a3a247da8ed84f73964bbada98b743acd8c740",
+    "D:\\Projects\\Goal-Driven-CAE-Orchestrator\\tests\\integration\\g3_d6_offline_checks.py": "sha256:8a8184d429f67e0f43428076ce01f748f57a0a296df766eb801f72c4afdce133"
+  },
+  "developer_interpreter": "D:\\XianLab\\envs\\LangChainEnv\\Scripts\\python.exe",
+  "python_version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "old_core_source_root": "C:\\Users\\wuxia\\AppData\\Local\\Packages\\OpenAI.Codex_2p2nqsd0c76g0\\LocalCache\\Local\\GDCAE-D7-R2F-E2-20261101-A01\\env02\\Lib\\site-packages\\aegiscae",
+  "af_import_origin": "C:\\Users\\wuxia\\AppData\\Local\\Packages\\OpenAI.Codex_2p2nqsd0c76g0\\LocalCache\\Local\\GDCAE-D7-R2F-E2-20261101-A01\\env02\\Lib\\site-packages\\abqjobpilot\\__init__.py",
+  "old_workspace": "D:\\Projects\\GDCAETEST\\D7-A01-20261102-A01",
+  "original_workspace_files": {
+    "af-A/.agent-first-creation.json": "sha256:5fa0d1e789b9891224eedcb642b73f16f86ecfd88f74f135fd98b8922a75ab1d",
+    "af-A/agent_project.json": "sha256:51f791dbc84004b1ea9efcd585066218d2dea860302e10f778283322e510d54b",
+    "af-A/private/lifecycle.json": "sha256:1a4286354866e64a2631a2c8d7567b5dc6552d46b82aa985fbb1bcc1dd36b72d",
+    "af-A/private/operator.json": "sha256:7139e95757681affd8a091869275ca78aa4d80605398915752f91e8fe1a678da",
+    "af-A/project/execution.sqlite3": "sha256:e162397ab60052f062714d7542c44a7706beca033f60aaf4db93ecc13029cc5a",
+    "af-A/project/experiment.json": "sha256:9ed4c17c46a6d955e8bdb20dc372860b43bede206431c084823f5902067be2db",
+    "af-A/project/owner.lock": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "af-A/rod_ff922163d31c45b0997a2bb0d44faa9e/axial_bar.inp": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+    "af-A/rod_ff922163d31c45b0997a2bb0d44faa9e/candidate.json": "sha256:a18519c8c7cc820a893ae57a6aaa2800344da71304587c4f2c7d4f985123ec89",
+    "af-reference.json": "sha256:a47e8ed98d883eb1c4dd506f3abb4db3e40e724234d97ec46ece5cac8338694f",
+    "approval-preview.json": "sha256:a31a641193fbc86ae35bcd23ca6e37ffbf059510270e8444b68336517cbab64b",
+    "d7-v2.json": "sha256:014d8394e3bd8ccf620d8a6df532af507b316761d3ec3315e7d9fc1da960d834",
+    "evidence/frozen-contract-bundle.json": "sha256:6d55f2d935d89ec0b6071a939ee678dcff8f2227e1149d5ec0be667c8fc62f55",
+    "evidence/independent-readonly-reopen.json": "sha256:85aaa6e1d19cf6ee0785606c813d1b7b0202ea5e297d55edf68f760d93147910",
+    "evidence/official-entry-calls.json": "sha256:fae5146c5cf7ec9c239a0c404b53ade8605229f073cb7ea924e1e0496114db0d",
+    "evidence/phase1-baseline.json": "sha256:eb191d4f97eaf9c726620c79caabf242c1b725e670edefebd13da1aa178f0e48",
+    "evidence/PHASE1_FREEZE_RECEIPT.json": "sha256:1fe89647663e660b0e5fbe6d3d2cb9a16858fdb6cf1c38cc4c04dba599cc5bbe",
+    "evidence/phase2-01-prepare-a-entry.json": "sha256:5e800deacc7ef3e088fc6728651f07159d2bbd3da23449e7417052b9e9844de8",
+    "evidence/phase2-02-preflight-a-entry.json": "sha256:7ecffd03889fcc7e50c190f1ae3c779724d5412f75b88c2f52927aa3f581e6c8",
+    "evidence/phase2-03-approval-preview-entry.json": "sha256:b877a92c0f2867d76850415d638d3998851209a947324906e77fec4e1302d9a5",
+    "evidence/phase2-04-status-v2-entry.json": "sha256:839512b8cd99fb24667171620ac8c0282aaa7df5e650a633bc77eede2cf5e377",
+    "evidence/PHASE2_APPROVAL_CARD.json": "sha256:81bfee5ced1a2fed90b326a2d818d3c0ab012ab1435d6b843139f4a3cf8d8179",
+    "evidence/source-qualification.json": "sha256:968a92378689d33e990b24a2299102792ee16b672148ea21cbe10a30f759930e",
+    "inputs/A/axial_bar.inp": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+    "prepare-intent.json": "sha256:8964ffd855d7cf8c81539a82bfc9a5383b54e53b61aea1111fe682b958232589",
+    "research/research.sqlite3": "sha256:459306f4fdf292d4b2bd70a143bb211fe705efaf2666f1eb784a09ba89525564"
+  },
+  "original_budget": {
+    "limit": 2,
+    "held": 1,
+    "charged": 0,
+    "available": 1,
+    "started": 0
+  },
+  "compatibility_candidate_NOT_COMMITTED": {
+    "schema": "d7-expired-a-compatibility-v1",
+    "version": "d7-expired-a-recovery-v1",
+    "research_project_id": "rp_b2c8212dea8c4a0fb0529fa808d4bd28",
+    "contract_digest": "sha256:6d55f2d935d89ec0b6071a939ee678dcff8f2227e1149d5ec0be667c8fc62f55",
+    "candidate_digest": "sha256:9f95bac29de86f4e5259d7d605cea0eeb940043069db18fc38e71857ea7a5ac9",
+    "old_runtime": {
+      "af": "sha256:b4bb09432c678b097977afe162070862564931f6b58545d4ea670e70b3257722",
+      "gd": "sha256:7857b4bdf3aa89093bb5f4d8c2fb19c04fbe878af8861d0a024acc59042c02dc",
+      "plugin": "sha256:5d628aecc04ea904a61bd10198cae1345e039c7e9b24f73085c283b1b375d812",
+      "python": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+      "versions": {
+        "mcp": "2.3.0",
+        "pydantic": "2.13.4",
+        "python": "3.12.10",
+        "pywin32": "312"
+      }
+    },
+    "new_runtime": {
+      "af": "sha256:b4bb09432c678b097977afe162070862564931f6b58545d4ea670e70b3257722",
+      "gd": "sha256:d5a46cf0156ac32df7a133ecbc3de08d204abfb3c960923ab90b0e992054d391",
+      "plugin": "sha256:5d628aecc04ea904a61bd10198cae1345e039c7e9b24f73085c283b1b375d812",
+      "python": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+      "versions": {
+        "mcp": "2.3.0",
+        "pydantic": "2.13.4",
+        "python": "3.12.10",
+        "pywin32": "312"
+      }
+    },
+    "old_validator": {
+      "version": "d7_local_v2",
+      "sha256": "sha256:7857b4bdf3aa89093bb5f4d8c2fb19c04fbe878af8861d0a024acc59042c02dc"
+    },
+    "new_validator": {
+      "version": "d7-expired-a-recovery-v1",
+      "sha256": "sha256:d5a46cf0156ac32df7a133ecbc3de08d204abfb3c960923ab90b0e992054d391"
+    },
+    "old_sources": {
+      "__init__.py": "sha256:03cad15b185a6b873f497355a7f349e3c2771b7a13a84e913c05187d7333e910",
+      "adapters/__init__.py": "sha256:802176739638c040953157b3632ea16c4c06505a3a95a68538d3469350996551",
+      "adapters/abaqus/__init__.py": "sha256:5ecb6d3606d6312a2897a304a0cbace18d8858343d7bebc679d66ac83740af90",
+      "adapters/abaqus/af_evidence.py": "sha256:8b7a1cdd57dd0d4a067bc32037ac8893aa1662348f9d94baec01b34e670a88b0",
+      "contracts/__init__.py": "sha256:9f3e24fec4f6884cf63b3b585e5f041a43fbfac800ef40f87bb1d320c79e4b92",
+      "contracts/af_evidence.py": "sha256:401ecb551591376f854247b7e64cc4d13f82cd54c17c098bdba2b26943d5f012",
+      "contracts/research_contracts.py": "sha256:8f8fb5017fa9b9f0bfcdd827dab6915da8af93d488b81500bd6a440167fcff16",
+      "interfaces/__init__.py": "sha256:4bf573cf307c6f457faaff35a385e4e9da78fd9d111964a1d2cfac92ee072586",
+      "interfaces/mcp_proposal.py": "sha256:b869fbf2a7fad85783cede8de40dfb31c9eaa9bd94ed20cdd2580dbc178e450a",
+      "interfaces/mcp_read.py": "sha256:10d69706b58b1fdec77b21cd8df56a558111c4469ee3b75b143f84480274085d",
+      "research/__init__.py": "sha256:865f21faca277a7de68665865ba9ea2cffa6537464594cd526ac148b5b6654f6",
+      "research/budget.py": "sha256:19c75307f604818524053d252d497df83f72892abce6081c5f43f05029b48bc0",
+      "research/budget_rules.py": "sha256:00bac1cf42db66d3104f6df02e5372d8de48d31f87ed1f02b8499e6e714d84a9",
+      "research/candidate_proposal.py": "sha256:11cf18c34ac35029d7981b350579b789081bf474a83270110bde58f03bb39856",
+      "research/continuation.py": "sha256:45389edb2976800f19d88ecc5805b00a0e81bde0c1d1cd0dcec73219f19c4f2c",
+      "research/continuation_rules.py": "sha256:638fc4ed1dbfcae938d6696c8a988702f6442c185cdeefd53704544991cfb974",
+      "research/continuation_store.py": "sha256:f2f6f4bf3b550b472d1a2b15a5026b6663479c977017991fbdd1fe0de2e35dd4",
+      "research/ingress_store.py": "sha256:aa601a04a19562b2a77c4a8ed6389f1791b7c027575f1cc324110af6075e9d4e",
+      "research/main_runtime.py": "sha256:8c35dc30234f6b6e0f72e8147a4384807fc01fa3ce8d8d6cfdc90cee658d7914",
+      "research/main_runtime_rules.py": "sha256:d91c924e18302eff1d81d5a1e31b237e1fb61dcb4e2138bf3ecfe830d5d6e46f",
+      "research/main_runtime_store.py": "sha256:2eb67c701d92a53efd4d932adc6d574b286ca96455034ca30d7ee1dffa7b3e02",
+      "research/mutation.py": "sha256:4bce2bce6da0a2c1ad2a6740907beff5e1a39c5b72726ea58f5192b7b7a017a2",
+      "research/mutation_rules.py": "sha256:7670788c38fc7d57aff36dad5845cb3e63fa90074134b174df1856a59e5ff758",
+      "research/operator_deployment.py": "sha256:456616ae1c26c9e34d2131ec4a2e934f80088f4c75f304d0c8b44d192ca4ab87",
+      "research/project.py": "sha256:af8d7d42892ffca37a230bced9a9f1d9e972886a58ae7d46f7d3e1b548acd311",
+      "research/proposal_ingress.py": "sha256:b6e8c75161dffc2811970d6ad01236a7f2e44035f1d3a10f49c751ef96416f76",
+      "research/proposal_review.py": "sha256:8c07c8ee3d085519af2ecf39d726fe01e06893969e30883b9aa580ad334cc340",
+      "research/proposal_rules.py": "sha256:a2000da4a1baac6aebed4d2ffed983309c2f8cd8475e0471a8124a4f0da4a7b6",
+      "research/rod_bridge.py": "sha256:d0e3260b5ba00b547f150734c255542a1bcec6a74ff4156370dd83b1201abd11",
+      "research/rod_evidence.py": "sha256:3b94a0e41b53887ae1fe8a6f4351ba21769c44283e1ff55e06cec739c15c9fd8",
+      "research/rod_local_port.py": "sha256:8038be9e5b09eef7b5246e1e3bb129819e12445245e3b7a1574141523b98c8aa",
+      "research/rod_local_project.py": "sha256:f99f9ac6090ba0715eb274d6e2bcea7942c767790e8594b64aeef588bb120781",
+      "research/rod_local_verify.py": "sha256:227b04759b47af5d82b450332e52e2c6d530d06973371f376c3133bb2cbc5b34",
+      "research/rod_output_dat_v2.py": "sha256:c8aae5428fd7f4fbca6e97435ec555c0592a3ef07f645cb177f0bd83d24d1d77",
+      "research/rod_output_v2.py": "sha256:ad1753a8c3ed05ce1246b1b9d8916a5d0f67859553b7305dd3a8d85e1297f30f",
+      "research/rod_preview.py": "sha256:56a2e555bade5032f28a470ffb3235d4b172fa9016bec25b4dd3681e7992ebf9",
+      "research/rod_preview_dat.py": "sha256:4ffc266dbe06936b21167bdbbe34cc9185534c742751f2ed62a7f0f31d7926b8",
+      "research/rod_preview_rules.py": "sha256:6dd02d92a5cf947f6709605e7d983daa6b0d2f1b4760570397d4f78536456a15",
+      "research/rod_public_evidence.py": "sha256:7914250d079b7fbc79402f9ca4055af6906d3b043ab74f2ea9979fcb172487fc",
+      "research/rod_real_evidence.py": "sha256:11762c4303cd5e79f09951a4e9f0dfb6b51df0854bfbd448f0f9e1f3a4f46178",
+      "research/rod_real_project.py": "sha256:911d398825f025bc454304d14bbcfe5ec9e7d443936d63179952c6ef2b389b2b",
+      "research/rod_real_verify.py": "sha256:c56577e77fd1e22e474323c5b36a3f31738f0b3cc2026ab0f0de07c1d866a84b",
+      "research/workflow.py": "sha256:9f4e33bc3eb1484b7de32ecdf333fdf836dd60adbf97c6b63c21f7ab8117e948",
+      "research/workflow_rules.py": "sha256:6ee3016006f22465a0c76a158aec6b080087b850f0de464e412d20df1f82ff89",
+      "runtime/__init__.py": "sha256:2c15584b91a9468f50e5fa9fbbc1d11532d20140cab576a44219ba22a82b96d8",
+      "validation/__init__.py": "sha256:e518637e4813de20fadc7d268e288ec739625692ef156a86324a275ac754e042"
+    },
+    "new_sources": {
+      "__init__.py": "sha256:03cad15b185a6b873f497355a7f349e3c2771b7a13a84e913c05187d7333e910",
+      "adapters/__init__.py": "sha256:802176739638c040953157b3632ea16c4c06505a3a95a68538d3469350996551",
+      "adapters/abaqus/__init__.py": "sha256:5ecb6d3606d6312a2897a304a0cbace18d8858343d7bebc679d66ac83740af90",
+      "adapters/abaqus/af_evidence.py": "sha256:8b7a1cdd57dd0d4a067bc32037ac8893aa1662348f9d94baec01b34e670a88b0",
+      "contracts/__init__.py": "sha256:9f3e24fec4f6884cf63b3b585e5f041a43fbfac800ef40f87bb1d320c79e4b92",
+      "contracts/af_evidence.py": "sha256:401ecb551591376f854247b7e64cc4d13f82cd54c17c098bdba2b26943d5f012",
+      "contracts/research_contracts.py": "sha256:8f8fb5017fa9b9f0bfcdd827dab6915da8af93d488b81500bd6a440167fcff16",
+      "interfaces/__init__.py": "sha256:4bf573cf307c6f457faaff35a385e4e9da78fd9d111964a1d2cfac92ee072586",
+      "interfaces/mcp_proposal.py": "sha256:b869fbf2a7fad85783cede8de40dfb31c9eaa9bd94ed20cdd2580dbc178e450a",
+      "interfaces/mcp_read.py": "sha256:10d69706b58b1fdec77b21cd8df56a558111c4469ee3b75b143f84480274085d",
+      "research/__init__.py": "sha256:865f21faca277a7de68665865ba9ea2cffa6537464594cd526ac148b5b6654f6",
+      "research/budget.py": "sha256:19c75307f604818524053d252d497df83f72892abce6081c5f43f05029b48bc0",
+      "research/budget_rules.py": "sha256:00bac1cf42db66d3104f6df02e5372d8de48d31f87ed1f02b8499e6e714d84a9",
+      "research/candidate_proposal.py": "sha256:11cf18c34ac35029d7981b350579b789081bf474a83270110bde58f03bb39856",
+      "research/continuation.py": "sha256:45389edb2976800f19d88ecc5805b00a0e81bde0c1d1cd0dcec73219f19c4f2c",
+      "research/continuation_rules.py": "sha256:638fc4ed1dbfcae938d6696c8a988702f6442c185cdeefd53704544991cfb974",
+      "research/continuation_store.py": "sha256:f2f6f4bf3b550b472d1a2b15a5026b6663479c977017991fbdd1fe0de2e35dd4",
+      "research/ingress_store.py": "sha256:aa601a04a19562b2a77c4a8ed6389f1791b7c027575f1cc324110af6075e9d4e",
+      "research/main_runtime.py": "sha256:8c35dc30234f6b6e0f72e8147a4384807fc01fa3ce8d8d6cfdc90cee658d7914",
+      "research/main_runtime_rules.py": "sha256:d91c924e18302eff1d81d5a1e31b237e1fb61dcb4e2138bf3ecfe830d5d6e46f",
+      "research/main_runtime_store.py": "sha256:2eb67c701d92a53efd4d932adc6d574b286ca96455034ca30d7ee1dffa7b3e02",
+      "research/mutation.py": "sha256:4bce2bce6da0a2c1ad2a6740907beff5e1a39c5b72726ea58f5192b7b7a017a2",
+      "research/mutation_rules.py": "sha256:7670788c38fc7d57aff36dad5845cb3e63fa90074134b174df1856a59e5ff758",
+      "research/operator_deployment.py": "sha256:456616ae1c26c9e34d2131ec4a2e934f80088f4c75f304d0c8b44d192ca4ab87",
+      "research/project.py": "sha256:af8d7d42892ffca37a230bced9a9f1d9e972886a58ae7d46f7d3e1b548acd311",
+      "research/proposal_ingress.py": "sha256:b6e8c75161dffc2811970d6ad01236a7f2e44035f1d3a10f49c751ef96416f76",
+      "research/proposal_review.py": "sha256:8c07c8ee3d085519af2ecf39d726fe01e06893969e30883b9aa580ad334cc340",
+      "research/proposal_rules.py": "sha256:a2000da4a1baac6aebed4d2ffed983309c2f8cd8475e0471a8124a4f0da4a7b6",
+      "research/rod_bridge.py": "sha256:d0e3260b5ba00b547f150734c255542a1bcec6a74ff4156370dd83b1201abd11",
+      "research/rod_evidence.py": "sha256:3b94a0e41b53887ae1fe8a6f4351ba21769c44283e1ff55e06cec739c15c9fd8",
+      "research/rod_expired_recovery.py": "sha256:d17ba06543b399bfe1f60683a71d51c3cc4e81e1b3978a936a731e14cacca1f0",
+      "research/rod_local_port.py": "sha256:8038be9e5b09eef7b5246e1e3bb129819e12445245e3b7a1574141523b98c8aa",
+      "research/rod_local_project.py": "sha256:6dbfa1e88b0993db84fa26fa4afc40a68eeb0dcbb12cc4a73a1d35d77370a8bb",
+      "research/rod_local_verify.py": "sha256:227b04759b47af5d82b450332e52e2c6d530d06973371f376c3133bb2cbc5b34",
+      "research/rod_output_dat_v2.py": "sha256:c8aae5428fd7f4fbca6e97435ec555c0592a3ef07f645cb177f0bd83d24d1d77",
+      "research/rod_output_v2.py": "sha256:ad1753a8c3ed05ce1246b1b9d8916a5d0f67859553b7305dd3a8d85e1297f30f",
+      "research/rod_preview.py": "sha256:56a2e555bade5032f28a470ffb3235d4b172fa9016bec25b4dd3681e7992ebf9",
+      "research/rod_preview_dat.py": "sha256:4ffc266dbe06936b21167bdbbe34cc9185534c742751f2ed62a7f0f31d7926b8",
+      "research/rod_preview_rules.py": "sha256:6dd02d92a5cf947f6709605e7d983daa6b0d2f1b4760570397d4f78536456a15",
+      "research/rod_public_evidence.py": "sha256:7914250d079b7fbc79402f9ca4055af6906d3b043ab74f2ea9979fcb172487fc",
+      "research/rod_real_evidence.py": "sha256:11762c4303cd5e79f09951a4e9f0dfb6b51df0854bfbd448f0f9e1f3a4f46178",
+      "research/rod_real_project.py": "sha256:911d398825f025bc454304d14bbcfe5ec9e7d443936d63179952c6ef2b389b2b",
+      "research/rod_real_verify.py": "sha256:c56577e77fd1e22e474323c5b36a3f31738f0b3cc2026ab0f0de07c1d866a84b",
+      "research/workflow.py": "sha256:9f4e33bc3eb1484b7de32ecdf333fdf836dd60adbf97c6b63c21f7ab8117e948",
+      "research/workflow_rules.py": "sha256:6ee3016006f22465a0c76a158aec6b080087b850f0de464e412d20df1f82ff89",
+      "runtime/__init__.py": "sha256:2c15584b91a9468f50e5fa9fbbc1d11532d20140cab576a44219ba22a82b96d8",
+      "validation/__init__.py": "sha256:e518637e4813de20fadc7d268e288ec739625692ef156a86324a275ac754e042"
+    },
+    "changed_files": [
+      "research/rod_expired_recovery.py",
+      "research/rod_local_project.py"
+    ],
+    "equivalence": {
+      "method": "unchanged-closure-and-acceptance-AST-v1",
+      "old_acceptance": "sha256:0f395730aa7d11778720d9b8978a37408972184cf0b5c1f6819d022e10362d24",
+      "new_acceptance": "sha256:0f395730aa7d11778720d9b8978a37408972184cf0b5c1f6819d022e10362d24"
+    },
+    "execution_authorized": false
+  },
+  "original_af_nonexecution_readonly": {
+    "schema": "d7-original-af-expired-empty-v1",
+    "binding": {
+      "backend_id": "abaqus-standard-rod-cload-v1",
+      "candidate_output_identity": "sha256:b5397a1cd8da66a467cb4a727b33ce65c72caa75acbce88a18ab9a71c2af5c0e",
+      "input_digest": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+      "output_identity": "sha256:96c1fef983f0a5c75b7e11dffa7efe6c477737f9a791fccbe7f359e84afcea53",
+      "plan_digest": "sha256:3860ba57636a72e981692f6e22621873e3eb4a07eab113f1cd8d1e37bbe725e2",
+      "plan_id": "rod_real_315a3543cd28b88cf249a46b953e1a9b",
+      "project_id": "p_45c9a894c0dd47e8a95dbbe0071abd66",
+      "project_instance_id": "pi_ede472e66dfe417684a546e397b09925",
+      "request_key": "preview_6f4636405ceb61e53985eceb4fa92469",
+      "request_nonce": "preview_6f4636405ceb61e53985eceb4fa92469",
+      "resources_digest": "sha256:85a8fba13b3b7297f9850eea0a7c90be66a80923468df1c848f8d3a9eba7f463"
+    },
+    "plan": {
+      "action": "launch_exact_rod_standard_once",
+      "backend_id": "abaqus-standard-rod-cload-v1",
+      "backend_version": 1,
+      "canonicalization": "af-experiment-json-v1",
+      "context_digest": "sha256:b6d741881e39a09c03d975b065d44be31cf7f9394ec86305e8722ae0e11b149d",
+      "engineering": "D:\\Projects\\GDCAETEST\\D7-A01-20261102-A01\\af-A\\rod_ff922163d31c45b0997a2bb0d44faa9e",
+      "environment_policy": "isolated_home_temp_minimal_windows_v1",
+      "expires_at": 1793612843,
+      "extra_abaqus_calls": 0,
+      "host_policy": "independent-service-same-windows-session-v1",
+      "input_manifest": [
+        {
+          "digest": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+          "path": "D:\\Projects\\GDCAETEST\\D7-A01-20261102-A01\\af-A\\rod_ff922163d31c45b0997a2bb0d44faa9e\\axial_bar.inp",
+          "size": 474
+        }
+      ],
+      "job_id": "rod_job_315a3543cd28b88cf249a46b953e1a9b",
+      "job_name": "rod_315a3543cd28b88cf249a46b953e1a9b",
+      "job_revision": 1,
+      "job_spec": {
+        "job_id": "rod_job_315a3543cd28b88cf249a46b953e1a9b",
+        "revision": 1
+      },
+      "member_completeness_policy": "ROOT_AND_INHERITING_CREATEPROCESS_DESCENDANTS_ONLY",
+      "output_key": "sha256:96c1fef983f0a5c75b7e11dffa7efe6c477737f9a791fccbe7f359e84afcea53",
+      "output_policy": {
+        "overwrite": false,
+        "reservation": "exclusive_intent_file_at_dispatch",
+        "scope": "same_output_directory_protocol_participants"
+      },
+      "phases": [
+        "STANDARD_ANALYSIS"
+      ],
+      "plan_digest": "sha256:3860ba57636a72e981692f6e22621873e3eb4a07eab113f1cd8d1e37bbe725e2",
+      "plan_id": "rod_real_315a3543cd28b88cf249a46b953e1a9b",
+      "plan_schema": "standard-managed-rod-single-v1",
+      "process_management": {
+        "implementation_digest": "sha256:d7678b3dc89bbc9fcb3a0fc9e7d44f28c6f8b982171793e1165cd37d7d80f48d",
+        "policy": "windows-job-list-v1",
+        "stdio": "explicit-file-handle-list-v1"
+      },
+      "product_dispatch": {
+        "after_claim": "PAUSED",
+        "contract": "product-standard-once-v1",
+        "grant_seconds_max": 600,
+        "launch_budget": 1,
+        "observation_seconds": 300,
+        "start_seconds_max": 30
+      },
+      "project_instance_id": "pi_ede472e66dfe417684a546e397b09925",
+      "resources": {
+        "cpus": 1,
+        "gpus": 0,
+        "launch_budget": 1,
+        "memory_mb": 2048,
+        "observation_seconds": 300,
+        "slots": 1
+      },
+      "rod_contract": {
+        "candidate": {
+          "baseline_digest": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+          "candidate_digest": "sha256:e590f43782a5ffd6480787b56b3416c5ab1fe5cdfbfe9893efefc5915c78b0a7",
+          "dimensions": {
+            "area_mm2": "1",
+            "length_mm": "10",
+            "modulus_mpa": "1000"
+          },
+          "input_digest": "sha256:f200e353851d453c856a991d86a60f989ce6920a76db7723bb95730934d51bb0",
+          "load_n": "1",
+          "maximum_n": "2.5",
+          "minimum_n": "0.5",
+          "mutable_entity": {
+            "dof": 1,
+            "keyword": "CLOAD",
+            "node": 2
+          },
+          "profile": "axial_rod_cload_output_v2",
+          "schema": "rod-candidate-v2",
+          "unit": "N"
+        },
+        "candidate_id": "candidate_6f4636405ceb61e53985eceb4fa92469",
+        "contract_digest": "sha256:6d55f2d935d89ec0b6071a939ee678dcff8f2227e1149d5ec0be667c8fc62f55",
+        "local_contract": {
+          "causal": null,
+          "output_digest": "sha256:8773a1a3ece41cd7915ae2a2bf76be69c6e4410d56d67091ef0501fb61384409",
+          "runtime": {
+            "af": "sha256:b4bb09432c678b097977afe162070862564931f6b58545d4ea670e70b3257722",
+            "gd": "sha256:7857b4bdf3aa89093bb5f4d8c2fb19c04fbe878af8861d0a024acc59042c02dc",
+            "plugin": "sha256:5d628aecc04ea904a61bd10198cae1345e039c7e9b24f73085c283b1b375d812",
+            "python": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+            "versions": {
+              "mcp": "2.3.0",
+              "pydantic": "2.13.4",
+              "python": "3.12.10",
+              "pywin32": "312"
+            }
+          },
+          "schema": "rod-local-hil-v2",
+          "trust": "TRUSTED_LOCAL_HIL",
+          "workflow_digest": "sha256:7857b4bdf3aa89093bb5f4d8c2fb19c04fbe878af8861d0a024acc59042c02dc"
+        },
+        "phase": "A",
+        "request_nonce": "preview_6f4636405ceb61e53985eceb4fa92469",
+        "research_project_id": "rp_b2c8212dea8c4a0fb0529fa808d4bd28",
+        "research_revision": 3
+      },
+      "runtime_binding": {
+        "backend_id": "abaqus-standard-axial-2024-v1",
+        "backend_version": 1,
+        "cmd": "C:\\Windows\\System32\\cmd.exe",
+        "entry": "D:\\ABAQUS2024\\Commands\\abq2024.bat",
+        "host_policy": "independent-service-same-windows-session-v1",
+        "interpreter": "D:\\XianLab\\envs\\LangChainEnv\\Scripts\\python.exe",
+        "materials": [
+          {
+            "digest": "sha256:e9bb42ba164b08b57b07828d4b826a4c9d38d82dc070887f2d7cdea6bcefc711",
+            "path": "D:\\ABAQUS2024\\Commands\\abq2024.bat",
+            "size": 182
+          },
+          {
+            "digest": "sha256:ccd79a7568ea9240ccd6fe124807b9d3e4dbc3a4cf92954299ac3029f4a91d02",
+            "path": "C:\\Windows\\System32\\cmd.exe",
+            "size": 339968
+          },
+          {
+            "digest": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+            "path": "D:\\XianLab\\envs\\LangChainEnv\\Scripts\\python.exe",
+            "size": 274424
+          },
+          {
+            "digest": "sha256:e7eb0d96e23bdde503c3ec63d82b229f2cd0f1310cc1cd1604352a8491714420",
+            "path": "D:\\ABAQUS2024\\product\\win_b64\\code\\bin\\SMALauncher.exe",
+            "size": 146464
+          },
+          {
+            "digest": "sha256:dbdc2697c9e5e5e85c3d039dd3aaa853a7cbdbe85dfdfcef2d2879a566b9adfe",
+            "path": "D:\\ONEAPI\\compiler\\2022.2.0\\env\\vars.bat",
+            "size": 11439
+          }
+        ],
+        "process_management": {
+          "implementation_digest": "sha256:d7678b3dc89bbc9fcb3a0fc9e7d44f28c6f8b982171793e1165cd37d7d80f48d",
+          "policy": "windows-job-list-v1",
+          "stdio": "explicit-file-handle-list-v1"
+        },
+        "research_plugin_root": "C:\\Users\\wuxia\\.codex\\plugins\\cache\\gdcae-d7-e2\\gdcae-d7\\0.1.0-alpha.6-d7r2f",
+        "research_runtime": {
+          "af": "sha256:b4bb09432c678b097977afe162070862564931f6b58545d4ea670e70b3257722",
+          "gd": "sha256:7857b4bdf3aa89093bb5f4d8c2fb19c04fbe878af8861d0a024acc59042c02dc",
+          "plugin": "sha256:5d628aecc04ea904a61bd10198cae1345e039c7e9b24f73085c283b1b375d812",
+          "python": "sha256:0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+          "versions": {
+            "mcp": "2.3.0",
+            "pydantic": "2.13.4",
+            "python": "3.12.10",
+            "pywin32": "312"
+          }
+        },
+        "rod_profile": "axial_rod_cload_output_v2"
+      },
+      "scratch": "D:\\Projects\\GDCAETEST\\D7-A01-20261102-A01\\af-A\\rod_ff922163d31c45b0997a2bb0d44faa9e\\scratch",
+      "validation_policy": "axial-rod-owner-dat-v2"
+    },
+    "counts": {
+      "grants": 0,
+      "runs": 0,
+      "receipts": 0,
+      "consumption": 0,
+      "events": 0,
+      "management_receipts": 0,
+      "reconciliations": 0
+    },
+    "observed_at": 1793615285,
+    "gate": "PAUSED",
+    "slot": null
+  },
+  "developer_checks": {
+    "gd-expired-a-dev01": {
+      "schema": "g3-d6-offline-check-v1",
+      "label": "gd-expired-a-dev01",
+      "exit_code": 1,
+      "status": "FAIL",
+      "elapsed_seconds": 39.36,
+      "denied_native_or_network_attempts": 8,
+      "suppressed_output_bytes": 37078,
+      "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+      "counts": {
+        "passed": 158,
+        "failed": 13,
+        "skipped": 0,
+        "error": 0,
+        "deselected": 0
+      },
+      "diagnostics": [
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r01_r03_independent_process_reopen_is_readonly",
+          "line": 82
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r02_reparse_point_rejected",
+          "line": 121
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r06_process_crash_and_explicit_fixture_recovery",
+          "line": 325
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r06_process_crash_and_explicit_fixture_recovery",
+          "line": 325
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r06_process_crash_and_explicit_fixture_recovery",
+          "line": 325
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r06_process_crash_and_explicit_fixture_recovery",
+          "line": 325
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r06_process_crash_and_explicit_fixture_recovery",
+          "line": 325
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_research_project.py",
+          "test": "test_r13_import_create_read_have_no_process_or_network_side_effects",
+          "line": 367
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/integration/test_d7r1_local_preview.py",
+          "test": "test_two_projects_offline_accept_budget_and_b",
+          "line": 196
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/integration/test_d7r1_local_preview.py",
+          "test": "test_unknown_no_receipt_and_started_separate",
+          "line": 337
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/integration/test_d7r1_local_preview.py",
+          "test": "test_wrong_acceptance_does_not_charge",
+          "line": 361
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/integration/test_d7r1_local_preview.py",
+          "test": "test_wrong_acceptance_does_not_charge",
+          "line": 361
+        },
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/integration/test_d7r1_local_preview.py",
+          "test": "test_wrong_acceptance_does_not_charge",
+          "line": 361
+        }
+      ]
+    },
+    "gd-expired-a-dev02": {
+      "schema": "g3-d6-offline-check-v1",
+      "label": "gd-expired-a-dev02",
+      "exit_code": 0,
+      "status": "PASS",
+      "elapsed_seconds": 28.38,
+      "denied_native_or_network_attempts": 0,
+      "suppressed_output_bytes": 680,
+      "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+      "counts": {
+        "passed": 133,
+        "failed": 0,
+        "skipped": 0,
+        "error": 0,
+        "deselected": 8
+      },
+      "diagnostics": []
+    },
+    "gd-expired-a-dev03": {
+      "schema": "g3-d6-offline-check-v1",
+      "label": "gd-expired-a-dev03",
+      "exit_code": 0,
+      "status": "PASS",
+      "elapsed_seconds": 30.12,
+      "denied_native_or_network_attempts": 0,
+      "suppressed_output_bytes": 680,
+      "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+      "counts": {
+        "passed": 134,
+        "failed": 0,
+        "skipped": 0,
+        "error": 0,
+        "deselected": 8
+      },
+      "diagnostics": []
+    },
+    "gd-expired-a-dev04": {
+      "schema": "g3-d6-offline-check-v1",
+      "label": "gd-expired-a-dev04",
+      "exit_code": 1,
+      "status": "FAIL",
+      "elapsed_seconds": 32.53,
+      "denied_native_or_network_attempts": 0,
+      "suppressed_output_bytes": 3863,
+      "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+      "counts": {
+        "passed": 141,
+        "failed": 1,
+        "skipped": 0,
+        "error": 0,
+        "deselected": 8
+      },
+      "diagnostics": [
+        {
+          "code": "TEST_FAILURE",
+          "source_ref": "tests/unit/test_d6_a_only.py",
+          "test": "test_concurrent_application_key_is_single_persistent_hold",
+          "line": 185
+        }
+      ]
+    },
+    "gd-expired-a-dev05": {
+      "schema": "g3-d6-offline-check-v1",
+      "label": "gd-expired-a-dev05",
+      "exit_code": 0,
+      "status": "PASS",
+      "elapsed_seconds": 33.33,
+      "denied_native_or_network_attempts": 0,
+      "suppressed_output_bytes": 680,
+      "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+      "counts": {
+        "passed": 142,
+        "failed": 0,
+        "skipped": 0,
+        "error": 0,
+        "deselected": 8
+      },
+      "diagnostics": []
+    }
+  },
+  "test_result_directory": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6",
+  "real_recovery_performed": false,
+  "execution_authorized": false,
+  "final_developer_result": {
+    "label": "gd-expired-a-dev05",
+    "passed": 142,
+    "failed": 0,
+    "deselected": 8,
+    "new_recovery_cases": 40,
+    "retained_limitation": "dev04 unchanged D6 concurrent HOLD STORE_BUSY; dev05 rerun passed; independent concurrency acceptance required"
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "schema": "d7-offline-convergence-evidence-v1",
+  "date_local": "2026-11-01",
+  "timezone": "Asia/Shanghai",
+  "status": "OFFLINE_CHARACTERIZATION_PASS_REAL_EXECUTION_NO_GO",
+  "gd_head": "a75a614f9738af8f257fd490ceec2df4c012ea19",
+  "af_head": "7f4b8d8f3a2c862ed8b244d495295f5d51ea0d88",
+  "af_existing_overlay_used": true,
+  "production_source_modified": false,
+  "af_files_modified": false,
+  "solver_executed": false,
+  "owner_started": false,
+  "real_grant_created": false,
+  "synthetic_fixture_preparation": true,
+  "fixture_evidence_qualifies_real_execution": false,
+  "python": "D:\\XianLab\\envs\\LangChainEnv\\Scripts\\python.exe",
+  "python_version": "3.12.10",
+  "ruff": "D:\\ProgramData\\anaconda3\\Scripts\\ruff.exe",
+  "ruff_version": "0.12.0",
+  "ruff_new_test": "PASS",
+  "git_diff_check_gd": 0,
+  "git_diff_check_af_source_and_tests": 0,
+  "test_runs": [
+    {
+      "label": "d7-gd-regression-01",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "d7-gd-regression-01",
+        "exit_code": 0,
+        "status": "PASS",
+        "elapsed_seconds": 120.34,
+        "denied_native_or_network_attempts": 0,
+        "suppressed_output_bytes": 839,
+        "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+        "counts": {
+          "passed": 220,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 0
+        },
+        "diagnostics": []
+      },
+      "receipt_path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\d7-gd-regression-01.safe.json",
+      "receipt_sha256": "61b903b56980265f3ec1b4fe2bd260895a277ba89edb82df93b9fbd82e0a07d8"
+    },
+    {
+      "label": "af-d7-regression-01",
+      "result": {
+        "schema": "g3-d6-offline-check-v1",
+        "label": "af-d7-regression-01",
+        "exit_code": 0,
+        "status": "PASS",
+        "elapsed_seconds": 174.73,
+        "denied_native_or_network_attempts": 0,
+        "suppressed_output_bytes": 920,
+        "boundary_digest": "298de49d4a887c376ce6599341ba153662159b2236656757fdfa33a970d73318",
+        "counts": {
+          "passed": 316,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "deselected": 0
+        },
+        "diagnostics": []
+      },
+      "receipt_path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-G3-D3-OFFLINE-20261030-A01\\D6-20261031-A01\\gdcae-m03f1p1-g2long-d6\\af-d7-regression-01.safe.json",
+      "receipt_sha256": "bde0a0720937d4eacf1d2d6239f4220689ed277a2b212fa7100cd81000109898"
+    }
+  ],
+  "total_passed": 536,
+  "gd_test_targets": [
+    "tests/integration/test_d7_vertical_slice_readiness.py",
+    "tests/integration/test_aonly_public_chain_offline.py",
+    "tests/integration/test_d4_cross_repo_offline.py",
+    "tests/integration/test_d5_cross_repo_offline.py",
+    "tests/integration/test_d6_cross_repo_offline.py",
+    "tests/unit/test_d4_real_project.py",
+    "tests/unit/test_d4_real_verify.py",
+    "tests/unit/test_d5_real_preflight.py",
+    "tests/unit/test_d6_a_only.py",
+    "tests/unit/test_aonly_evidence_closure.py"
+  ],
+  "af_test_targets": [
+    "tests/test_rod_preview.py",
+    "tests/test_rod_plan_adapter.py",
+    "tests/test_g3_rod_lifecycle.py",
+    "tests/test_g3_rod_evidence_port.py",
+    "tests/test_d3_rod_real_source.py",
+    "tests/test_d4_rod_trusted.py",
+    "tests/test_d5_rod_preflight.py",
+    "tests/test_d6_rod_authority.py"
+  ],
+  "gd_source_identity": [
+    {
+      "path": "src/aegiscae/research/project.py",
+      "bytes": 36501,
+      "sha256": "45e61c741c783b61cd284e58f97e1805ae3e8ff5ebf51f37fc69b3b5c9f180d7"
+    },
+    {
+      "path": "src/aegiscae/research/rod_real_project.py",
+      "bytes": 25501,
+      "sha256": "911d398825f025bc454304d14bbcfe5ec9e7d443936d63179952c6ef2b389b2b"
+    },
+    {
+      "path": "src/aegiscae/research/rod_real_verify.py",
+      "bytes": 20287,
+      "sha256": "c56577e77fd1e22e474323c5b36a3f31738f0b3cc2026ab0f0de07c1d866a84b"
+    },
+    {
+      "path": "src/aegiscae/research/rod_preview_rules.py",
+      "bytes": 14133,
+      "sha256": "6dd02d92a5cf947f6709605e7d983daa6b0d2f1b4760570397d4f78536456a15"
+    },
+    {
+      "path": "src/aegiscae/research/rod_preview_dat.py",
+      "bytes": 6279,
+      "sha256": "4ffc266dbe06936b21167bdbbe34cc9185534c742751f2ed62a7f0f31d7926b8"
+    },
+    {
+      "path": "src/aegiscae/research/budget_rules.py",
+      "bytes": 10615,
+      "sha256": "00bac1cf42db66d3104f6df02e5372d8de48d31f87ed1f02b8499e6e714d84a9"
+    },
+    {
+      "path": "src/aegiscae/contracts/research_contracts.py",
+      "bytes": 16644,
+      "sha256": "8f8fb5017fa9b9f0bfcdd827dab6915da8af93d488b81500bd6a440167fcff16"
+    }
+  ],
+  "af_source_overlay_identity": [
+    {
+      "path": "abqjobpilot/product_rod.py",
+      "bytes": 21035,
+      "sha256": "296bc1a489b982213b4ff26f1c5d2bdd04432fefdf1590cfd121dc639d4a38a1"
+    },
+    {
+      "path": "abqjobpilot/product_standard.py",
+      "bytes": 12028,
+      "sha256": "1246cd44e4f3e8e98ebb16069b6b7edf0c449b8acd90902d3b2db0d391172511"
+    },
+    {
+      "path": "abqjobpilot/service_lifecycle.py",
+      "bytes": 13421,
+      "sha256": "c46deb423084254cd6aa66863e61618feaf24a7fb848d6ed2b7d35e206332a85"
+    },
+    {
+      "path": "abqjobpilot/execution/rod_trusted.py",
+      "bytes": 30453,
+      "sha256": "595923d64e39feb193e939c939fd9800e6308f21d0c6a8a1d2644105b7f61d77"
+    },
+    {
+      "path": "abqjobpilot/execution/rod_authority.py",
+      "bytes": 14417,
+      "sha256": "85c1b9da662837c420ca84d9ffce747d673b630ba6ccbf79fafda2492469819d"
+    },
+    {
+      "path": "abqjobpilot/execution/rod_profile.py",
+      "bytes": 10834,
+      "sha256": "b9d611d382e6ab3460e6110a045fee2747557ecefc2c89d37f4212336760ef92"
+    },
+    {
+      "path": "abqjobpilot/execution/rod_dat.py",
+      "bytes": 5867,
+      "sha256": "a8a7ee23018ade4df8ebe13171a92308924ae2dddbed7e7d054defb2455b1776"
+    },
+    {
+      "path": "abqjobpilot/execution/rod_real_source.py",
+      "bytes": 10729,
+      "sha256": "c55142ae0e38fec07012b5cd48a6aceadc8ca60a1e12487743cf7c6c96808047"
+    },
+    {
+      "path": "abqjobpilot/execution/product_standard.py",
+      "bytes": 14651,
+      "sha256": "dc4ccb0628b42cda6aac3b74448aa614c52248af8b110737a48761631d629d23"
+    },
+    {
+      "path": "abqjobpilot/execution/standard_contract.py",
+      "bytes": 15944,
+      "sha256": "25fc86dae0eba5d9bc0b909ca93fa445064b0bf3e67ecb736a33a6fde59713a8"
+    },
+    {
+      "path": "abqjobpilot/execution/standard_backend.py",
+      "bytes": 15856,
+      "sha256": "3f5e298c6ba053bf8538c718a20481447bcc79a4c98a3ac477165e0ee244bd01"
+    },
+    {
+      "path": "abqjobpilot/execution/managed_process.py",
+      "bytes": 12029,
+      "sha256": "d7678b3dc89bbc9fcb3a0fc9e7d44f28c6f8b982171793e1165cd37d7d80f48d"
+    },
+    {
+      "path": "abqjobpilot/execution/service.py",
+      "bytes": 30526,
+      "sha256": "4d399f2cbdd1eb83d8b7371fdb0f8bc5281c79930b075fba223b06d365d08beb"
+    },
+    {
+      "path": "abqjobpilot/execution/supervisor.py",
+      "bytes": 17750,
+      "sha256": "a3741ca600ad6d7a93d0427ebeb26af78d4118b5c6f75511f47e4978183a4ea0"
+    }
+  ],
+  "new_test_identity": {
+    "path": "tests/integration/test_d7_vertical_slice_readiness.py",
+    "bytes": 7425,
+    "sha256": "6453bba2864aad50531b543520faebb6a68557018603c9d226b6de1097cef9d6"
+  },
+  "report_identity": {
+    "path": "docs/milestones/D7_RESEARCH_PREVIEW_VERTICAL_SLICE_CONVERGENCE_2026-11-01.md",
+    "bytes": 11007,
+    "sha256": "5cef6549d3dde7973162c5db733fd3e61990a5dfb2cb454f09a815e21876762b"
+  },
+  "limits": [
+    "No live AF IPC or real solver/Grant qualification",
+    "No strong same-user OS isolation claim",
+    "Route C production mode not yet implemented",
+    "Existing v1 source/acceptance/B rejection remains intact",
+    "Scoped regression, not full repository test suite"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "host": "Codex CLI 0.169.0-alpha.11.1 / isolated app-server",
+  "test_scope": "Actual private .17 install and Skill, local candidate .18 identity entry, driver-assisted same-thread continuation",
+  "private_version": "0.2.0-preview.17",
+  "candidate_version": "0.2.0-preview.18",
+  "original_user_request": "我有一个 Abaqus 模型，希望反求载荷 F，使指定观察点向下位移达到 1 mm，允许误差 ±0.1 mm。请帮我开始这个科研项目。我授权建立或复用唯一的 Research Main。",
+  "same_isolated_thread_verified": true,
+  "consent_repeated": false,
+  "main_reference_returned": false,
+  "turns": [
+    {
+      "turn": 1,
+      "turn_status": "completed",
+      "selected_events": [
+        {
+          "type": "mcpToolCall",
+          "server": "codex_apps",
+          "tool": "github.fetch",
+          "status": "completed",
+          "arguments": {
+            "url": "https://api.github.com/repos/BrunelXian/Goal-Driven-CAE-Orchestrator/git/ref/heads/main"
+          }
+        },
+        {
+          "type": "mcpToolCall",
+          "server": "codex_apps",
+          "tool": "github.fetch_file",
+          "status": "completed",
+          "arguments": {
+            "repository_full_name": "BrunelXian/Goal-Driven-CAE-Orchestrator",
+            "path": "product/research-preview/publisher-receipts/0.2.0-preview.17.json",
+            "ref": "812c8d4d5f70a35bdb2814f6dcd600ec39e29050",
+            "encoding": "base64"
+          }
+        },
+        {
+          "type": "commandExecution",
+          "exit_code": 1,
+          "result": {
+            "reason": "CONNECTOR_TURN_UNCONFIRMED",
+            "status": "RELEASE_IDENTITY_UNAVAILABLE"
+          }
+        }
+      ],
+      "actual_final_reply": "项目简称：**LoadInv**\n\n目标是反求载荷 **F**，使指定观察点向下位移达到 **1 mm ±0.1 mm**，即向下位移量在 **0.9–1.1 mm** 内。已有资产为 Abaqus 模型；模型路径、观察点、方向对应的坐标分量、载荷定义及模型资格仍为 UNKNOWN。\n\n复杂度：**MANAGED_WORKFLOW**。载荷反演可能涉及多次计算，建议后续由 Main 评估 AbqJobPilot 管理候选、作业与证据。\n\n| ID | 目标 / 拟定 Owner | 输入 → 交付物 | 判据 | 登记 / 调度状态 |\n|---|---|---|---|---|\n| T01 | 审查模型针对本次反演的资格 / CAE | 模型、观察点及载荷定义 → Sanity Model 资格审查 | 明确适用范围、假设与验证证据 | DRAFT_NOT_PERSISTED / BLOCKED_HOST_ROLE_BINDING |\n| T02 | 只读发现计算能力 / Diagnostics | 本机 Abaqus、AbqJobPilot 接口 → 能力与计算路径报告 | 真实确认可用接口及权限 | DRAFT_NOT_PERSISTED / BLOCKED_HOST_ROLE_BINDING |\n\n**Main 交接目前阻断，尚未创建或绑定专业会话。** 安装 Manifest 与独立发行回执一致，三个交接脚本校验通过；身份工具的真实结果为：\n\n`RELEASE_IDENTITY_UNAVAILABLE — CONNECTOR_TURN_UNCONFIRMED`\n\n当前 Host 尚不能确认本回合连接器回执的终态，且未发现可用的 Desktop 项目选择与会话创建绑定接口，因此保留两卡草稿，标记 **BLOCKED_HOST_MAIN_CREATION**。你的唯一 Research Main 授权保留；未运行 Solver，也未计算或估算 F。"
+    },
+    {
+      "turn": 2,
+      "turn_status": "completed",
+      "selected_events": [
+        {
+          "type": "commandExecution",
+          "exit_code": 0,
+          "result": {
+            "version": "0.2.0-preview.17",
+            "status": "VERIFIED_RELEASE_IDENTITY",
+            "release_id": "pluginrel_6af9be046c1c8191a20dc4030f8d987f",
+            "plugin_id": "plugins_6af978c244ec8191ba521a0eb8bb949d",
+            "receipt_commit": "812c8d4d5f70a35bdb2814f6dcd600ec39e29050",
+            "receipt_blob": "f39c68b6938a64d4ab033767231b819387c592e3",
+            "channel": "plugin-creator-private",
+            "manifest_sha256": "8ad1928d4e909a8ee38d91ba9b31b272cedaa9fef4edb57eaeca029e3c7b971d"
+          }
+        }
+      ],
+      "actual_final_reply": "发行身份核验成功：**VERIFIED_RELEASE_IDENTITY**，版本 **0.2.0-preview.17**。已沿用落盘回执，未重查 GitHub、重置线程或修改凭据。\n\n**交接状态：BLOCKED_HOST_MAIN_CREATION**。当前缺少可验证的 Desktop Project 身份及正式会话创建、回读工具，无法完成唯一 Research Main 的绑定；此前授权保留。\n\n项目 **LoadInv**：反求载荷，使观察点向下位移达到 **1 mm ±0.1 mm**。复杂度保持 **MANAGED_WORKFLOW**。\n\n| 任务 | 拟定 Owner | 交付与判据 | 状态 |\n|---|---|---|---|\n| T01：模型用途资格审查 | CAE | 基于模型与观察点、载荷定义，明确适用范围和验证证据 | DRAFT_NOT_PERSISTED；BLOCKED_HOST_ROLE_BINDING |\n| T02：只读发现计算能力 | Diagnostics | 核实 Abaqus、AbqJobPilot 接口与权限，形成计算路径报告 | DRAFT_NOT_PERSISTED；BLOCKED_HOST_ROLE_BINDING |\n\n两卡草稿已保留在本对话中，尚未创建专业会话。未进行求解或估算 F。"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "status": "PREFLIGHT_PASS_AWAITING_HUMAN_INSTALL",
+  "captured_utc": "2026-10-31T16:50:07.8246122Z",
+  "msi_path": "C:\\Users\\wuxia\\AppData\\Local\\GDCAE-PowerShell-769-Qualification-20261031-A01\\PowerShell-7.6.9-win-x64.msi",
+  "msi_bytes": 117493760,
+  "msi_sha256": "50d33c7494aaf82b987cfd4de3f232d04f91fdd4c0deeca8a669cced3e7cf8f9",
+  "authenticode": "Valid",
+  "microsoft_publisher": true,
+  "online_signer_chain_valid": true,
+  "signer_thumbprint": "AB172913A2960A224809EE8A0C371CD47A079B72",
+  "conflicts_found": false,
+  "checked_path_reparse_found": false,
+  "risk_acceptance": "USER_APPROVED_ORDINARY_LOCAL_USER_MODEL_INCLUDING_UNRESOLVED_CAPABILITY_WRITE_ACE",
+  "strong_same_user_isolation_claimed": false,
+  "environment_baseline": [
+    {
+      "scope": "Machine",
+      "name": "Path",
+      "present": true,
+      "sha256": "6cb2230272a683ec59977a6f86279d589e14c6aac8cab19fa95132dcb4d91c8c"
+    },
+    {
+      "scope": "Machine",
+      "name": "PSModulePath",
+      "present": true,
+      "sha256": "2c2253183d25701ae1521fb74117c0cd7f47f3fc3f6245fc583b8ee28c0fd3de"
+    },
+    {
+      "scope": "Machine",
+      "name": "POWERSHELL_TELEMETRY_OPTOUT",
+      "present": false,
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "scope": "User",
+      "name": "Path",
+      "present": true,
+      "sha256": "4102cbeff4b5422887a28742bc65c3845ee78ad9e8546f42bfe63a2bc849c91f"
+    },
+    {
+      "scope": "User",
+      "name": "PSModulePath",
+      "present": false,
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "scope": "User",
+      "name": "POWERSHELL_TELEMETRY_OPTOUT",
+      "present": false,
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    }
+  ],
+  "context_menu_baseline": [
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\Directory\\Background\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\Drive\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\DesktopBackground\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\Directory\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\LibraryFolder\\background\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\Directory\\ContextMenus\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKLM:\\SOFTWARE\\Classes\\Microsoft.PowerShellScript.1\\Shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\Directory\\Background\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\Drive\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\DesktopBackground\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\Directory\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\LibraryFolder\\background\\shell\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\Directory\\ContextMenus\\PowerShell7x64",
+      "present": false
+    },
+    {
+      "key": "HKCU:\\SOFTWARE\\Classes\\Microsoft.PowerShellScript.1\\Shell\\PowerShell7x64",
+      "present": false
+    }
+  ],
+  "winrm_status": "Stopped",
+  "winrm_start": 3,
+  "installer_started_by_codex": false,
+  "stage_controller_used": false
+}
