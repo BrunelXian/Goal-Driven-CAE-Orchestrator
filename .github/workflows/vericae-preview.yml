@@ -1,0 +1,59 @@
+name: VeriCAE research preview
+
+on:
+  pull_request:
+    paths:
+      - README.md
+      - docs/vericae/**
+      - product/vericae/**
+      - .github/workflows/vericae-preview.yml
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - docs/vericae/**
+      - product/vericae/**
+      - .github/workflows/vericae-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-preview:
+    name: Plugin files and axial-bar replay
+    runs-on: windows-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Resolve the public marketplace and three skill entry points
+        run: |
+          $root = 'product/vericae'
+          $catalog = Get-Content -Raw "$root/.agents/plugins/marketplace.json" | ConvertFrom-Json
+          $entries = @($catalog.plugins | Where-Object name -eq 'vericae-research')
+          if ($entries.Count -ne 1) { throw 'Expected one public VeriCAE catalog entry' }
+          $entry = $entries[0]
+          $plugin = Join-Path $root $entry.source.path
+          $release = Get-Content -Raw "$plugin/release.json" | ConvertFrom-Json
+          if ($catalog.name -ne $release.marketplace_name) { throw 'Marketplace names differ' }
+          foreach ($file in '.codex-plugin/plugin.json', 'plugin.json') {
+            $manifest = Get-Content -Raw "$plugin/$file" | ConvertFrom-Json
+            if ($manifest.name -ne $entry.name -or $manifest.version -ne $release.product_version) {
+              throw "Plugin identity mismatch in $file"
+            }
+          }
+          foreach ($skill in 'initiate', 'conduct', 'setup') {
+            if (-not (Test-Path -LiteralPath "$plugin/skills/$skill/SKILL.md" -PathType Leaf)) {
+              throw "Missing entry point for $skill"
+            }
+          }
+          Write-Output "$($entry.name) $($release.product_version) from $($catalog.name)"
+
+      - name: Recompute node 2 U2 from the public evidence files
+        run: ./docs/vericae/demo/replay.ps1
