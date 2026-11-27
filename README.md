@@ -113,6 +113,10 @@ Contributions, independent reproductions and research collaborations are welcome
 
 ## 5. Roadmap
 
+![Figure 03 — OpenAI Codex is supported. DeepSeek Harness and Google Antigravity are in development. Claude Code and Grok Build are planned. VeriCAE connects to Abaqus through AbqJobPilot. AnsJobPilot for Ansys and COMSOL MCP Agent for COMSOL Multiphysics are planned.](docs/vericae/images/ecosystem-roadmap.png)
+
+*VeriCAE's evolving ecosystem of agent hosts, research orchestration, execution platforms and CAE solvers.*
+
 These are future research and engineering priorities, not claims of completed capabilities in v1.0.0.
 
 - **Autonomous numerical experiments:** qualify general execution-environment binding, new-task real-solver execution and independently verified results.
