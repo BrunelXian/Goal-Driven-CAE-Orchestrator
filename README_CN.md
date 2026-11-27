@@ -113,14 +113,11 @@ ChatGPT 与 Codex 辅助开发，科研方向和验收审查由维护者负责�
 
 ## 5. 未来计划
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/vericae/images/roadmap/roadmap-dark.svg">
-  <img src="docs/vericae/images/roadmap/roadmap-light.svg" width="100%" alt="VeriCAE 生态路线图。Codex 已支持，DeepSeek、Claude / Harness、Grokbot、Antigravity 计划适配。AbqJobPilot 连接 Abaqus。AnyJobPilot 扩展有两条平行分支，ANSYS 适配开发中，COMSOL 适配已列入计划。">
-</picture>
+![图 03 — OpenAI Codex 已支持，DeepSeek Harness 与 Google Antigravity 正在适配，Claude Code 与 Grok Build 已列入计划。VeriCAE 通过 AbqJobPilot 连接 Abaqus，并计划通过 AnsJobPilot 连接 Ansys、通过 COMSOL MCP Agent 连接 COMSOL Multiphysics。](docs/vericae/images/ecosystem-roadmap.png)
 
-VeriCAE 1.0.0 运行于 Codex。AbqJobPilot 已发布 Windows 版，公开的 Abaqus 案例复核了历史运行结果。图中的“开发中”和“计划适配”是维护者在 DOC-104 中给出的路线状态。已测试的工作流及其验证范围可查阅发布记录。[发布验证记录](docs/COMPATIBILITY.md) · [路线图配置](docs/vericae/images/roadmap/roadmap.json) · [SVG 生成器](docs/vericae/images/roadmap/render.py)
+*VeriCAE 持续演进的生态涵盖智能体宿主、科研编排、执行平台与 CAE 求解器。*
 
-**v1.0.0 之后的研究重点**
+以下为后续工程与科研方向，并非 1.0.0 已完成的功能：
 
 - **自主数值实验：** 完善通用执行环境绑定、全新真实求解任务及独立结果验证。
 - **仿真驱动的科学发现：** 探索科学假设、尺度律、无量纲关系、反例搜索及有预算约束的实验选择。
