@@ -1,73 +1,136 @@
-# VeriCAE · Verifiable Goal-Driven CAE Research Agent
+# VeriCAE
 
-**Can an independent reviewer reconstruct a simulation claim from the model, the measured quantity and the execution record?** VeriCAE is an agentic research framework for computational engineering built around that question. In the axial-bar study below, the analytical prediction agreed with the printed displacement and an independent reviewer reproduced the result. The historical extraction receipt still read `FAILED`.
+**Verifiable, goal-driven research agents for computational engineering.**
 
-**VeriCAE 1.0.0** is the Codex Native research layer. Its companion, **AbqJobPilot 1.0.0**, controls execution and records evidence on Windows. Researchers can plan studies and review models offline. [Download VeriCAE](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [Architecture](ARCHITECTURE.md) · [Pinned versions and verification scope](COMPATIBILITY.md)
+A simulation agent can give you a plausible result. **Can another engineer trace it to the right model, load, output selector and execution record—and independently check the conclusion?**
 
-## Where research ends and execution begins
+VeriCAE turns that question into a research workflow: define the claim, qualify a reference model, assign bounded tasks to native AI agents, and preserve the evidence behind each decision. **AbqJobPilot** is the companion Windows execution platform; it independently controls authorization, job lifecycle and provenance.
+
+**v1.0.0 · First Open-Source Release · Research-oriented engineering software**
+
+[**Download VeriCAE**](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [**Try without Abaqus**](#try-it-without-abaqus) · [Architecture](ARCHITECTURE.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [AbqJobPilot for Windows](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0)
+
+> **Scope:** Research planning, persistent native-agent coordination, evidence review and independent validation are available. An unrestricted, newly initiated **REAL Abaqus** autonomous solve-and-extract loop has **not** passed end-to-end qualification. We distinguish software capability, tested integration and evidence qualification below.
+
+## What it brings to CAE research
+
+| Research problem | VeriCAE's approach |
+| --- | --- |
+| **What exactly are we trying to establish?** | A Research Contract states the observable, units, model assumptions, permitted changes and acceptance criteria. |
+| **Which model can support that claim?** | **Verified-Model-First** starts with a reference model qualified *for a specific purpose*, not an unexplained solver output. |
+| **Who did what, and with what evidence?** | **Main** dispatches bounded Task Cards to **CAE**, **Results** and **Independent Validation** in persistent Codex Native conversations. |
+| **Was an operation authorized—and what really happened?** | AbqJobPilot separately records Plan, Grant, Run, Receipt and applicable process or artifact evidence. |
+| **Is the number correct and the conclusion warranted?** | Independent review checks physics, selectors, provenance and the strength of the available evidence—even when a calculation appears numerically correct. |
+
+## Architecture: scientific decisions ≠ execution authority
 
 ```mermaid
-flowchart TD
-    User[Research engineer] --> Main[VeriCAE Main in Codex Desktop]
-    Main <--> Files[Research Contract, Card, Task Cards and evidence]
-    Main <-->|Task and original reply| CAE[CAE]
-    Main <-->|Task and original reply| Results[Results]
-    Main <-->|Task and original reply| IV[Independent Validation]
-    Main -->|Scoped MCP request| Accept[AbqJobPilot Owner checks Plan and Grant]
-    Accept -->|At acceptance: persist| Receipt[Acceptance Receipt]
-    Accept -->|At acceptance: create| Run[Run]
-    Run -->|Owner dispatches accepted work| Backend[Controlled backend]
-    Backend -->|Owner records outcome and validation| Run
-    Receipt -->|Lookup by submission key| Read[AbqJobPilot MCP queries]
-    Run -->|Lookup by Run ID| Read
-    Read -->|Return recorded evidence| Main
+flowchart LR
+    U["Researcher<br/>goal · scope · approval"]
+
+    subgraph V["VeriCAE · Codex Native"]
+        M["Main<br/>research decisions & sole state writer"]
+        C["CAE<br/>model & physics"]
+        R["Results<br/>observations & provenance"]
+        I["Independent Validation<br/>independent review"]
+        F[("Research Contract · Card<br/>Task Cards · reports<br/>Markdown / YAML")]
+        M <--> C
+        M <--> R
+        M <--> I
+        M <--> F
+    end
+
+    subgraph A["AbqJobPilot · Windows"]
+        T["Scoped MCP interface"]
+        O["Authenticated Owner<br/>Plan / Grant / budget"]
+        B["Authorized backend<br/>Abaqus or TEST_ONLY"]
+        E[("Run · Attempt · Receipt<br/>execution / result evidence")]
+        T <--> O
+        O -->|approved dispatch only| B
+        B --> E
+        E --> T
+    end
+
+    U --> M
+    U -->|separate exact execution approval| O
+    M <-->|scoped requests & recorded facts| T
+    R <-->|evidence queries| T
+    I <-->|independent evidence queries| T
 ```
 
-VeriCAE owns scientific decisions. Research state lives in Markdown and YAML, and Codex supplies persistent conversations and cross-thread communication without a separate VeriCAE runtime or task database. A Task Card scopes research work. On Windows, AbqJobPilot governs execution through the Grant and supervises the backend. A client can retrieve the original acceptance Receipt while work is pending, then use its Run ID to read the outcome and validation evidence after execution.
+**Two products, two responsibilities.** VeriCAE owns the scientific question, research state, task assignment and scientific conclusion. It does not introduce a second executor or task database. AbqJobPilot owns execution admission, the authenticated Owner/Supervisor, budgets, attempts, receipts and their evidence. A research agreement **does not** itself authorize a solve.
 
-See the companion release for the Windows application and its installation requirements. The screenshot shows the Native Tk workspace with no project selected. [AbqJobPilot 1.0.0](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) · [Native Tk screenshot](https://github.com/BrunelXian/AbqJobPilot/blob/a7cbf27cee4e049f5cccb21416bdbfb7e8836808/docs/images/native-tk-preview.png)
+[Detailed architecture and trade-offs](ARCHITECTURE.md) · [Native role protocol](product/vericae/vericae-research/references/cross-thread-protocol.md) · [Pinned compatibility and limits](COMPATIBILITY.md)
 
-## How a study works
+## A real study: the right answer was not the whole verdict
 
-1. **Verified-Model-First.** Initiate turns a question into a Research Contract. Specify the observable, units, tolerance and stopping condition. The six-part Research Card records the simplest model that can test the claim and its qualification status.
-2. **Goal-Driven.** Conduct resumes from the Handoff. **Main** writes the primary state and dispatches bounded Task Cards to existing conversations. **CAE** examines geometry, materials, loads and restraints and derives an expected response. **Results** checks the actual output selector, units and provenance.
-3. **Verifiable.** **Independent Validation** challenges assumptions and recomputes the result. Main reads the original replies, links artifacts to tasks and records which conclusions survive review. Researchers can consult a role directly. [Task and return protocol](product/vericae/vericae-research/references/cross-thread-protocol.md)
+In **INT-001**, four native roles reviewed a *historical real Abaqus* T3D2 axial-bar run. For a 10 mm bar with `E = 1000 N/mm²`, `A = 1 mm²` and an axial load of `−1 N`, CAE independently obtained the expected displacement `−0.010 mm`. Results compared it with the recorded DAT observation. Independent Validation recomputed the comparison and corrected a step-name attribution.
 
-## Quick start
+| Check | Observed result |
+| --- | --- |
+| Analytical tip displacement | **−0.010 mm** |
+| Historical Abaqus DAT | **−0.010000000 mm** |
+| Diagnostic JSON vs DAT, absolute difference | **2.235174179 × 10⁻¹⁰ mm** |
+| Scientific/numerical comparison | **PASS for this load case** |
+| Overall historical evidence qualification | **PARTIAL** |
 
-Download the named ZIP and its checksum. Extract the verified archive to a permanent folder, register the extracted marketplace and install VeriCAE Research. [Plugin ZIP](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip) · [ZIP SHA-256](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip.sha256) · [Installation instructions](INSTALL.md)
+**Why PARTIAL?** The historical extraction Receipt was `FAILED`; execution and extraction qualification remained `REVIEW_REQUIRED`; the diagnostic JSON lacked the Owner-bound output digest required for full integrity. A matching displacement did not erase those limitations.
 
-Try Initiate with *“Plan a cantilever tip-displacement study. Show me the observable, reference model and six-part Research Card before creating any files.”* After confirming the draft and project directory, use Conduct to resume from `docs/initiation/HANDOFF.md`. [Workspace template](product/vericae/vericae-research/templates/research-project/README.md)
+![Frozen axial-bar input and published evidence open in an editor workbench](docs/vericae/images/int001-workbench.png)
 
-### Reproduce the axial-bar comparison in one minute
+*Actual published evidence workbench (VS Code): frozen model input, case notes and replay instructions. This is not a screenshot of a simulated autonomous execution.*
 
-From the checkout root, run the public replay in PowerShell. It reads the frozen bar input and the published historical displacement observations. Abaqus and an MCP connection are unnecessary.
+[Read the engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md) · [INT-001 findings](docs/vericae/INT-001.md) · [Published evidence files](docs/vericae/demo/README.md)
+
+## Try it without Abaqus
+
+**Option A — Replay an engineering check (PowerShell, no solver or license).**
+
+Clone the public repository and recompute the comparison from the published frozen input and historical observations:
 
 ```powershell
+git clone https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator.git
+cd Goal-Driven-CAE-Orchestrator
 ./docs/vericae/demo/replay.ps1
 ```
 
-Expected: analytical and printed DAT displacement **−0.010 mm**, absolute diagnostic difference **2.235174179 × 10⁻¹⁰ mm**. Repeating the arithmetic checks numerical agreement. Qualifying the historical extraction still requires evidence linking its producer to its output. [Replay inputs and method](docs/vericae/demo/README.md) · [Study findings](docs/vericae/INT-001.md)
+Expected: `Analytical / DAT comparison PASS` and `Historical evidence verdict PARTIAL`. This reproduces the arithmetic and checks the published file digests; **it does not rerun Abaqus or retroactively qualify the historical extraction**. [Method and provenance](docs/vericae/demo/README.md).
 
-![Frozen axial-bar inputs and historical evidence open in the editor workbench](docs/vericae/images/int001-workbench.png)
+**Option B — Plan a new study with native agents (no Abaqus required).**
 
-*Preview workbench in VS Code: the frozen Abaqus input beside the public case notes and replay instructions.*
+[Download the VeriCAE 1.0.0 plugin ZIP](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip), verify its [SHA-256](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/download/v1.0.0/VeriCAE-1.0.0.zip.sha256) and follow the [Codex Desktop installation guide](INSTALL.md). In your research Main conversation, start with:
 
-## Engineering evidence
+> Plan a cantilever tip-displacement study. Identify the observable, units, reference model and acceptance criteria. Show the six-part Research Card before creating files.
 
-| Study | Evidence | Decision |
-|---|---|---|
-| UAT-100 · VeriCAE 0.5.6 + AbqJobPilot 0.5.3 DEV | Desktop Main discovered three historical read tools and obtained actual environment and Receipt responses. | **PASS** for read-only MCP communication on the tested baselines. |
-| INT-001 · VeriCAE 0.5.5 + AbqJobPilot 0.5.3 DEV | Read-only review of a **historical real Abaqus** T3D2 run. MCP integration, four-role orchestration, scientific/numerical verification and independent validation each passed. | **PARTIAL overall.** The historical extraction receipt is `FAILED`. Execution and extraction qualifications are `REVIEW_REQUIRED`. Historical result data integrity is `INSUFFICIENT`. The ODB-derived value has diagnostic use only. |
-| INT-002A.1 · separate execution-bridge test | Real MCP submission with an exact Grant and budget, a fake backend, terminal Run, SHA-256-bound test output, idempotent submission and reconnect recovery. 250 targeted regression checks passed. | **TEST_ONLY PASS**, `solver_conclusion=NOT_RUN`. General-purpose real execution remains **NOT_READY**. |
-| INT-002B · separate planning exercise | Research Contract, Task Cards and acceptance criteria prepared. The execution owner became unavailable. | **Planning PASS. Execution BLOCKED / STOPPED.** Zero new submissions. Current Grant balance unknown. |
+**Initiate** prepares the research definition; **Conduct** resumes from the recorded Handoff; **Setup** checks the active environment and MCP availability. Confirm the project name and scope before formalizing a Draft. No Abaqus installation is required for planning and offline model review.
 
-## Runtime limits and research directions
+**Advanced — Controlled execution.** [AbqJobPilot 1.0.0](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) installs separately on Windows. Live execution needs a configured environment, a healthy authenticated Owner, and a separate scoped Grant. **TEST_ONLY** is not a one-click substitute for Abaqus and its result must not be reported as a solver result.
 
-VeriCAE 1.0.0 retains the four-step MCP check in the project's active Desktop Main: verify registration, discover tools, make an authorized read, then validate the responding service and permission scope. If discovery fails, Setup diagnoses the environment. When a restart is needed, Main saves a checkpoint and the researcher resumes the original conversation. Host support governs thread visibility and effective model settings. [Runtime verification and recovery](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+## What's verified in v1.0.0?
 
-The next engineering milestones are reproducible execution-environment binding and evidence-qualified fresh solves. The research questions are how to qualify a reference model for a stated use, choose the next numerical experiment under a goal and budget, and transfer independent review across solvers and coupled physics. [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [Engineering case study](docs/vericae/ENGINEERING-CASE-STUDY.md)
+| Study / surface | Evidence-backed status | What it **does not** prove |
+| --- | --- | --- |
+| Plugin distribution | **PASS:** isolated installation of v1.0.0; 34/34 packaged plugin files matched | New real-solver autonomy |
+| **UAT-100** · development baselines 0.5.6 / 0.5.3 DEV | **PASS:** Codex Desktop made two actual read-only MCP calls to AbqJobPilot | Separate v1.0.0-to-v1.0.0 Desktop E2E qualification |
+| **INT-001** · historical real Abaqus case | **PASS** for four-role coordination and the specified displacement check; **PARTIAL overall** | A fully qualified extraction, or a newly initiated solve |
+| **INT-002A.1** · independent Fake bridge | **TEST_ONLY PASS:** Owner dispatch, same-Run readback, output hash, idempotency, restart evidence | Abaqus execution: `solver_conclusion=NOT_RUN` |
+| **INT-002B** · new research task | **Planning PASS; execution BLOCKED / STOPPED** after the original Owner became unavailable | Successful new-task end-to-end execution |
 
-## License
+The public 1.0.0 distributions are pinned in [COMPATIBILITY.md](COMPATIBILITY.md). The general new-Plan REAL execution-environment binding and an evidence-qualified, newly initiated real Abaqus closed loop remain future engineering milestones.
 
-[Apache License 2.0](LICENSE)
+## Engineering design decisions
+
+- **Claims are not receipts.** Numerical agreement, solver completion, process containment, artifact provenance and scientific validity are independent questions.
+- **Agent intent is not permission.** An execution Grant is separate from a Research Contract and binds an exact scope and budget.
+- **Uncertainty is preserved.** An interrupted Owner, missing output binding or `FAILED` extraction is recorded—not rewritten into success because downstream arithmetic matches.
+- **Review is a first-class role.** Independent Validation checks the evidence and model instead of echoing another agent's answer.
+
+[Architecture & responsibility boundaries](ARCHITECTURE.md) · [Full engineering narrative](docs/vericae/ENGINEERING-CASE-STUDY.md) · [Research agenda](docs/vericae/RESEARCH-AGENDA.md) · [MCP runtime recovery protocol](product/vericae/vericae-research/references/mcp-runtime-verification.md)
+
+## Releases, licensing and contribution
+
+**VeriCAE:** [v1.0.0 release](https://github.com/BrunelXian/Goal-Driven-CAE-Orchestrator/releases/tag/v1.0.0) · [Install](INSTALL.md) · [Apache-2.0](LICENSE).
+
+**AbqJobPilot:** [v1.0.0 Windows release](https://github.com/BrunelXian/AbqJobPilot/releases/tag/v1.0.0) · [source repository](https://github.com/BrunelXian/AbqJobPilot) · MIT licensed. Abaqus is a separate commercial product and is not included.
+
+Research feedback, reproductions and technical reviews are welcome through GitHub Issues or pull requests. Please share only models, outputs and evidence you have permission to publish.
